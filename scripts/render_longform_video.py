@@ -56,7 +56,7 @@ def plain_text(value):
     return value.strip()
 
 def language_for(text):
-    devanagari = len(re.findall(r"[\\u0900-\\u097f]", text))
+    devanagari = len(re.findall(r"[\u0900-\u097f]", text))
     latin = len(re.findall(r"[A-Za-z]", text))
     if devanagari and devanagari >= max(4, latin * 0.12):
         return "hi"
@@ -110,7 +110,7 @@ def parse_lesson(markdown):
             continue
         if line.startswith(">"):
             line = line.lstrip("> ")
-        if re.match(r"^(?:[-*+]\\s+|\\d+[.)]\\s+)", line):
+        if re.match(r"^(?:[-*+]\s+|\d+[.)]\s+)", line):
             flush_paragraph()
         paragraph_lines.append(line)
 
@@ -135,7 +135,13 @@ def group_sections(sections, max_chars=MAX_GROUP_CHARS):
             groups.append({"heading": heading, "paragraphs": current})
     if not groups:
         raise ValueError("The corrected script did not contain usable paragraph groups.")
-    return groups[:28]
+    if len(groups) > 28:
+        overflow = [paragraph for group in groups[27:] for paragraph in group["paragraphs"]]
+        groups = groups[:27] + [{
+            "heading": "Further explanation and worked applications",
+            "paragraphs": overflow,
+        }]
+    return groups
 
 
 def wrap_lines(draw, text, font, max_width, max_lines=5):
@@ -188,7 +194,7 @@ def draw_slide(group, index, total, unit, unit_name, topic, font_regular, font_b
     display = []
     for paragraph in group["paragraphs"]:
         # Keep each slide readable; the complete paragraph remains in narration.
-        sentences = re.split(r"(?<=[.!?।॥])\\s+", paragraph)
+        sentences = re.split(r"(?<=[.!?।॥])\s+", paragraph)
         display.append(sentences[0] if sentences else paragraph)
     for point in display[:4]:
         lines = wrap_lines(draw, point, body_font, WIDTH - 250, max_lines=3)
@@ -328,7 +334,7 @@ def main():
 
         concat_file = temp / "segments.txt"
         concat_file.write_text(
-            "".join(f"file '{path.as_posix()}'\\n" for path in segments),
+            "".join(f"file '{path.as_posix()}'\n" for path in segments),
             encoding="utf-8",
         )
         run_ffmpeg([
