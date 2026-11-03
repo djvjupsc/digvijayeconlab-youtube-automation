@@ -152,8 +152,8 @@ def analyze_script(text, content_format="Concept Explainer", language="Bilingual
         r"(?im)^\s*(?:\*\*\s*)?(?:Q(?:uestion)?\s*0*\d+|प्रश्न\s*0*\d+)\b"
     )
     question_count = len(question_pattern.findall(text))
-    answer_count = len(re.findall(r"(?i)Correct\s+Answer\s*\*{0,2}\s*[:：]", text))
-    explanation_count = len(re.findall(r"(?i)Explanation\s*\*{0,2}\s*[:：]", text))
+    answer_count = len(re.findall(r"(?i)Correct\s+Answer(?:\s*\*{0,2})?\s*[:：]\*{0,2}", text))
+    explanation_count = len(re.findall(r"(?i)Explanation(?:\s*\*{0,2})?\s*[:：]\*{0,2}", text))
 
     if question_count < minimum_mcqs:
         findings.append(_issue(
@@ -197,8 +197,8 @@ def render_report(text, findings, content_format="Concept Explainer", language="
     question_count = len(re.findall(
         r"(?im)^\s*(?:\*\*\s*)?(?:Q(?:uestion)?\s*0*\d+|प्रश्न\s*0*\d+)\b", text
     ))
-    answer_count = len(re.findall(r"(?i)Correct\s+Answer\s*\*{0,2}\s*[:：]", text))
-    explanation_count = len(re.findall(r"(?i)Explanation\s*\*{0,2}\s*[:：]", text))
+    answer_count = len(re.findall(r"(?i)Correct\s+Answer(?:\s*\*{0,2})?\s*[:：]\*{0,2}", text))
+    explanation_count = len(re.findall(r"(?i)Explanation(?:\s*\*{0,2})?\s*[:：]\*{0,2}", text))
     latin_count = len(re.findall(r"[A-Za-z]", text))
     devanagari_count = len(re.findall(r"[\u0900-\u097F]", text))
     blockers = [item for item in findings if item["blocking"]]
