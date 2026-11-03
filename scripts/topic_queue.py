@@ -14,7 +14,7 @@ ALLOWED_FORMATS = {
     "MCQ Set",
     "Previous-Year-Question Analysis",
 }
-ALLOWED_STATUSES = {"pending", "processing", "completed", "failed"}
+ALLOWED_STATUSES = {"pending", "processing", "completed", "failed", "stale"}
 STALE_CLAIM_HOURS = 6
 
 
@@ -96,7 +96,7 @@ def recover_stale_claims(data, now=None):
         if parsed.tzinfo is None:
             parsed = parsed.replace(tzinfo=timezone.utc)
         if now - parsed > timedelta(hours=STALE_CLAIM_HOURS):
-            item["status"] = "pending"
+            item["status"] = "stale"
             item.pop("claimed_by", None)
             item.pop("claimed_at", None)
             item["recovered_at"] = now.replace(microsecond=0).isoformat().replace("+00:00", "Z")
@@ -154,7 +154,7 @@ def claim(args):
     write_github_outputs(args.github_output, values)
     print(f"Claimed queue item {item['id']}: {item['topic']}")
     if recovered:
-        print("Recovered stale processing claim(s): " + ", ".join(recovered))
+        print("Marked stale processing claim(s) for manual review (not automatically retried): " + ", ".join(recovered))
     return 0
 
 
