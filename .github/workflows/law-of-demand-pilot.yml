@@ -1,0 +1,223 @@
+name: Law of Demand — end-to-end pilot
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_private_upload:
+        description: "Upload the finished Law of Demand lesson to YouTube as PRIVATE only"
+        required: true
+        type: choice
+        options:
+          - "no"
+          - "yes"
+        default: "no"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: digvijayeconlab-law-of-demand-pilot
+  cancel-in-progress: false
+
+jobs:
+  law-of-demand-pilot:
+    name: Generate, review, narrate, render and privately stage one lesson
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install free rendering dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg espeak-ng fonts-noto-core fonts-dejavu-core
+          python -m pip install --upgrade pip
+          python -m pip install Pillow gradio_client huggingface_hub
+
+      - name: Run repository quality tests
+        run: |
+          python -m compileall -q scripts tests
+          python -m unittest discover -s tests -v
+
+      - name: Create isolated Law of Demand lesson manifest and SEO metadata
+        run: |
+          mkdir -p output/seo output/scripts output/reviews output/corrected_scripts output/corrections output/quality_checks output/longform output/youtube
+          python - <<'PY'
+          import json
+          from datetime import datetime
+          from zoneinfo import ZoneInfo
+          from pathlib import Path
+
+          publication_date = datetime.now(ZoneInfo("Asia/Kolkata")).date().isoformat()
+          manifest = {
+              "version": 1,
+              "run_id": "law-of-demand-pilot",
+              "run_date": publication_date,
+              "publication_date": publication_date,
+              "timezone": "Asia/Kolkata",
+              "brand": "DigvijayEconLab",
+              "short_focus": {
+                  "unit": 1,
+                  "unit_name": "Micro Economic Analysis",
+                  "topic": "Law of Demand"
+              }
+          }
+          Path("output/law_of_demand_pilot_manifest.json").write_text(
+              json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+          )
+          seo = [{
+              "unit": 1,
+              "video_title": "Law of Demand | मांग का नियम | Micro Economics | DigvijayEconLab",
+              "description": (
+                  "A bilingual Hindi-English explanation of the Law of Demand for "
+                  "MPPSC Assistant Professor Economics and UGC NET aspirants. "
+                  "Includes the demand schedule, demand curve, assumptions and an illustrative example. "
+                  "\n\nDigvijayEconLab | Educational lesson. Please verify concepts with standard textbooks."
+              ),
+              "tags": [
+                  "Law of Demand", "मांग का नियम", "Micro Economics",
+                  "MPPSC Assistant Professor Economics", "UGC NET Economics",
+                  "DigvijayEconLab"
+              ]
+          }]
+          Path(f"output/seo/{publication_date}-seo-metadata.json").write_text(
+              json.dumps(seo, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+          )
+          print(f"Prepared isolated pilot for {publication_date}; no daily production state or topic queue changed.")
+          PY
+
+      - name: Generate bilingual Law of Demand script
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: gemini-3.5-flash-lite
+          SCRIPT_UNIT: "Unit 1: Micro Economic Analysis"
+          SCRIPT_FILENAME_PREFIX: "unit-01"
+        run: |
+          python scripts/generate_script.py "Law of Demand" "Bilingual" "Concept Explainer"
+
+      - name: Review original lesson draft
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: gemini-3.5-flash-lite
+          SCRIPT_UNIT: "Unit 1: Micro Economic Analysis"
+          SCRIPT_LANGUAGE: "Bilingual"
+          SCRIPT_FORMAT: "Concept Explainer"
+          REVIEW_STAGE: "original"
+        run: |
+          python scripts/review_script.py "output/scripts/unit-01-law-of-demand.md"
+
+      - name: Correct the lesson using review findings
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python scripts/correct_script.py \
+            "output/scripts/unit-01-law-of-demand.md" \
+            "output/reviews/unit-01-law-of-demand-quality-review.md"
+
+      - name: Review corrected lesson and enforce structural gate
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: gemini-3.5-flash-lite
+          SCRIPT_UNIT: "Unit 1: Micro Economic Analysis"
+          SCRIPT_LANGUAGE: "Bilingual"
+          SCRIPT_FORMAT: "Concept Explainer"
+          REVIEW_STAGE: "corrected"
+        run: |
+          python scripts/review_script.py "output/corrected_scripts/unit-01-law-of-demand.md"
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          report = Path("output/reviews/unit-01-law-of-demand-quality-review.md").read_text(encoding="utf-8")
+          verdict = ""
+          lines = report.splitlines()
+          for i, line in enumerate(lines):
+              if "overall verdict" in line.casefold():
+                  verdict = next((x.strip() for x in lines[i + 1:] if x.strip()), "")
+                  break
+          if not any(word in verdict.casefold() for word in ("ready", "approved", "pass")):
+              raise SystemExit("Pilot blocked: corrected academic review did not return an explicit READY/APPROVED/PASS verdict.")
+          script = Path("output/corrected_scripts/unit-01-law-of-demand.md").read_text(encoding="utf-8")
+          if re.search(r"\[(?:HUMAN\s+)?VERIFY\b[^]]*\]", script, re.I):
+              raise SystemExit("Pilot blocked: unresolved human verification markers remain in the corrected script.")
+          print("Corrected lesson passed the structural/review gate. Human fact-check is still mandatory.")
+          PY
+
+      - name: Synthesize owner-authorized Chatterbox narration and render 1080p lesson
+        env:
+          CHATTERBOX_ENABLED: ${{ vars.CHATTERBOX_ENABLED }}
+          CHATTERBOX_SPACE: ${{ vars.CHATTERBOX_SPACE }}
+          CHATTERBOX_REFERENCE_REPO: ${{ vars.CHATTERBOX_REFERENCE_REPO }}
+          CHATTERBOX_REFERENCE_FILENAME: ${{ vars.CHATTERBOX_REFERENCE_FILENAME }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          python scripts/render_longform_video.py output/law_of_demand_pilot_manifest.json
+
+      - name: Enforce render and voice-clone eligibility
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from datetime import datetime
+          from zoneinfo import ZoneInfo
+          date = datetime.now(ZoneInfo("Asia/Kolkata")).date().isoformat()
+          report = json.loads(Path(f"output/longform/{date}-longform-render.json").read_text(encoding="utf-8"))
+          assert report.get("audit_status") == "pass", "Voice-clone or render audit did not pass."
+          assert report.get("upload_eligible") is True, "Render is not eligible for private staging."
+          assert report.get("voice_clone_used") is True, "Chatterbox owner voice was not used."
+          assert report.get("music") == "none", "Unexpected music track."
+          assert report.get("review_required") is True, "Human review gate missing."
+          tech = report.get("technical", {})
+          assert (tech.get("width"), tech.get("height")) == (1920, 1080), "Expected 1920x1080."
+          assert tech.get("video_codec") == "h264", "Expected H.264."
+          assert int(tech.get("audio_streams", 0)) > 0, "Narration audio missing."
+          assert float(tech.get("duration_seconds", 0)) > 0, "Invalid video duration."
+          print(json.dumps({
+              "status": "PASS",
+              "duration_seconds": tech["duration_seconds"],
+              "resolution": "1920x1080",
+              "voice_clone_used": True,
+              "music": "none",
+              "human_review_required": True
+          }, indent=2))
+          PY
+
+      - name: Upload the lesson to YouTube as PRIVATE only
+        if: inputs.confirm_private_upload == 'yes'
+        env:
+          YOUTUBE_PRIVATE_UPLOAD_ENABLED: ${{ vars.YOUTUBE_PRIVATE_UPLOAD_ENABLED }}
+          YOUTUBE_OAUTH_CLIENT_ID: ${{ secrets.YOUTUBE_OAUTH_CLIENT_ID }}
+          YOUTUBE_OAUTH_CLIENT_SECRET: ${{ secrets.YOUTUBE_OAUTH_CLIENT_SECRET }}
+          YOUTUBE_OAUTH_REFRESH_TOKEN: ${{ secrets.YOUTUBE_OAUTH_REFRESH_TOKEN }}
+        run: |
+          DATE=$(python -c "from datetime import datetime; from zoneinfo import ZoneInfo; print(datetime.now(ZoneInfo('Asia/Kolkata')).date().isoformat())")
+          python scripts/youtube_private_upload.py "$DATE" --kind longform
+
+      - name: Record that private upload was not requested
+        if: inputs.confirm_private_upload != 'yes'
+        run: echo "Render completed. YouTube upload was skipped because PRIVATE upload confirmation was not set to yes."
+
+      - name: Preserve pilot outputs for review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: digvijayeconlab-law-of-demand-pilot
+          path: |
+            output/law_of_demand_pilot_manifest.json
+            output/scripts/*.md
+            output/reviews/*.md
+            output/corrected_scripts/*.md
+            output/corrections/*.md
+            output/quality_checks/*.md
+            output/seo/*.json
+            output/longform/*
+            output/youtube/*
+          if-no-files-found: warn
+          retention-days: 14
