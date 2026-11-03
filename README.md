@@ -30,7 +30,7 @@ Public video upload, public playlist creation, Community post publishing and You
 - `scripts/review_script.py` — creates an academic quality-control report; it does not rewrite the original script.
 - `scripts/correct_script.py` — requests schema-constrained JSON from Gemini, validates required fields, preserves original `[VERIFY ...]` markers, applies limited deterministic notation repairs, and records unresolved items.
 - `scripts/quality_checks.py` — deterministic structural and formatting checks.
-- `scripts/generate_daily_assets.py` — generates the daily bilingual Short storyboard and Community post/poll draft.
+- `scripts/generate_daily_assets.py` — generates the daily bilingual Short storyboard, Community post/poll draft, and validated SEO metadata (title variants, descriptions, tags, hashtags and thumbnail copy) for all ten unit lessons.
 - `scripts/render_short_video.py` — renders a 1080 × 1920 narrated Short draft using Pillow, eSpeak NG and FFmpeg; no music is added.
 - `scripts/topic_queue.py` — manages the legacy one-topic queue.
 - `tests/` — offline unit and regression tests.
