@@ -1,0 +1,117 @@
+name: DigvijayEconLab daily ten-unit production pack
+
+on:
+  # 02:30 UTC = 08:00 Asia/Kolkata.
+  schedule:
+    - cron: "30 2 * * *"
+  workflow_dispatch:
+    inputs:
+      retry_failed:
+        description: "Retry today's failed pack only after inspecting its partial artifact"
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: digvijayeconlab-daily-ten-unit-pack
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  daily-production:
+    name: Generate ten lesson packages, one Short and one Community post
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install open-source Short rendering tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg espeak-ng fonts-noto-core fonts-dejavu-core
+          python -m pip install --upgrade pip
+          python -m pip install Pillow
+
+      - name: Run offline tests and validate the ten-unit plan
+        run: |
+          python -m compileall -q scripts tests
+          python -m unittest discover -s tests -v
+          python scripts/daily_production.py validate
+          python scripts/topic_queue.py validate --queue config/topic_queue.json
+
+      - name: Claim today's production pack
+        id: prepare
+        env:
+          RETRY_FAILED: ${{ inputs.retry_failed }}
+        run: |
+          RETRY_ARGS=()
+          if [ "$RETRY_FAILED" = "true" ]; then
+            RETRY_ARGS+=(--retry-failed)
+          fi
+          python scripts/daily_production.py prepare \
+            --run-id "$GITHUB_RUN_ID" \
+            --github-output "$GITHUB_OUTPUT" \
+            "${RETRY_ARGS[@]}"
+
+      - name: Persist daily claim before API requests
+        if: steps.prepare.outputs.claimed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add config/daily_production_state.json
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(daily): claim production pack ${{ steps.prepare.outputs.run_date }}"
+            git push origin HEAD:main
+          fi
+
+      - name: Generate and review ten unit lesson packages, Short assets and Community post
+        if: steps.prepare.outputs.claimed == 'true'
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: gemini-3.5-flash-lite
+        run: |
+          python scripts/daily_production.py process --manifest output/daily_manifest.json
+
+      - name: Upload complete daily production package
+        if: always() && steps.prepare.outputs.claimed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: digvijayeconlab-daily-production-${{ steps.prepare.outputs.publication_date }}
+          path: |
+            output/daily_manifest.json
+            output/scripts/*.md
+            output/reviews/*.md
+            output/corrected_scripts/*.md
+            output/corrections/*.md
+            output/quality_checks/*.md
+            output/shorts/*
+            output/community/*
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Finalize daily production state
+        if: always() && steps.prepare.outputs.claimed == 'true'
+        env:
+          PACK_JOB_STATUS: ${{ job.status }}
+        run: |
+          python scripts/daily_production.py finish \
+            --run-id "$GITHUB_RUN_ID" \
+            --job-status "$PACK_JOB_STATUS"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add config/daily_production_state.json
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(daily): finalize production pack $GITHUB_RUN_ID ($PACK_JOB_STATUS)"
+            git push origin HEAD:main
+          fi

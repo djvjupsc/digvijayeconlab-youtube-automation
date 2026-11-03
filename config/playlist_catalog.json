@@ -1,0 +1,68 @@
+{
+  "version": 1,
+  "source": "User-supplied UGC NET Economics NET Syllabus, Subject Economics, Code No. 01 (4 pages)",
+  "privacy_target": "private during setup; public only after manual approval",
+  "creation_status": "catalog_only_not_created_in_youtube",
+  "items": [
+    {
+      "unit": 1,
+      "title": "UGC NET Economics Unit 1 | Micro Economics | DigvijayEconLab",
+      "description": "Complete bilingual UGC NET Economics Unit 1: Micro Economics. Topic-wise lessons on consumer behaviour, production and costs, risk, game theory, market structures, factor pricing, general equilibrium, efficiency, welfare economics and asymmetric information.",
+      "privacyStatus": "private"
+    },
+    {
+      "unit": 2,
+      "title": "UGC NET Economics Unit 2 | Macro Economics | DigvijayEconLab",
+      "description": "Complete bilingual UGC NET Economics Unit 2: Macro Economics. National income, classical and Keynesian output and employment, consumption, investment, multiplier, accelerator, money demand and supply, IS-LM, inflation, Phillips curve, business cycles and policy.",
+      "privacyStatus": "private"
+    },
+    {
+      "unit": 3,
+      "title": "UGC NET Economics Unit 3 | Statistics and Econometrics | DigvijayEconLab",
+      "description": "Complete bilingual UGC NET Economics Unit 3: Statistics and Econometrics. Probability, distributions, moments, central limit theorem, descriptive statistics, sampling, inference, regression, identification, simultaneous equations, discrete choice and time series.",
+      "privacyStatus": "private"
+    },
+    {
+      "unit": 4,
+      "title": "UGC NET Economics Unit 4 | Mathematical Economics | DigvijayEconLab",
+      "description": "Complete bilingual UGC NET Economics Unit 4: Mathematical Economics. Sets, functions, continuity, sequences, series, differential calculus, linear algebra, static optimization, input-output models, linear programming and difference and differential equations.",
+      "privacyStatus": "private"
+    },
+    {
+      "unit": 5,
+      "title": "UGC NET Economics Unit 5 | International Economics | DigvijayEconLab",
+      "description": "Complete bilingual UGC NET Economics Unit 5: International Economics. Trade concepts and theories, imperfect competition, balance of payments, exchange rates, foreign exchange markets, gains from trade, tariffs, WTO, regional trade blocs, IMF and World Bank.",
+      "privacyStatus": "private"
+    },
+    {
+      "unit": 6,
+      "title": "UGC NET Economics Unit 6 | Public Economics | DigvijayEconLab",
+      "description": "Complete bilingual UGC NET Economics Unit 6: Public Economics. Market failure, public goods, externalities, regulation, public revenue, taxation, tax incidence, public expenditure, public debt, budgets and fiscal policy.",
+      "privacyStatus": "private"
+    },
+    {
+      "unit": 7,
+      "title": "UGC NET Economics Unit 7 | Money and Banking | DigvijayEconLab",
+      "description": "Complete bilingual UGC NET Economics Unit 7: Money and Banking. Money supply, central bank, commercial banking, monetary policy instruments, non-banking financial institutions and capital market regulation.",
+      "privacyStatus": "private"
+    },
+    {
+      "unit": 8,
+      "title": "UGC NET Economics Unit 8 | Growth and Development Economics | DigvijayEconLab",
+      "description": "Complete bilingual UGC NET Economics Unit 8: Growth and Development Economics. Growth and development concepts, development theories, growth models, technical progress, endogenous growth, development indicators, poverty, inequality and social sector development.",
+      "privacyStatus": "private"
+    },
+    {
+      "unit": 9,
+      "title": "UGC NET Economics Unit 9 | Environmental Economics and Demography | DigvijayEconLab",
+      "description": "Complete bilingual UGC NET Economics Unit 9: Environmental Economics and Demography. Environment as public good, market failure, Coase theorem, cost-benefit analysis, valuation, population theories, fertility, morbidity, mortality, age structure, demographic dividend, life table and migration.",
+      "privacyStatus": "private"
+    },
+    {
+      "unit": 10,
+      "title": "UGC NET Economics Unit 10 | Indian Economy | DigvijayEconLab",
+      "description": "Complete bilingual UGC NET Economics Unit 10: Indian Economy. Growth patterns, agriculture, industry, services, rural and urban development, foreign trade, capital flows, infrastructure, land, labour and capital market reforms, Centre-State relations, Finance Commissions, FRBM, poverty, inequality and unemployment.",
+      "privacyStatus": "private"
+    }
+  ]
+}

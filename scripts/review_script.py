@@ -62,7 +62,8 @@ Return readable Markdown with sections: Overall Verdict, Critical Issues,
 High-Priority Issues, Other Improvements, MCQ Audit, Verification Gaps,
 and Pre-Production Checklist."""
 
-    user_prompt = f"""SOURCE NOTES (may be empty):
+    unit_context = os.environ.get("SCRIPT_UNIT", "Not specified")
+    user_prompt = f"""UNIT: {unit_context}\n\nSOURCE NOTES (may be empty):
 {source_notes if source_notes.strip() else "[No source notes supplied. Do not certify factual claims.]"} 
 
 SELECTED FORMAT: {content_format}

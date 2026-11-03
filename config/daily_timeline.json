@@ -1,0 +1,62 @@
+{
+  "timezone": "Asia/Kolkata",
+  "production_generation_time": "08:00",
+  "publication_date_rule": "Generate the next day's content pack at 08:00; subject-matter review and video editing take place before scheduling.",
+  "community_post_time": "08:30",
+  "full_lesson_release_slots": [
+    {
+      "unit": 1,
+      "time": "09:00",
+      "playlist": "UGC NET Economics Unit 1 | Micro Economics | DigvijayEconLab"
+    },
+    {
+      "unit": 2,
+      "time": "10:00",
+      "playlist": "UGC NET Economics Unit 2 | Macro Economics | DigvijayEconLab"
+    },
+    {
+      "unit": 3,
+      "time": "11:00",
+      "playlist": "UGC NET Economics Unit 3 | Statistics and Econometrics | DigvijayEconLab"
+    },
+    {
+      "unit": 4,
+      "time": "12:00",
+      "playlist": "UGC NET Economics Unit 4 | Mathematical Economics | DigvijayEconLab"
+    },
+    {
+      "unit": 5,
+      "time": "13:00",
+      "playlist": "UGC NET Economics Unit 5 | International Economics | DigvijayEconLab"
+    },
+    {
+      "unit": 6,
+      "time": "14:00",
+      "playlist": "UGC NET Economics Unit 6 | Public Economics | DigvijayEconLab"
+    },
+    {
+      "unit": 7,
+      "time": "15:00",
+      "playlist": "UGC NET Economics Unit 7 | Money and Banking | DigvijayEconLab"
+    },
+    {
+      "unit": 8,
+      "time": "16:00",
+      "playlist": "UGC NET Economics Unit 8 | Growth and Development Economics | DigvijayEconLab"
+    },
+    {
+      "unit": 9,
+      "time": "17:00",
+      "playlist": "UGC NET Economics Unit 9 | Environmental Economics and Demography | DigvijayEconLab"
+    },
+    {
+      "unit": 10,
+      "time": "18:00",
+      "playlist": "UGC NET Economics Unit 10 | Indian Economy | DigvijayEconLab"
+    }
+  ],
+  "shorts_release_time": "19:00",
+  "community_post_type": "Daily preview plus one syllabus-relevant poll",
+  "workflow_mode": "draft-only; upload and public publishing disabled",
+  "pilot_period_days": 14
+}
