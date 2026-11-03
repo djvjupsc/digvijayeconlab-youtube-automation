@@ -1,0 +1,68 @@
+name: DigvijayEconLab script draft
+
+on:
+  workflow_dispatch:
+    inputs:
+      topic:
+        description: "Economics topic for the educational script"
+        required: true
+        type: string
+      language:
+        description: "Output language"
+        required: true
+        type: choice
+        options:
+          - Bilingual
+          - Hindi
+          - English
+      content_format:
+        description: "Content format"
+        required: true
+        type: choice
+        options:
+          - Concept Explainer
+          - MCQ Set
+          - Previous-Year-Question Analysis
+      source_notes:
+        description: "Optional source notes; include authoritative material for factual claims"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  generate-draft:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Generate educational script draft
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: gpt-4.1-mini
+          SCRIPT_TOPIC: ${{ inputs.topic }}
+          SCRIPT_LANGUAGE: ${{ inputs.language }}
+          SCRIPT_FORMAT: ${{ inputs.content_format }}
+          SCRIPT_SOURCE_NOTES: ${{ inputs.source_notes }}
+        run: |
+          python scripts/generate_script.py \
+            "$SCRIPT_TOPIC" \
+            "$SCRIPT_LANGUAGE" \
+            "$SCRIPT_FORMAT" \
+            "$SCRIPT_SOURCE_NOTES"
+
+      - name: Save draft as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: digvijayeconlab-script-draft
+          path: output/scripts/*.md
+          if-no-files-found: error
+          retention-days: 14
