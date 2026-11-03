@@ -121,7 +121,14 @@ def main():
     if len(sys.argv) < 3:
         raise SystemExit("Usage: correct_script.py SCRIPT_PATH REVIEW_PATH [SOURCE_NOTES]")
     script_path, review_path = Path(sys.argv[1]), Path(sys.argv[2])
-    source_notes = sys.argv[3] if len(sys.argv) > 3 else ""
+    source_notes_path = Path(sys.argv[3]) if len(sys.argv) > 3 else None
+    source_notes = (
+        source_notes_path.read_text(encoding="utf-8")
+        if source_notes_path and source_notes_path.is_file()
+        else ""
+    )
+    if source_notes_path and not source_notes_path.is_file():
+        raise SystemExit(f"Source notes file not found: {source_notes_path}")
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         raise SystemExit("GEMINI_API_KEY is not configured.")
@@ -140,6 +147,9 @@ between individual and market demand.
 For Giffen-goods bilingual parity, ensure the Hindi version includes the same historical
 details as the English version, including Alfred Marshall's Principles of Economics (1895)
 and the fact that attribution and the traditional Irish potato example are debated.
+Use this natural Hindi wording where suitable: "हालांकि, इस उदाहरण के ऐतिहासिक श्रेय और इसकी अनुभवजन्य पुष्टि को लेकर विद्वानों में बहस है।"
+For the reported heading hierarchy issue, use ### for a subsection under a numbered ## section.
+Remove empty placeholder bullets left after a human verification marker is explicitly attested and cleared; do not delete any unresolved factual caveat.
 Use supplied source notes when correcting historical statements; do not invent citations.
 Apply only corrections supported by the supplied script, review, or source notes.
 Do not browse, invent facts, invent citations, or claim independent verification.
