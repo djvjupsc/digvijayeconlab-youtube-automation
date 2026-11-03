@@ -231,9 +231,18 @@ def publication_gate(manifest, root=Path(".")):
             if not file_path.is_file():
                 issues.append(f"Unit {unit}: missing {label}.")
         if review_path.is_file():
-            report = review_path.read_text(encoding="utf-8").upper()
+            report_text = review_path.read_text(encoding="utf-8")
+            report = report_text.upper()
             if "HOLD FOR CORRECTION" in report or "NOT READY" in report:
                 issues.append(f"Unit {unit}: academic reviewer returned a HOLD/not-ready verdict.")
+            lines = report_text.splitlines()
+            verdict = ""
+            for index, line in enumerate(lines):
+                if "overall verdict" in line.lower():
+                    verdict = next((candidate.strip() for candidate in lines[index + 1:] if candidate.strip()), "")
+                    break
+            if not any(word in verdict.lower() for word in ("ready", "approved", "pass")):
+                issues.append(f"Unit {unit}: corrected academic review has no explicit READY/APPROVED verdict.")
             if "[VERIFY" in report:
                 issues.append(f"Unit {unit}: academic review still reports verification gaps.")
         if deterministic_path.is_file():
@@ -389,23 +398,31 @@ def main():
 
         short_path = root / "output/shorts" / f"{date}-digvijayeconlab-short.mp4"
         short_json_path = root / "output/shorts" / f"{date}-short.json"
+        short_render_path = root / "output/shorts" / f"{date}-short-render.json"
         if short_path.is_file() and short_json_path.is_file():
-            short_data = json.loads(short_json_path.read_text(encoding="utf-8"))
-            focus = short_data["focus_unit"]
-            unit_no = int(focus["unit"])
-            unit_item = next(item for item in manifest["units"] if int(item["unit"]) == unit_no)
-            playlist_id = playlists.get(unit_item["playlist_title"])
-            title = short_data["short_title"]
-            description = short_data.get("short_description", f"Daily Economics Short by DigvijayEconLab — {focus['topic']}")
-            tags = ["DigvijayEconLab", "UGC NET Economics", "MPPSC Assistant Professor Economics",
-                    unit_item["unit_name"], focus["topic"], "Economics Shorts"]
-            when = publish_dt.replace(hour=19, minute=0, second=0)
-            if _already_scheduled(existing_posts, title, when):
-                scheduled.append({"kind": "short", "title": title, "status": "already_scheduled"})
+            if not short_render_path.is_file():
+                skipped.append("Short not scheduled: no render-provider report exists.")
             else:
-                result = schedule_video(short_path, title, description, tags, playlist_id, "short",
-                                        when, token, user_id, blog_id, f"digvijayeconlab-{date}-short")
-                scheduled.append({"kind": "short", "title": title, "status": "scheduled", "result": result})
+                render_report = json.loads(short_render_path.read_text(encoding="utf-8"))
+                if not render_report.get("voice_clone_used"):
+                    skipped.append("Short not scheduled: it was not narrated with the configured owner's HeyGen voice clone.")
+                else:
+                    short_data = json.loads(short_json_path.read_text(encoding="utf-8"))
+                    focus = short_data["focus_unit"]
+                    unit_no = int(focus["unit"])
+                    unit_item = next(item for item in manifest["units"] if int(item["unit"]) == unit_no)
+                    playlist_id = playlists.get(unit_item["playlist_title"])
+                    title = short_data["short_title"]
+                    description = short_data.get("short_description", f"Daily Economics Short by DigvijayEconLab — {focus['topic']}")
+                    tags = ["DigvijayEconLab", "UGC NET Economics", "MPPSC Assistant Professor Economics",
+                            unit_item["unit_name"], focus["topic"], "Economics Shorts"]
+                    when = publish_dt.replace(hour=19, minute=0, second=0)
+                    if _already_scheduled(existing_posts, title, when):
+                        scheduled.append({"kind": "short", "title": title, "status": "already_scheduled"})
+                    else:
+                        result = schedule_video(short_path, title, description, tags, playlist_id, "short",
+                                                when, token, user_id, blog_id, f"digvijayeconlab-{date}-short")
+                        scheduled.append({"kind": "short", "title": title, "status": "scheduled", "result": result})
         else:
             skipped.append("No rendered Short MP4 exists; Short not scheduled.")
 
