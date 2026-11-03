@@ -28,8 +28,8 @@ PALETTES = [
     ((13, 41, 52), (37, 87, 80), (176, 220, 149)),
     ((30, 28, 53), (81, 56, 76), (255, 194, 110)),
 ]
-HEADING_RE = re.compile(r"^#{1,6}\\s+(.+)$")
-VERIFY_RE = re.compile(r"\\[(?:HUMAN\\s+)?VERIFY\\b[^]]*\\]", re.IGNORECASE)
+HEADING_RE = re.compile(r"^#{1,6}\s+(.+)$")
+VERIFY_RE = re.compile(r"\[(?:HUMAN\s+)?VERIFY\b[^]]*\]", re.IGNORECASE)
 
 
 def find_font(family, candidates):
@@ -47,14 +47,13 @@ def find_font(family, candidates):
 
 
 def plain_text(value):
-    value = re.sub(r"!\\[([^]]*)\\]\\([^)]*\\)", r"\\1", value)
-    value = re.sub(r"\\[([^]]+)\\]\\([^)]*\\)", r"\\1", value)
+    value = re.sub(r"!\[([^]]*)\]\([^)]*\)", r"\1", value)
+    value = re.sub(r"\[([^]]+)\]\([^)]*\)", r"\1", value)
     value = re.sub(r"<[^>]+>", " ", value)
-    value = re.sub(r"[*_`~]", "", value)
-    value = re.sub(r"^\\s*(?:[-*+]\\s+|\\d+[.)]\\s+)", "", value)
-    value = re.sub(r"\\s+", " ", value)
+    value = re.sub(r"[*_\`~]", "", value)
+    value = re.sub(r"^\s*(?:[-*+]\s+|\d+[.)]\s+)", "", value)
+    value = re.sub(r"\s+", " ", value)
     return value.strip()
-
 
 def language_for(text):
     devanagari = len(re.findall(r"[\\u0900-\\u097f]", text))
