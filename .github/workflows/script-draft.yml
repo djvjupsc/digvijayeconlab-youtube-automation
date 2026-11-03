@@ -1,10 +1,7 @@
 name: DigvijayEconLab automatic script drafts
 
 on:
-  # GitHub cron is UTC: 02:30 UTC = 08:00 Asia/Kolkata (UTC+05:30).
-  schedule:
-    - cron: "30 2 * * *"
-  # Adding or editing the controlled queue on main starts an automatic run.
+  # The legacy single-topic queue remains available; daily ten-unit packs use daily-channel-pack.yml.
   push:
     branches:
       - main
