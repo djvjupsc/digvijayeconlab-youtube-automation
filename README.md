@@ -11,6 +11,7 @@ The repository is in **safe setup mode**. Script drafting is available as a manu
 - `config/content_plan.json` — brand, audience, content pillars and publishing safeguards.
 - `scripts/preflight.py` — validates the project configuration.
 - `scripts/generate_script.py` — creates an educational Markdown draft through the Google Gemini API.
+- `scripts/review_script.py` — creates a separate AI-assisted academic quality-control report; it does not rewrite the original script.
 - `.github/workflows/preflight.yml` — manually runs the configuration check.
 - `.github/workflows/script-draft.yml` — manually generates a script draft and stores it as a workflow artifact.
 - `.env.example` — names of future configuration values only; contains no credentials.
@@ -21,7 +22,8 @@ The repository is in **safe setup mode**. Script drafting is available as a manu
 2. Open **Actions → DigvijayEconLab script draft → Run workflow**.
 3. Enter a topic, choose the language and format, and optionally provide source notes.
 4. Download the `digvijayeconlab-script-draft` artifact from the completed workflow run.
-5. Fact-check and edit the draft before using it in a video.
+5. To run the separate quality review, add the review step described in `scripts/review_script.py` to the workflow, then download both outputs. The workflow integration is not yet enabled.
+6. Fact-check and edit the draft before using it in a video.
 
 The workflow uses the Gemini Developer API model `gemini-3.5-flash-lite`. Google currently lists this model with free-tier input and output pricing, subject to project eligibility and rate limits. Free-tier requests may be used by Google to improve its products; do not submit personal, confidential, or sensitive information. This workflow does not configure paid billing. A Google AI Pro consumer subscription is separate from Gemini Developer API access and does not automatically provide API credits or free-tier eligibility.
 
@@ -50,6 +52,7 @@ Publishing remains disabled. The content plan requires human approval. Do not en
 
 1. Content planning and source notes.
 2. Original bilingual script generation (manual draft workflow).
+3. Academic quality-control report (advisory only; workflow integration pending).
 3. Hindi narration and captions.
 4. Video rendering.
 5. YouTube metadata and private-upload integration.
