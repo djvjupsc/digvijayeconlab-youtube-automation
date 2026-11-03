@@ -13,7 +13,7 @@ The repository is in **safe setup mode**. Script drafting is available as a manu
 - `scripts/generate_script.py` — creates an educational Markdown draft through the Google Gemini API.
 - `scripts/review_script.py` — creates a separate AI-assisted academic quality-control report; it does not rewrite the original script.
 - `.github/workflows/preflight.yml` — manually runs the configuration check.
-- `.github/workflows/script-draft.yml` — manually generates a script draft and stores it as a workflow artifact.
+- `.github/workflows/script-draft.yml` — manually generates a script draft, runs an advisory academic quality review, and stores both as a workflow artifact.
 - `.env.example` — names of future configuration values only; contains no credentials.
 
 ## Generate a script draft
@@ -21,7 +21,7 @@ The repository is in **safe setup mode**. Script drafting is available as a manu
 1. Add a repository Actions secret named `GEMINI_API_KEY` under **Settings → Secrets and variables → Actions**. Never put the key in source files or workflow inputs.
 2. Open **Actions → DigvijayEconLab script draft → Run workflow**.
 3. Enter a topic, choose the language and format, and optionally provide source notes.
-4. Download the `digvijayeconlab-script-draft` artifact from the completed workflow run.
+4. Download the `digvijayeconlab-reviewed-script-package` artifact from the completed workflow run. It contains the original script and a separate academic quality-control report.
 5. To run the separate quality review, add the review step described in `scripts/review_script.py` to the workflow, then download both outputs. The workflow integration is not yet enabled.
 6. Fact-check and edit the draft before using it in a video.
 
@@ -52,7 +52,7 @@ Publishing remains disabled. The content plan requires human approval. Do not en
 
 1. Content planning and source notes.
 2. Original bilingual script generation (manual draft workflow).
-3. Academic quality-control report (advisory only; workflow integration pending).
+3. Academic quality-control report (automatically generated as advisory feedback; human verification remains mandatory).
 3. Hindi narration and captions.
 4. Video rendering.
 5. YouTube metadata and private-upload integration.
