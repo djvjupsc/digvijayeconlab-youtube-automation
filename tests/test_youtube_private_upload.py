@@ -2,14 +2,14 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 
 from scripts.youtube_private_upload import YouTubeUploadError, upload_private_video
 
 
 class FakeResponse:
-    def __init__(self, payload):
+    def __init__(self, payload, headers=None):
         self.payload = payload
+        self.headers = headers or {}
 
     def __enter__(self):
         return self
@@ -22,16 +22,31 @@ class FakeResponse:
 
 
 class YouTubePrivateUploadTests(unittest.TestCase):
-    def test_upload_requests_private_visibility_only(self):
+    def test_resumable_upload_is_private_and_declares_synthetic_media(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "short.mp4"
             path.write_bytes(b"fake-mp4")
-            captured = {}
+            requests = []
 
             def opener(request, timeout=0):
-                captured["request"] = request
-                captured["timeout"] = timeout
-                return FakeResponse({"id": "abc123", "status": {"privacyStatus": "private"}})
+                requests.append(request)
+                if request.get_method() == "POST":
+                    metadata = json.loads(request.data.decode("utf-8"))
+                    self.assertEqual(metadata["status"]["privacyStatus"], "private")
+                    self.assertTrue(metadata["status"]["containsSyntheticMedia"])
+                    self.assertEqual(request.headers["X-upload-content-type"], "video/mp4")
+                    return FakeResponse({}, {"Location": "https://upload.youtube.test/session/123"})
+                self.assertEqual(request.get_method(), "PUT")
+                self.assertEqual(request.full_url, "https://upload.youtube.test/session/123")
+                self.assertEqual(request.data, b"fake-mp4")
+                self.assertEqual(request.headers["Content-range"], "bytes 0-7/8")
+                return FakeResponse({
+                    "id": "abc123",
+                    "status": {
+                        "privacyStatus": "private",
+                        "containsSyntheticMedia": True,
+                    },
+                })
 
             result = upload_private_video(
                 path,
@@ -39,10 +54,9 @@ class YouTubePrivateUploadTests(unittest.TestCase):
                 "access-token",
                 opener=opener,
             )
-            body = captured["request"].data
-            self.assertIn(b'"privacyStatus": "private"', body)
-            self.assertNotIn(b'"privacyStatus": "public"', body)
+            self.assertEqual(len(requests), 2)
             self.assertEqual(result["privacy_status"], "private")
+            self.assertTrue(result["contains_synthetic_media"])
             self.assertEqual(result["video_id"], "abc123")
 
     def test_rejects_missing_video(self):
@@ -62,6 +76,18 @@ class YouTubePrivateUploadTests(unittest.TestCase):
             with self.assertRaises(YouTubeUploadError):
                 upload_private_video(path, {}, "access-token",
                                     opener=lambda *_args, **_kwargs: None)
+
+    def test_rejects_missing_resumable_session_url(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "short.mp4"
+            path.write_bytes(b"fake-mp4")
+            with self.assertRaises(YouTubeUploadError):
+                upload_private_video(
+                    path,
+                    {"short_title": "Economics Short"},
+                    "access-token",
+                    opener=lambda *_args, **_kwargs: FakeResponse({}),
+                )
 
 
 if __name__ == "__main__":

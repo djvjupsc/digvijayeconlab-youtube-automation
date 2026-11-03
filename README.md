@@ -124,7 +124,7 @@ Free-tier requests may be used by Google to improve its products. Do not submit 
 - Store credentials only through GitHub Actions Secrets or Cloudflare Worker Secrets.
 - Do not make this repository public.
 - Do not use or modify the separate PixelToolkit project for this automation.
-- No automatic YouTube uploads, public playlist creation or public Community publishing are enabled.
+- Automated Short upload is optional and PRIVATE-only; public playlist creation requires a separate manual workflow input; Community publishing remains manual.
 - Do not add OAuth scopes, enable billing or change account/security settings without explicit authorization.
 
 ## 14-day pilot
@@ -136,7 +136,7 @@ The initial operating plan is a 14-day pilot. Review workflow completion, Gemini
 
 The production workflow uses GitHub Actions, Python, FFmpeg, the YouTube Data API and the existing GitHub Actions OAuth secrets. It has no third-party social scheduler or paid publishing API dependency.
 
-- The daily workflow can upload an audited Short as **PRIVATE** when the repository variable `YOUTUBE_PRIVATE_UPLOAD_ENABLED=true`.
+- The daily workflow uses YouTube's resumable upload protocol to upload an audited Short as **PRIVATE** when the repository variable `YOUTUBE_PRIVATE_UPLOAD_ENABLED=true`. It also sends the synthetic-media disclosure flag for owner-voice cloning and generated narration.
 - The private uploader has no public-publishing code path. Review the upload in YouTube Studio and make any public-release decision manually.
 - The ten public playlists are created only when a user manually dispatches the workflow and explicitly selects `create_public_playlists=true`. This is off by default and requires the appropriate YouTube write scope.
 - Full-length lesson video rendering and upload are not yet implemented. The current daily workflow produces ten reviewed script packages and one Short draft.
@@ -146,7 +146,7 @@ The production workflow uses GitHub Actions, Python, FFmpeg, the YouTube Data AP
 
 The current external Google OAuth application is in Testing mode. Refresh tokens for YouTube scopes may expire after seven days, requiring the channel owner to authorize again and update the GitHub secret. This is not suitable for fully unattended long-running uploads until the OAuth configuration is resolved.
 
-YouTube also restricts uploads from API projects that have not completed the required YouTube API compliance audit. Such uploads may be forced to PRIVATE. Therefore, private staging is the only automated upload mode in this repository; do not enable public publishing through an undocumented workaround.
+YouTube's current `videos.insert` reference states that uploads from unverified API projects are not automatically restricted to PRIVATE. This project nevertheless sets `privacyStatus=private` deliberately so every automated upload remains staged for human review. Public publishing is not implemented in this uploader. Follow current YouTube API Services Terms and any project-specific compliance instructions.
 
 Remove unused paid-scheduler credentials from GitHub Actions repository secrets once you confirm they are no longer needed. No source code in this repository should read them.
 
