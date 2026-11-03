@@ -80,7 +80,7 @@ def parse_structured_response(raw, original_script):
 
 
 
-VERIFY_MARKER_PATTERN = re.compile(r"\\[(?:HUMAN\\s+)?VERIFY\\b[^\\]]*\\]", re.IGNORECASE)
+VERIFY_MARKER_PATTERN = re.compile(r"\[(?:HUMAN\s+)?VERIFY\b[^\]]*\]", re.IGNORECASE)
 
 
 def preserve_original_verification_markers(corrected_script, original_script):
@@ -101,11 +101,11 @@ def preserve_original_verification_markers(corrected_script, original_script):
         return corrected_script, [], []
 
     retained_section = (
-        "\\n\\n## Original Verification Markers Retained for Human Sign-off\\n\\n"
+        "\n\n## Original Verification Markers Retained for Human Sign-off\n\n"
         "> These markers were present in the original draft. The correction model removed or altered them, "
-        "so they have been restored automatically and remain unresolved until a human verifies the claims.\\n\\n"
-        + "\\n".join(f"- {marker}" for marker in missing)
-        + "\\n"
+        "so they have been restored automatically and remain unresolved until a human verifies the claims.\n\n"
+        + "\n".join(f"- {marker}" for marker in missing)
+        + "\n"
     )
     corrected_script = corrected_script.rstrip() + retained_section
     changes = [
