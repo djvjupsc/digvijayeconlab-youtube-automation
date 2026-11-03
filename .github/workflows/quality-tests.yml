@@ -1,0 +1,32 @@
+name: DigvijayEconLab quality tests
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  quality-tests:
+    name: Python quality and regression tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Compile Python scripts and tests
+        run: python -m compileall -q scripts tests
+
+      - name: Run offline unit and regression tests
+        run: python -m unittest discover -s tests -v
