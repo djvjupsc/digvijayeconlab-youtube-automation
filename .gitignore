@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+*.log
+
+# Generated media and temporary files
+output/
+renders/
+audio/
+tmp/
+*.mp4
+*.mp3
+*.wav
+
+# Local secrets and credentials
+secrets/
+credentials.json
+token.json
+client_secret*.json
