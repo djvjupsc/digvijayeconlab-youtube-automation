@@ -11,6 +11,11 @@ on:
         required: false
         type: boolean
         default: false
+      create_public_playlists:
+        description: "One-time opt-in: create the ten public YouTube playlists"
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: digvijayeconlab-daily-ten-unit-pack
@@ -76,7 +81,7 @@ jobs:
           fi
 
       - name: Create or verify ten public YouTube playlists
-        if: steps.prepare.outputs.claimed == 'true'
+        if: steps.prepare.outputs.claimed == 'true' && inputs.create_public_playlists == true
         continue-on-error: true
         env:
           YOUTUBE_OAUTH_CLIENT_ID: ${{ secrets.YOUTUBE_OAUTH_CLIENT_ID }}
@@ -90,8 +95,6 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: gemini-3.5-flash-lite
-          HEYGEN_API_KEY: ${{ secrets.HEYGEN_API_KEY }}
-          HEYGEN_VOICE_ID: ${{ secrets.HEYGEN_VOICE_ID }}
           CHATTERBOX_ENABLED: ${{ vars.CHATTERBOX_ENABLED }}
           CHATTERBOX_SPACE: ${{ vars.CHATTERBOX_SPACE }}
           CHATTERBOX_REFERENCE_REPO: ${{ vars.CHATTERBOX_REFERENCE_REPO }}
