@@ -25,8 +25,11 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install lightweight Chatterbox audio test dependency
-        run: python -m pip install numpy
+      - name: Install renderer test dependencies and readable fonts
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends fonts-dejavu-core fonts-noto-core
+          python -m pip install numpy Pillow
 
       - name: Compile Python scripts and tests
         run: python -m compileall -q scripts tests

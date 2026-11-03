@@ -103,6 +103,25 @@ jobs:
         run: |
           python scripts/daily_production.py process --manifest output/daily_manifest.json
 
+      - name: Render branded 16:9 thumbnails for all ten units
+        if: steps.prepare.outputs.claimed == 'true'
+        run: |
+          DATE="${{ steps.prepare.outputs.publication_date }}"
+          python scripts/render_thumbnails.py "output/seo/$DATE-seo-metadata.json" --output output/thumbnails
+
+      - name: Render one featured 16:9 long-form lesson draft
+        id: longform
+        if: steps.prepare.outputs.claimed == 'true'
+        continue-on-error: true
+        env:
+          CHATTERBOX_ENABLED: ${{ vars.CHATTERBOX_ENABLED }}
+          CHATTERBOX_SPACE: ${{ vars.CHATTERBOX_SPACE }}
+          CHATTERBOX_REFERENCE_REPO: ${{ vars.CHATTERBOX_REFERENCE_REPO }}
+          CHATTERBOX_REFERENCE_FILENAME: ${{ vars.CHATTERBOX_REFERENCE_FILENAME }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          python scripts/render_longform_video.py output/daily_manifest.json
+
       - name: Audit the generated Short before any publishing attempt
         if: steps.prepare.outputs.claimed == 'true'
         run: |
@@ -123,6 +142,17 @@ jobs:
         run: |
           python scripts/youtube_private_upload.py "${{ steps.prepare.outputs.publication_date }}"
 
+      - name: Upload featured long-form lesson to YouTube as PRIVATE
+        if: steps.prepare.outputs.claimed == 'true'
+        continue-on-error: true
+        env:
+          YOUTUBE_PRIVATE_UPLOAD_ENABLED: ${{ vars.YOUTUBE_PRIVATE_UPLOAD_ENABLED }}
+          YOUTUBE_OAUTH_CLIENT_ID: ${{ secrets.YOUTUBE_OAUTH_CLIENT_ID }}
+          YOUTUBE_OAUTH_CLIENT_SECRET: ${{ secrets.YOUTUBE_OAUTH_CLIENT_SECRET }}
+          YOUTUBE_OAUTH_REFRESH_TOKEN: ${{ secrets.YOUTUBE_OAUTH_REFRESH_TOKEN }}
+        run: |
+          python scripts/youtube_private_upload.py "${{ steps.prepare.outputs.publication_date }}" --kind longform
+
       - name: Upload complete daily production package
         if: always() && steps.prepare.outputs.claimed == 'true'
         uses: actions/upload-artifact@v4
@@ -138,6 +168,8 @@ jobs:
             output/shorts/*
             output/community/*
             output/seo/*
+            output/thumbnails/*
+            output/longform/*
             output/youtube/*
             output/youtube-playlists.json
           if-no-files-found: warn

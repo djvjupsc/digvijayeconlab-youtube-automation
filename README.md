@@ -7,13 +7,15 @@ Cloud-based educational content production for DigvijayEconLab.
 The **daily ten-unit production workflow** is scheduled for **08:00 Asia/Kolkata**. Each successful daily pack prepares material for the following publication date:
 
 - 10 bilingual full-lesson script packages: one lesson from every UGC NET Economics unit.
-- One bilingual 9:16 YouTube Short, rendered as an MP4 draft using the free Chatterbox reference voice when configured; eSpeak is a clearly marked placeholder fallback.
+- One bilingual 9:16 YouTube Short MP4 draft.
+- Ten original 16:9 (1280 × 720) branded YouTube thumbnail images, one per unit.
+- One featured 16:9 (1920 × 1080) narrated long-form lesson MP4, selected from the rotating featured unit.
 - One bilingual YouTube Community post draft, including a poll and suggested pinned comment.
 - Ten unit-specific playlist definitions with titles and descriptions.
 
 The next day's pack is generated one day ahead to allow academic verification, editing and scheduling. The suggested public release schedule is in `docs/daily-production-calendar.md` and `config/daily_timeline.json`.
 
-**Important:** full-length lesson scripts are generated and reviewed, but this workflow does not yet render those ten lessons into finished landscape MP4 videos. It renders the one daily Short draft. Community posts and the ten playlists are prepared as drafts/catalogue entries; they are not published or created on YouTube automatically.
+**Important:** the workflow generates and reviews ten lesson scripts, renders one featured long-form lesson and one Short, and creates ten thumbnails each day. The long-form renderer uses original typography slides with narration from Chatterbox when enabled; eSpeak may create a preview draft but cannot pass the private-upload voice gate. Community posts and the ten playlists are prepared as drafts/catalogue entries; Community posts are not published automatically.
 
 Public video publishing and automatic scheduling remain disabled. An optional uploader can place an audited Short in PRIVATE visibility for manual review. Public playlist creation is a separate one-time manual opt-in. Community posts remain drafts. All content requires human approval.
 
@@ -33,8 +35,10 @@ Public video publishing and automatic scheduling remain disabled. An optional up
 - `scripts/generate_daily_assets.py` — generates the daily bilingual Short storyboard, Community post/poll draft, and validated SEO metadata (title variants, descriptions, tags, hashtags and thumbnail copy) for all ten unit lessons.
 - `scripts/chatterbox_tts.py` — generates Hindi and English narration through the free Chatterbox Multilingual V3 Hugging Face Space, using a reference recording downloaded from a private Hugging Face dataset at runtime.
 - `scripts/render_short_video.py` — renders a 1080 × 1920 narrated Short draft using free Chatterbox when enabled, or generic eSpeak placeholder narration; no paid TTS integration or music is used.
+- `scripts/render_thumbnails.py` — renders ten original 1280 × 720 thumbnails using SEO headline options, bilingual labels, original chart motifs and installed fonts; no image API or stock asset is used.
+- `scripts/render_longform_video.py` — converts the featured corrected lesson into a 1920 × 1080 narrated slide-based MP4, validates the render, and marks it upload-eligible only when the owner-authorized Chatterbox voice was used.
 - `scripts/topic_queue.py` — manages the legacy one-topic queue.
-- `tests/` — offline unit and regression tests.
+- `tests/` — offline unit, upload-safeguard, thumbnail and long-form parsing/render tests.
 - `.github/workflows/daily-channel-pack.yml` — scheduled daily ten-unit production pack at 08:00 IST.
 - `.github/workflows/script-draft.yml` — legacy single-topic workflow, manually triggered or triggered by changes to its separate topic queue.
 - `.github/workflows/quality-tests.yml` — runs code compilation, unit tests and plan validation on pull requests and main pushes.
@@ -136,10 +140,10 @@ The initial operating plan is a 14-day pilot. Review workflow completion, Gemini
 
 The production workflow uses GitHub Actions, Python, FFmpeg, the YouTube Data API and the existing GitHub Actions OAuth secrets. It has no third-party social scheduler or paid publishing API dependency.
 
-- The daily workflow uses YouTube's resumable upload protocol to upload an audited Short as **PRIVATE** when the repository variable `YOUTUBE_PRIVATE_UPLOAD_ENABLED=true`. It also sends the synthetic-media disclosure flag for owner-voice cloning and generated narration.
+- The daily workflow uses YouTube's resumable upload protocol to upload an audited Short and the featured long-form lesson as **PRIVATE** when the repository variable `YOUTUBE_PRIVATE_UPLOAD_ENABLED=true`. Both uploads include the synthetic-media disclosure flag.
 - The private uploader has no public-publishing code path. Review the upload in YouTube Studio and make any public-release decision manually.
 - The ten public playlists are created only when a user manually dispatches the workflow and explicitly selects `create_public_playlists=true`. This is off by default and requires the appropriate YouTube write scope.
-- Full-length lesson video rendering and upload are not yet implemented. The current daily workflow produces ten reviewed script packages and one Short draft.
+- The daily workflow renders one featured long-form lesson per day, not ten long-form videos. The uploader requires a passing render report, ready academic review, owner-reference Chatterbox voice, no music and a valid 1920 × 1080 H.264 MP4. Placeholder eSpeak narration is draft-only.
 - Community text and poll content are generated as drafts. YouTube's public Data API does not provide a Community-post creation endpoint, so do not use undocumented endpoints.
 
 ### OAuth and YouTube API limitations
@@ -185,7 +189,7 @@ The adapter sends narration text and the reference audio to the public ResembleA
 
 The daily workflow runs `scripts/prepublish_audit.py` on the generated Short. It verifies that the MP4 is present, H.264, 1080×1920, no longer than three minutes, includes narration, uses the configured owner-authorized voice clone, and has no music track (the current renderer adds no music or third-party visual assets). A failed audit stops the publishing job.
 
-The audit is not a copyright certificate. It cannot query Content ID, establish third-party licensing, or guarantee that YouTube will not issue a claim. Check YouTube Studio's copyright checks and retain licences/permissions for any external asset. The current Short renderer creates its own typography slides and uses narration only; no external stock clips, music or movie footage are included.
+The audits are not copyright certificates. They cannot query Content ID, establish third-party licensing, or guarantee that YouTube will not issue a claim. Check YouTube Studio's copyright checks and retain licences/permissions for any external asset. The current Short and long-form renderers create original typography slides and use narration only; no external stock clips, music or movie footage are included.
 
 **Public publishing is not implemented in this project.** The optional YouTube uploader can only create a PRIVATE video for review. It cannot switch a video to Unlisted or Public. The owner must inspect the private video and publish it manually in YouTube Studio after checking academic accuracy, copyright status, subtitles and AI disclosure.
 
