@@ -64,5 +64,57 @@ Recap
         self.assertNotIn("MCQ_COUNT_BELOW_MINIMUM", codes)
 
 
+    def test_requires_dedicated_populated_example_or_schedule_heading(self):
+        source = """Learning Objectives
+Definition and Concept
+Examples are discussed below in the general explanation.
+Recap
+The lesson includes an example and an application in its general text.
+"""
+        findings = analyze_script(source, "Concept Explainer", "English")
+        self.assertIn(
+            "WORKED_EXAMPLE_OR_DEMAND_SCHEDULE_MISSING",
+            {item["code"] for item in findings}
+        )
+
+    def test_accepts_populated_worked_example_section(self):
+        source = """## Learning Objectives
+Understand demand.
+## Definition
+Demand is the relationship between price and quantity demanded.
+## Worked Example / Application
+Assume an illustrative market. When price falls from 10 to 8 currency units,
+quantity demanded rises from 20 to 25 units, other factors remaining constant.
+This hypothetical example demonstrates the inverse price-quantity relationship.
+## Recap
+Demand curves slope downward.
+"""
+        findings = analyze_script(source, "Concept Explainer", "English")
+        self.assertNotIn(
+            "WORKED_EXAMPLE_OR_DEMAND_SCHEDULE_MISSING",
+            {item["code"] for item in findings}
+        )
+
+    def test_accepts_populated_demand_schedule_table(self):
+        source = """## Learning Objectives
+Understand demand.
+## Definition
+Demand describes willingness and ability to buy.
+## Demand Schedule
+| Price (₹) | Quantity demanded (units) |
+|---:|---:|
+| 10 | 20 |
+| 8 | 25 |
+| 6 | 30 |
+## Recap
+A lower price is associated with greater quantity demanded, other things equal.
+"""
+        findings = analyze_script(source, "Concept Explainer", "English")
+        self.assertNotIn(
+            "WORKED_EXAMPLE_OR_DEMAND_SCHEDULE_MISSING",
+            {item["code"] for item in findings}
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

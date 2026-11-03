@@ -44,9 +44,16 @@ raisebox or tiny, and do not put control characters inside mathematical expressi
 For Bilingual output, provide the English explanation followed by a faithful Hindi equivalent
 for each substantive teaching point or paragraph. Do not blend Latin and Devanagari characters
 inside a single word. Keep standard English technical terms in parentheses where useful.
+For a Concept Explainer, include a dedicated, populated Markdown section titled
+"## Worked Example / Application" or "## Demand Schedule" (a suitable Hindi-English
+equivalent is acceptable). This must contain a worked illustrative example with clear
+steps/units or a labelled demand-schedule table with at least two data rows. Clearly label
+illustrative numbers as hypothetical; never present invented numbers as real observations.
+A passing mention of an example elsewhere in the script is not sufficient.
 Avoid repetitive filler, clickbait, fake engagement, and copyrighted textbook passages.
 Return clean Markdown with a title, learning objectives, structured teaching content,
-examples or applications, a concise recap, practice questions, and source/verification notes."""
+a dedicated worked example/application or demand-schedule section, a concise recap,
+practice questions, and source/verification notes."""
 
     if content_format == "Concept Explainer":
         format_requirements = (

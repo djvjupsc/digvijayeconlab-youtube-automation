@@ -178,7 +178,6 @@ def analyze_script(text, content_format="Concept Explainer", language="Bilingual
         required_sections = [
             (("learning objectives", "objectives", "सीखने के उद्देश्य"), "Learning objectives"),
             (("definition", "core concept", "परिभाषा", "मुख्य परिभाषा", "परिचय"), "Core definition or concept"),
-            (("example", "application", "उदाहरण", "अनुप्रयोग"), "Example or application"),
             (("recap", "summary", "conclusion", "सारांश", "निष्कर्ष"), "Recap or conclusion"),
         ]
         lower_text = text.lower()
@@ -189,6 +188,50 @@ def analyze_script(text, content_format="Concept Explainer", language="Bilingual
                     f"Required Concept Explainer component was not detected: {label}.",
                     label
                 ))
+
+        # Require a dedicated, populated worked-example/application or demand-schedule
+        # section. A passing mention of an example elsewhere in the script is not enough.
+        headings = list(re.finditer(r"(?m)^#{1,6}\s+(.+?)\s*$", text))
+        example_heading = re.compile(
+            r"(?:worked\s+example|example|application|demand\s+schedule|"
+            r"worked\s+application|उदाहरण|अनुप्रयोग|मांग\s+अनुसूची|मांग\s+सारणी)",
+            flags=re.IGNORECASE,
+        )
+        valid_example_section = False
+        example_heading_found = False
+        lines = text.splitlines()
+        for index, match in enumerate(headings):
+            heading_text = match.group(1)
+            if not example_heading.search(heading_text):
+                continue
+            example_heading_found = True
+            body_start = match.end()
+            body_end = headings[index + 1].start() if index + 1 < len(headings) else len(text)
+            body_lines = [
+                line.strip() for line in text[body_start:body_end].splitlines()
+                if line.strip() and line.strip() not in {"---", "***", "___"}
+            ]
+            body_text = " ".join(body_lines)
+            table_rows = sum(1 for line in body_lines if line.startswith("|"))
+            if len(body_text) >= 30 and (
+                len(re.findall(r"\w+", body_text, flags=re.UNICODE)) >= 6
+                or table_rows >= 3
+            ):
+                valid_example_section = True
+                break
+
+        if not valid_example_section:
+            reason = (
+                "A dedicated worked-example/application or demand-schedule heading exists, "
+                "but its section is empty or too short."
+                if example_heading_found else
+                "A dedicated worked-example/application or demand-schedule section heading is missing."
+            )
+            findings.append(_issue(
+                "WORKED_EXAMPLE_OR_DEMAND_SCHEDULE_MISSING", "High",
+                reason,
+                "Add a populated heading such as '## Worked Example / Application' or '## Demand Schedule'."
+            ))
 
     return findings
 
