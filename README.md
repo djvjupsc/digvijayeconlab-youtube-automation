@@ -10,20 +10,21 @@ The repository is in **safe setup mode**. Script drafting is available as a manu
 
 - `config/content_plan.json` — brand, audience, content pillars and publishing safeguards.
 - `scripts/preflight.py` — validates the project configuration.
-- `scripts/generate_script.py` — creates an educational Markdown draft through the OpenAI API.
+- `scripts/generate_script.py` — creates an educational Markdown draft using the Gemini Developer API.
 - `.github/workflows/preflight.yml` — manually runs the configuration check.
 - `.github/workflows/script-draft.yml` — manually generates a script draft and stores it as a workflow artifact.
 - `.env.example` — names of future configuration values only; contains no credentials.
 
-## Generate a script draft
+## Generate a script draft using Gemini
 
-1. Add a repository Actions secret named `OPENAI_API_KEY` under **Settings → Secrets and variables → Actions**. Never put the key in source files or workflow inputs.
-2. Open **Actions → DigvijayEconLab script draft → Run workflow**.
-3. Enter a topic, choose the language and format, and optionally provide source notes.
-4. Download the `digvijayeconlab-script-draft` artifact from the completed workflow run.
-5. Fact-check and edit the draft before using it in a video.
+1. Create a Gemini API key in Google AI Studio: https://aistudio.google.com/app/apikey
+2. Add a repository Actions secret named `GEMINI_API_KEY` under **Settings → Secrets and variables → Actions**. Never put the key in source files or workflow inputs.
+3. Open **Actions → DigvijayEconLab script draft → Run workflow**.
+4. Enter a topic, choose the language and format, and optionally provide authoritative source notes.
+5. Download the `digvijayeconlab-script-draft` artifact from the completed workflow run.
+6. Fact-check and edit the draft before using it in a video.
 
-The workflow uses `gpt-4.1-mini` by default. OpenAI API usage may incur charges under the user's API account; a ChatGPT subscription does not include API usage credits.
+The workflow defaults to `gemini-3.1-flash-lite`. Google provides a free tier for selected Gemini API models subject to account eligibility, quotas and rate limits. Free-tier prompts and responses may be used by Google to improve its products; do not submit personal, confidential, or sensitive information. Free-tier availability and model limits can change. Check the current AI Studio quota and official pricing before use.
 
 ## Run the preflight locally
 
@@ -38,7 +39,7 @@ Or open **Actions → DigvijayEconLab preflight → Run workflow** in GitHub.
 ## Security rules
 
 - Never commit Google OAuth client secrets, refresh tokens, access tokens, API keys, passwords, or `.env` files.
-- Store deployment credentials only through GitHub Actions Secrets or Cloudflare Worker Secrets.
+- Store provider credentials only through GitHub Actions Secrets or Cloudflare Worker Secrets.
 - Do not make this repository public.
 - Do not use or modify the separate PixelToolkit project for this automation.
 

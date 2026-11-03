@@ -6,7 +6,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-API_URL = "https://api.openai.com/v1/chat/completions"
+API_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
 
 def clean_filename(value: str) -> str:
     slug = re.sub(r"[^a-zA-Z0-9]+", "-", value.strip().lower()).strip("-")
@@ -18,9 +18,9 @@ def main():
 
     topic, language, content_format = sys.argv[1:4]
     source_notes = sys.argv[4] if len(sys.argv) > 4 else ""
-    api_key = os.environ.get("OPENAI_API_KEY")
+    api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
-        raise SystemExit("OPENAI_API_KEY is not configured. Add it as a GitHub Actions secret.")
+        raise SystemExit("GEMINI_API_KEY is not configured. Add it as a GitHub Actions secret.")
 
     allowed_languages = {"Hindi", "English", "Bilingual"}
     allowed_formats = {"Concept Explainer", "MCQ Set", "Previous-Year-Question Analysis"}
@@ -32,8 +32,8 @@ def main():
     system_prompt = """You are an educational content writer for DigvijayEconLab.
 Create original, accurate material for MPPSC Assistant Professor Economics aspirants.
 Do not fabricate statistics, quotations, citations, PYQs, dates, policies, or source references.
-Use only the supplied source notes for specific factual claims. If notes are absent or insufficient,
-mark claims that need verification as [VERIFY] rather than inventing details.
+Use only supplied source notes for specific factual claims. If notes are absent or insufficient,
+mark claims needing verification as [VERIFY] rather than inventing details.
 For MCQs, provide four options, the correct answer, and a clear explanation for every question.
 Avoid repetitive filler, clickbait, fake engagement, and copyrighted textbook passages.
 Return clean Markdown with a title, learning objectives, structured teaching content,
@@ -49,19 +49,18 @@ Source notes supplied by the user:
 Target: a useful, classroom-ready first draft. For bilingual output, explain in Hindi and provide
 the corresponding English terminology. Include source/verification notes at the end."""
 
+    model = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-lite")
+    url = f"{API_BASE}/{model}:generateContent"
     payload = {
-        "model": os.environ.get("OPENAI_MODEL", "gpt-4.1-mini"),
-        "temperature": 0.4,
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
+        "system_instruction": {"parts": [{"text": system_prompt}]},
+        "contents": [{"role": "user", "parts": [{"text": user_prompt}]}],
+        "generationConfig": {"temperature": 0.4, "maxOutputTokens": 6000}
     }
     request = urllib.request.Request(
-        API_URL,
+        url,
         data=json.dumps(payload).encode("utf-8"),
         headers={
-            "Authorization": f"Bearer {api_key}",
+            "x-goog-api-key": api_key,
             "Content-Type": "application/json",
         },
         method="POST",
@@ -71,17 +70,17 @@ the corresponding English terminology. Include source/verification notes at the 
         with urllib.request.urlopen(request, timeout=120) as response:
             result = json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")[:1000]
-        raise SystemExit(f"OpenAI API request failed (HTTP {exc.code}): {detail}") from exc
+        detail = exc.read().decode("utf-8", errors="replace")[:1200]
+        raise SystemExit(f"Gemini API request failed (HTTP {exc.code}): {detail}") from exc
     except (urllib.error.URLError, TimeoutError) as exc:
-        raise SystemExit(f"OpenAI API connection failed: {exc}") from exc
+        raise SystemExit(f"Gemini API connection failed: {exc}") from exc
 
-    choices = result.get("choices", [])
-    if not choices:
-        raise SystemExit("The AI provider returned no script content.")
-    content = choices[0].get("message", {}).get("content", "")
+    candidates = result.get("candidates", [])
+    parts = candidates[0].get("content", {}).get("parts", []) if candidates else []
+    content = "\n".join(part.get("text", "") for part in parts if part.get("text"))
     if not content.strip():
-        raise SystemExit("The AI provider returned an empty script.")
+        reason = candidates[0].get("finishReason", "unknown") if candidates else "no candidates"
+        raise SystemExit(f"Gemini returned no text content (finish reason: {reason}).")
 
     output_dir = Path("output/scripts")
     output_dir.mkdir(parents=True, exist_ok=True)
