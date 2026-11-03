@@ -31,8 +31,9 @@ Public video upload, public playlist creation, Community post publishing and You
 - `scripts/correct_script.py` — requests schema-constrained JSON from Gemini, validates required fields, preserves original `[VERIFY ...]` markers, applies limited deterministic notation repairs, and records unresolved items.
 - `scripts/quality_checks.py` — deterministic structural and formatting checks.
 - `scripts/generate_daily_assets.py` — generates the daily bilingual Short storyboard, Community post/poll draft, and validated SEO metadata (title variants, descriptions, tags, hashtags and thumbnail copy) for all ten unit lessons.
-- `scripts/heygen_tts.py` — generates Hindi and English narration from an authorized HeyGen voice clone using its TTS API. It reads `HEYGEN_API_KEY` and `HEYGEN_VOICE_ID` only from GitHub Actions secrets.
-- `scripts/render_short_video.py` — renders a 1080 × 1920 narrated Short draft using Pillow, eSpeak NG and FFmpeg; no music is added.
+- `scripts/chatterbox_tts.py` — generates Hindi and English narration through the free Chatterbox Multilingual V3 Hugging Face Space, using a reference recording downloaded from a private Hugging Face dataset at runtime.
+- `scripts/heygen_tts.py` — optional paid HeyGen TTS fallback; reads `HEYGEN_API_KEY` and `HEYGEN_VOICE_ID` only from GitHub Actions secrets.
+- `scripts/render_short_video.py` — renders a 1080 × 1920 narrated Short draft using Chatterbox (preferred when enabled), HeyGen or generic eSpeak fallback, Pillow and FFmpeg; no music is added.
 - `scripts/topic_queue.py` — manages the legacy one-topic queue.
 - `tests/` — offline unit and regression tests.
 - `.github/workflows/daily-channel-pack.yml` — scheduled daily ten-unit production pack at 08:00 IST.
@@ -89,7 +90,7 @@ These are catalogue entries, not live playlists. YouTube's playlist creation and
 
 ## Shorts and Community posts
 
-- The daily Short is rendered as a 1080 × 1920 MP4 with bilingual on-screen text and narration. When `HEYGEN_API_KEY` and `HEYGEN_VOICE_ID` are configured, narration uses the authorized HeyGen voice clone. Until those secrets are present, the renderer uses an eSpeak generic placeholder clearly marked as not the owner’s voice. No background music or third-party assets are added.
+- The daily Short is rendered as a 1080 × 1920 MP4 with bilingual on-screen text and narration. When `CHATTERBOX_ENABLED=true` and the private Hugging Face reference-audio settings are configured, Chatterbox Multilingual V3 is preferred. Otherwise, configured HeyGen credentials are used; if neither owner-voice provider is configured, eSpeak is used as a generic placeholder clearly marked as not the owner’s voice. No background music or third-party assets are added.
 - The Community post is generated as text plus a poll draft and a suggested pinned comment. YouTube's documented Community post scheduling process is through YouTube Studio. The public YouTube Data API v3 reference does not offer a Community-post creation endpoint, so the automation does not attempt to publish it.
 - YouTube currently categorizes eligible square or vertical videos up to three minutes as Shorts for standard channels, subject to the platform's conditions. Keep every rendered Short within that limit and check copyright before publishing.
 
@@ -152,7 +153,7 @@ Metricool API access is limited to Advanced and Custom plans. Every API request 
 
 ### Public publishing gate
 
-The scheduler will not publish a daily batch unless all ten corrected lesson packages have original and corrected academic review reports, no unresolved `[VERIFY]` markers, explicit positive corrected-review verdicts, and deterministic reports with zero blocking findings. The daily Short is withheld unless its render report confirms the configured HeyGen voice clone was used. A generic eSpeak placeholder is never scheduled publicly.
+The scheduler will not publish a daily batch unless all ten corrected lesson packages have original and corrected academic review reports, no unresolved `[VERIFY]` markers, explicit positive corrected-review verdicts, and deterministic reports with zero blocking findings. The daily Short is withheld unless its render report confirms that the configured owner reference voice clone (Chatterbox or HeyGen) was used. A generic eSpeak placeholder is never scheduled publicly.
 
 Long-form publishing is not active yet because the system currently creates ten reviewed lesson scripts, not ten finished landscape MP4s. The scheduler only looks for actual video files at `output/videos/unit-01.mp4` through `unit-10.mp4`; it will skip a unit if its MP4 is missing. Do not treat a script or PDF as a finished video file.
 
@@ -175,3 +176,34 @@ No publishing request is made if the three Metricool secrets are absent. Once pr
 
 Add the HeyGen API key and your own HeyGen voice ID as `HEYGEN_API_KEY` and `HEYGEN_VOICE_ID` GitHub Actions secrets. For a Professional Voice Clone, HeyGen currently specifies at least 20 minutes of your own clean recordings and recommends 30 minutes to two hours; the add-on has a separate paid cost. The current HeyGen TTS API can synthesize text in the chosen cloned voice. The workflow uses the exact configured voice ID for Hindi and English, but accent and pronunciation should be reviewed before public release.
 
+
+
+## Free Chatterbox voice clone setup
+
+The preferred free narration provider is the official ResembleAI Chatterbox Multilingual V3 Hugging Face Space:
+https://huggingface.co/spaces/ResembleAI/Chatterbox-Multilingual-TTS-V3
+
+The Space supports Hindi and English reference-audio voice generation. Its current UI/API limit is 300 characters per request; the adapter splits longer narration at sentence/word boundaries and joins the returned WAV segments. It uses the documented Generate endpoint and the neutral settings (exaggeration 0.5, temperature 0.8, CFG/pace 0.5).
+
+**Free-service limitation:** the Space runs on shared Hugging Face ZeroGPU infrastructure. It may queue, sleep, rate-limit or be temporarily unavailable. This is a best-effort free integration, not a production SLA. If the Space is unavailable, the Chatterbox step fails visibly rather than silently substituting a different voice. The workflow will not schedule the Short unless its render report confirms that an owner reference voice clone was used.
+
+### Keep the voice recording private
+
+Do not commit the voice recording to this GitHub repository. Create a **private Hugging Face dataset repository** in your own Hugging Face account, for example `djvjupsc/digvijayeconlab-voice-reference`, and upload the approved WAV reference as `voice-reference.wav`. Keep the dataset private. The GitHub Action downloads it at runtime using a read-scoped Hugging Face token; it does not add the audio file to Git history or artifacts.
+
+### Configure GitHub Actions
+
+In the repository, open **Settings → Secrets and variables → Actions**.
+
+Add this repository **secret**:
+- `HF_TOKEN` — a Hugging Face user access token with read access to the private voice-reference dataset only. Do not paste it into chat or commit it.
+
+Add these repository **variables**:
+- `CHATTERBOX_ENABLED` = `true`
+- `CHATTERBOX_REFERENCE_REPO` = your private dataset repo ID, e.g. `djvjupsc/digvijayeconlab-voice-reference`
+- `CHATTERBOX_REFERENCE_FILENAME` = `voice-reference.wav`
+- `CHATTERBOX_SPACE` = `ResembleAI/Chatterbox-Multilingual-TTS-V3`
+
+When enabled, Chatterbox takes priority over HeyGen. If Chatterbox is disabled, the existing HeyGen integration remains available; if neither clone provider is configured, the renderer uses eSpeak placeholder narration. The report records the provider and whether a reference voice clone was used, but never records the token or reference-audio contents.
+
+The adapter sends narration text and the reference audio to the public ResembleAI Hugging Face Space for synthesis. Only use a recording of your own voice or a recording you have explicit permission to use. Chatterbox output contains an imperceptible Perth watermark and is MIT-licensed; the model's free Space remains subject to service availability and its usage limits.
