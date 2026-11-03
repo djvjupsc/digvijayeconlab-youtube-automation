@@ -11,6 +11,14 @@ on:
           - "no"
           - "yes"
         default: "no"
+      confirm_human_fact_check:
+        description: "I personally reviewed the corrected lesson and verified all flagged factual claims against authoritative sources"
+        required: true
+        type: choice
+        options:
+          - "no"
+          - "yes"
+        default: "no"
 
 permissions:
   contents: read
@@ -49,7 +57,11 @@ jobs:
 
       - name: Create isolated Law of Demand lesson manifest and SEO metadata
         run: |
-          mkdir -p output/seo output/scripts output/reviews output/corrected_scripts output/corrections output/quality_checks output/longform output/youtube
+          mkdir -p output/seo output/scripts output/reviews output/corrected_scripts output/corrections output/quality_checks output/longform output/youtube output/source_notes
+          cat > output/source_notes/law-of-demand-source-notes.md <<'NOTES'
+          Giffen-goods historical note: Alfred Marshall discussed an example attributed to Robert Giffen in Principles of Economics (1895), but the historical attribution and the traditional Irish potato example are debated; do not state as settled fact that Robert Giffen personally established the paradox or that Irish potatoes were empirically proven to be Giffen goods. A Giffen good is a theoretically possible inferior good for which the negative income effect outweighs the substitution effect, so quantity demanded may rise as its own price rises under restrictive conditions. Distinguish this from the Veblen/status-signalling effect.
+          Demand-curve note: the usual downward slope of an individual consumer's demand curve is explained by substitution and income effects. Additional buyers/market participation is relevant to market demand, not a general explanation for an individual consumer demand curve.
+          NOTES
           python - <<'PY'
           import json
           from datetime import datetime
@@ -101,12 +113,7 @@ jobs:
           SCRIPT_UNIT: "Unit 1: Micro Economic Analysis"
           SCRIPT_FILENAME_PREFIX: "unit-01"
         run: |
-          SOURCE_NOTES=$(cat <<'NOTES'
-          Giffen-goods historical note: Alfred Marshall discussed an example attributed to Robert Giffen in Principles of Economics (1895), but the historical attribution and the traditional Irish potato example are debated; do not state as settled fact that Robert Giffen personally established the paradox or that Irish potatoes were empirically proven to be Giffen goods. Explain the theoretical condition accurately: a good can be Giffen when the negative income effect outweighs the substitution effect, so quantity demanded may rise as its own price rises, under restrictive conditions. Distinguish this from the Veblen/status-signalling effect.
-          Demand-curve note: the usual downward slope is explained by substitution effect and income effect; additional buyers/market participation is relevant to market demand, not a general explanation for an individual consumer demand curve.
-          NOTES
-          )
-          python scripts/generate_script.py "Law of Demand" "Bilingual" "Concept Explainer" "$SOURCE_NOTES"
+          python scripts/generate_script.py "Law of Demand" "Bilingual" "Concept Explainer" "$(cat output/source_notes/law-of-demand-source-notes.md)"
 
       - name: Review original lesson draft
         env:
@@ -117,7 +124,7 @@ jobs:
           SCRIPT_FORMAT: "Concept Explainer"
           REVIEW_STAGE: "original"
         run: |
-          python scripts/review_script.py "output/scripts/unit-01-law-of-demand.md"
+          python scripts/review_script.py "output/scripts/unit-01-law-of-demand.md" "output/source_notes/law-of-demand-source-notes.md"
 
       - name: Correct the lesson using review findings
         env:
@@ -126,6 +133,31 @@ jobs:
           python scripts/correct_script.py \
             "output/scripts/unit-01-law-of-demand.md" \
             "output/reviews/unit-01-law-of-demand-quality-review.md"
+
+      - name: Apply explicit human fact-check attestation
+        if: inputs.confirm_human_fact_check == 'yes'
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          path = Path("output/corrected_scripts/unit-01-law-of-demand.md")
+          script = path.read_text(encoding="utf-8")
+          marker = re.compile(r"\[(?:HUMAN\s+)?VERIFY\b[^\]]*\]", re.I)
+          count = len(marker.findall(script))
+          if count == 0:
+              print("No verification markers were present; human attestation recorded.")
+          else:
+              script = marker.sub("", script)
+              script += (
+                  "\n\n## Human Fact-check Attestation\n\n"
+                  "The workflow was continued only after the user explicitly confirmed "
+                  "that they personally reviewed the corrected lesson and verified flagged "
+                  "factual claims against authoritative sources. This records the user's "
+                  "attestation; it is not an automated certification.\n"
+              )
+              path.write_text(script, encoding="utf-8")
+              print(f"Cleared {count} verification marker(s) after explicit human attestation.")
+          PY
 
       - name: Review corrected lesson and enforce structural gate
         env:
@@ -136,7 +168,7 @@ jobs:
           SCRIPT_FORMAT: "Concept Explainer"
           REVIEW_STAGE: "corrected"
         run: |
-          python scripts/review_script.py "output/corrected_scripts/unit-01-law-of-demand.md"
+          python scripts/review_script.py "output/corrected_scripts/unit-01-law-of-demand.md" "output/source_notes/law-of-demand-source-notes.md"
           python - <<'PY'
           from pathlib import Path
           import re
@@ -222,6 +254,7 @@ jobs:
             output/corrections/*.md
             output/quality_checks/*.md
             output/seo/*.json
+            output/source_notes/*.md
             output/longform/*
             output/youtube/*
           if-no-files-found: warn
