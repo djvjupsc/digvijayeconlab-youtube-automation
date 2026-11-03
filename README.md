@@ -4,47 +4,69 @@ Cloud-based educational video production and YouTube publishing project for Digv
 
 ## Current status
 
-The repository is in **safe setup mode**. Script generation, academic review, and AI-assisted correction run only when manually triggered. Outputs are drafts; video rendering and YouTube publishing are not enabled.
+Script generation, academic review, and AI-assisted correction can now run automatically from a controlled topic queue:
+- Daily scheduled run at **08:00 Asia/Kolkata** (GitHub cron: 02:30 UTC).
+- Queue-triggered run whenever `config/topic_queue.json` is changed on `main`.
+- One unique queue item is claimed per run. Claim and final status are committed to the repository to prevent the same topic from being generated twice.
+- A run with no pending topic exits without calling Gemini.
+- Publishing remains disabled. All outputs are drafts and require human verification and approval.
 
 ## Project layout
 
 - `config/content_plan.json` — brand, audience, content pillars and publishing safeguards.
+- `config/topic_queue.json` — controlled topic queue and processing status.
 - `scripts/preflight.py` — validates the project configuration.
+- `scripts/topic_queue.py` — validates topic uniqueness, claims one pending topic, recovers stale claims, and records completed/failed runs.
 - `scripts/generate_script.py` — creates an educational Markdown draft through the Google Gemini API.
 - `scripts/review_script.py` — creates an academic quality-control report; it does not rewrite the original script.
-- `scripts/correct_script.py` — requests schema-constrained JSON from Gemini, validates required fields, preserves every original `[VERIFY ...]` marker even when the correction model removes or rewrites it, applies evidence-grounded editorial corrections, performs narrow deterministic math-notation cleanup, and records unresolved verification items.
-- `scripts/quality_checks.py` — detects known notation corruption, mixed Latin/Devanagari words, unresolved verification markers, missing bilingual scripts, MCQ answer/explanation gaps, required content-structure gaps, and the absence of a dedicated populated worked-example/application or demand-schedule section.
-- `tests/test_correct_script.py` and `tests/test_quality_checks.py` — offline tests for structured-response fallback, notation cleanup, and deterministic quality gates.
-- `.github/workflows/preflight.yml` — manually runs the configuration check.
-- `.github/workflows/script-draft.yml` — runs offline correction/quality tests, then manually generates, reviews, corrects, and re-reviews a script before storing scripts, reviews, correction logs, and deterministic quality reports as a workflow artifact.
-- `.env.example` — names of future configuration values only; contains no credentials.
+- `scripts/correct_script.py` — requests schema-constrained JSON from Gemini, validates required fields, preserves every original `[VERIFY ...]` marker, applies evidence-grounded editorial corrections and narrow deterministic math-notation cleanup, and records unresolved items.
+- `scripts/quality_checks.py` — detects known notation corruption, mixed Latin/Devanagari words, unresolved verification markers, missing bilingual scripts, MCQ answer/explanation gaps, required content-structure gaps, and missing worked-example/application sections.
+- `tests/` — offline queue, correction, formatting, and deterministic quality-gate tests.
+- `.github/workflows/script-draft.yml` — daily, queue-triggered, and manually triggerable draft workflow.
+- `.github/workflows/quality-tests.yml` — runs offline tests on pull requests and pushes to main.
 
-## Generate, review, and correct a script
+## How automatic generation works
 
-1. Add a repository Actions secret named `GEMINI_API_KEY` under **Settings → Secrets and variables → Actions**. Never put the key in source files or workflow inputs.
-2. Open **Actions → DigvijayEconLab script draft → Run workflow**.
-3. Enter a topic, choose the language and format, and optionally provide authoritative source notes.
-4. The workflow first runs offline unit tests for structured-response validation and deterministic quality checks.
-5. Download the `digvijayeconlab-corrected-script-package` artifact from the completed workflow run.
-6. The package contains the original script (`output/scripts/`), first academic review (`output/reviews/original-quality-review.md`), corrected draft (`output/corrected_scripts/`), correction log and unresolved items (`output/corrections/`), and final academic review of the corrected draft (`output/reviews/`).
-7. Compare original and corrected scripts. Review both deterministic reports in `output/quality_checks/`. Independently verify factual claims and unresolved items against authoritative textbooks or supplied sources. Human approval is mandatory before production use.
+1. The workflow runs at 08:00 India time each day. GitHub Actions can occasionally start scheduled jobs a little later than the exact minute.
+2. Adding a new queue item to `config/topic_queue.json` and committing it to `main` starts an additional queue-triggered run.
+3. The workflow validates the whole queue, claims the first `pending` item, and commits its `processing` status before making any Gemini request.
+4. It generates the script, performs the original academic review, applies schema-validated conservative correction, preserves the original review, and reviews the corrected draft.
+5. The completed script, original and corrected reviews, correction log, and deterministic quality reports are stored as a GitHub Actions artifact for 14 days.
+6. The queue item is marked `completed` only when the earlier workflow steps and artifact packaging succeed; otherwise it is marked `failed`. A `failed` item is not automatically retried. To retry it, change its status to `pending` after checking the failed run.
+7. A processing claim older than six hours is considered stale and can be returned to `pending` on the next run.
 
-The correction step requests Gemini's structured JSON response mode with a required schema rather than custom text delimiters. Python validates the response before accepting it. If the response is malformed, truncated, or missing required fields, the original script is preserved unchanged and the correction log records the fallback; the workflow can still complete its second review. After a valid structured response, Python applies only narrow, deterministic notation repairs for known corrupted derivative/fraction sequences and fragile up/down-arrow macros. A successful workflow does not guarantee that any AI edits were made: inspect the correction log and compare the two scripts.
+## Add a topic to the queue
 
-The correction step is deliberately conservative: it must not invent facts or citations. Every original `[VERIFY ...]` marker is preserved verbatim in the corrected draft; if Gemini removes or alters one, Python restores the exact original marker in a dedicated sign-off section and records it as unresolved. This deliberately keeps the final review at `HOLD FOR CORRECTION` until the human verification markers and other blocking findings are addressed. The deterministic quality gate checks formatting controls, known math corruption, mixed Latin/Devanagari words, bilingual-script presence, unresolved `[VERIFY]` markers, numbered MCQ counts, explicit answer and explanation labels, core Concept Explainer sections, and a dedicated populated worked-example/application or demand-schedule heading. Merely mentioning an example in the general lesson text does not pass this section requirement. A demand schedule must be presented as a labelled table with at least two data rows; illustrative numbers must be identified as hypothetical. Minimum practice-question counts are 5 for Concept Explainer, 10 for MCQ Set, and 3 for Previous-Year-Question Analysis. Any Critical or High finding forces the final review verdict to `HOLD FOR CORRECTION`; Gemini cannot override that local gate. The bilingual script-presence check does not prove that translations are equivalent, and the structural checks do not verify economics theory, source reliability, MCQ correctness, or academic depth. An AI reviewer or correction report is not factual certification.
+Edit `config/topic_queue.json` on `main` and add a new object inside `items`:
 
-The workflow uses Gemini Developer API model `gemini-3.5-flash-lite`. Availability, free-tier eligibility, and rate limits depend on Google's current policies and project. Free-tier requests may be used by Google to improve its products; do not submit personal, confidential, or sensitive information. This workflow does not configure paid billing. A Google AI Pro consumer subscription is separate from Gemini Developer API access and does not automatically provide API credits or free-tier eligibility.
-
-## Run the preflight locally
-
-Requires Python 3.12 or newer:
-
-```bash
-python scripts/preflight.py
-python -m unittest discover -s tests -v
+```json
+{
+  "id": "macro-national-income",
+  "topic": "National Income: Concepts and Measurement",
+  "language": "Bilingual",
+  "content_format": "Concept Explainer",
+  "source_notes": "Optional notes from an authoritative textbook or official source.",
+  "status": "pending"
+}
 ```
 
-Or open **Actions → DigvijayEconLab preflight → Run workflow** in GitHub.
+Use a new lowercase ID with hyphens. Topic names must be unique even when capitalization or punctuation differs. Supported languages are `Bilingual`, `Hindi`, and `English`; supported formats are `Concept Explainer`, `MCQ Set`, and `Previous-Year-Question Analysis`. Do not reuse or reset a completed topic under a new ID. Completed and failed entries remain in the queue as the duplicate-prevention history.
+
+The initial queue contains ten Microeconomics topics. It intentionally excludes Law of Demand because that topic was already used for the earlier test draft.
+
+## Academic quality and human approval
+
+The workflow runs offline unit tests before calling Gemini. The original and corrected drafts are each reviewed with deterministic structural checks and an AI-assisted academic audit. Critical or High deterministic findings force a HOLD verdict. Original `[VERIFY]` markers are preserved in the corrected draft even if the correction model removes or alters them.
+
+A successful GitHub Actions run means the workflow executed; it does **not** certify economics accuracy, source reliability, translation equivalence, MCQ correctness, or exam suitability. Review the original and corrected scripts, both academic reports, correction log, and deterministic quality reports. Independently verify claims against authoritative textbooks or supplied sources. A report showing HOLD must not be treated as ready for production. Human approval is mandatory.
+
+## Gemini API
+
+The workflow uses Gemini Developer API model `gemini-3.5-flash-lite` through the GitHub Actions secret `GEMINI_API_KEY`. Gemini Developer API access is separate from a Google AI Pro consumer subscription. Availability, free-tier eligibility, and rate limits depend on Google's current policies. Free-tier requests may be used by Google to improve its products; do not submit personal, confidential, or sensitive information. No paid billing is configured by this repository.
+
+## Publishing safeguards
+
+Publishing remains disabled. There are no YouTube upload or publish steps in this workflow. The content plan keeps human approval mandatory. Do not enable automatic public uploads until OAuth production eligibility, YouTube API compliance, content accuracy, copyright checks, and end-to-end private-upload tests have been addressed.
 
 ## Security rules
 
@@ -52,19 +74,3 @@ Or open **Actions → DigvijayEconLab preflight → Run workflow** in GitHub.
 - Store deployment credentials only through GitHub Actions Secrets or Cloudflare Worker Secrets.
 - Do not make this repository public.
 - Do not use or modify the separate PixelToolkit project for this automation.
-
-## Publishing safeguards
-
-Publishing remains disabled. The content plan requires human approval. Do not enable automatic public uploads until OAuth production eligibility, YouTube API compliance, content accuracy, copyright checks, and end-to-end private-upload tests have been addressed.
-
-## Planned components
-
-1. Content planning and source notes.
-2. Original bilingual script generation.
-3. Academic review, schema-validated conservative correction, and second review (manual draft workflow).
-4. Hindi narration and captions.
-5. Video rendering.
-6. YouTube metadata and private-upload integration.
-7. Analytics and failure reporting.
-
-Free-tier quotas and provider policies can change. Workflows should stop safely when quotas or required credentials are unavailable; do not add billing without explicit approval.
