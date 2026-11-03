@@ -128,10 +128,10 @@ Price and quantity demanded are inversely related, other things equal.
 """
         for number in range(1, 6):
             source += (
-                f"\\n### Q{number}. Question?\\n"
-                "A) Option A\\nB) Option B\\nC) Option C\\nD) Option D\\n"
-                "* **Correct Answer:** B\\n"
-                "* **Explanation:** This is the explanation.\\n"
+                f"\n### Q{number}. Question?\n"
+                "A) Option A\nB) Option B\nC) Option C\nD) Option D\n"
+                "* **Correct Answer:** B\n"
+                "* **Explanation:** This is the explanation.\n"
             )
         findings = analyze_script(source, "Concept Explainer", "English")
         codes = {item["code"] for item in findings}
