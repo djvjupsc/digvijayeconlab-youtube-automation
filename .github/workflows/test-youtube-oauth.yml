@@ -1,0 +1,77 @@
+name: Test YouTube OAuth refresh token
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-oauth:
+    name: Verify Google refresh-token exchange
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Exchange refresh token without exposing credentials
+        env:
+          YOUTUBE_OAUTH_CLIENT_ID: ${{ secrets.YOUTUBE_OAUTH_CLIENT_ID }}
+          YOUTUBE_OAUTH_CLIENT_SECRET: ${{ secrets.YOUTUBE_OAUTH_CLIENT_SECRET }}
+          YOUTUBE_OAUTH_REFRESH_TOKEN: ${{ secrets.YOUTUBE_OAUTH_REFRESH_TOKEN }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import sys
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+
+          names = (
+              "YOUTUBE_OAUTH_CLIENT_ID",
+              "YOUTUBE_OAUTH_CLIENT_SECRET",
+              "YOUTUBE_OAUTH_REFRESH_TOKEN",
+          )
+          values = {name: os.environ.get(name, "") for name in names}
+          missing = [name for name, value in values.items() if not value.strip()]
+          if missing:
+              print("FAIL: Missing GitHub secret(s): " + ", ".join(missing))
+              sys.exit(1)
+
+          body = urllib.parse.urlencode({
+              "client_id": values["YOUTUBE_OAUTH_CLIENT_ID"],
+              "client_secret": values["YOUTUBE_OAUTH_CLIENT_SECRET"],
+              "refresh_token": values["YOUTUBE_OAUTH_REFRESH_TOKEN"],
+              "grant_type": "refresh_token",
+          }).encode("utf-8")
+          request = urllib.request.Request(
+              "https://oauth2.googleapis.com/token",
+              data=body,
+              headers={"Content-Type": "application/x-www-form-urlencoded"},
+              method="POST",
+          )
+          try:
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  payload = json.loads(response.read().decode("utf-8"))
+          except urllib.error.HTTPError as exc:
+              try:
+                  error = json.loads(exc.read().decode("utf-8"))
+                  reason = error.get("error", "oauth_exchange_failed")
+              except Exception:
+                  reason = "oauth_exchange_failed"
+              print(f"FAIL: Google rejected the refresh-token exchange ({reason}; HTTP {exc.code}).")
+              sys.exit(1)
+          except Exception as exc:
+              print(f"FAIL: Could not contact Google's token endpoint ({type(exc).__name__}).")
+              sys.exit(1)
+
+          if not payload.get("access_token"):
+              print("FAIL: Google response did not contain an access token.")
+              sys.exit(1)
+          if payload.get("token_type", "").lower() != "bearer":
+              print("FAIL: Google returned an unexpected token type.")
+              sys.exit(1)
+
+          print("PASS: GitHub OAuth secrets successfully exchanged for a Google access token.")
+          print("The access token and refresh token were not printed or saved.")
+          print(f"Access token lifetime reported by Google: {int(payload.get('expires_in', 0))} seconds.")
+          PY
