@@ -361,7 +361,20 @@ def main():
         return 0
 
     try:
-        playlists = list_youtube_playlists(token, user_id, blog_id)
+        playlist_map_path = root / "output/youtube-playlists.json"
+        playlist_map = {}
+        if playlist_map_path.is_file():
+            playlist_result = json.loads(playlist_map_path.read_text(encoding="utf-8"))
+            candidate_map = playlist_result.get("playlists", {})
+            if isinstance(candidate_map, dict):
+                playlist_map = {
+                    str(title): str(playlist_id)
+                    for title, playlist_id in candidate_map.items()
+                    if isinstance(title, str) and isinstance(playlist_id, (str, int))
+                }
+        # Prefer the direct YouTube Data API playlist IDs when available. Otherwise
+        # use Metricool's live catalogue (for channels where playlists were created manually).
+        playlists = playlist_map or list_youtube_playlists(token, user_id, blog_id)
         publish_dt = datetime.fromisoformat(date).replace(tzinfo=TZ)
         window_start = publish_dt.replace(hour=0, minute=0, second=0)
         window_end = publish_dt.replace(hour=23, minute=59, second=59)
