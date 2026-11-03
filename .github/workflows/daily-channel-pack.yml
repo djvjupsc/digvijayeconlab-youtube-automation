@@ -75,6 +75,16 @@ jobs:
             git push origin HEAD:main
           fi
 
+      - name: Create or verify ten public YouTube playlists
+        if: steps.prepare.outputs.claimed == 'true'
+        continue-on-error: true
+        env:
+          YOUTUBE_OAUTH_CLIENT_ID: ${{ secrets.YOUTUBE_OAUTH_CLIENT_ID }}
+          YOUTUBE_OAUTH_CLIENT_SECRET: ${{ secrets.YOUTUBE_OAUTH_CLIENT_SECRET }}
+          YOUTUBE_OAUTH_REFRESH_TOKEN: ${{ secrets.YOUTUBE_OAUTH_REFRESH_TOKEN }}
+        run: |
+          python scripts/youtube_playlist_setup.py
+
       - name: Generate and review ten unit lesson packages, Short assets and Community post
         if: steps.prepare.outputs.claimed == 'true'
         env:
