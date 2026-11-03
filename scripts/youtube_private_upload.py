@@ -1,7 +1,6 @@
 """Upload the audited daily Short to YouTube as PRIVATE for human review.
 
-This script deliberately has no public-publishing path. A human must inspect the
-private upload in YouTube Studio and choose whether/when to publish it.
+Uses YouTube's resumable-upload protocol. This script has no public-publishing path.
 """
 import json
 import os
@@ -43,6 +42,7 @@ def _refresh_access_token(client_id, client_secret, refresh_token):
 
 
 def upload_private_video(video_path, metadata, access_token, opener=urllib.request.urlopen):
+    """Initiate a resumable upload, send the MP4, and verify PRIVATE visibility."""
     path = Path(video_path)
     if not path.is_file() or path.stat().st_size == 0:
         raise YouTubeUploadError("Short MP4 is missing or empty.")
@@ -50,6 +50,8 @@ def upload_private_video(video_path, metadata, access_token, opener=urllib.reque
     description = metadata.get("short_description", "")
     if not isinstance(title, str) or not title.strip():
         raise YouTubeUploadError("Short title is missing.")
+    if not isinstance(description, str):
+        raise YouTubeUploadError("Short description must be text.")
     tags = metadata.get("tags", ["DigvijayEconLab", "Economics"])
     if not isinstance(tags, list) or any(not isinstance(tag, str) for tag in tags):
         raise YouTubeUploadError("Short tags must be a list of strings.")
@@ -65,47 +67,70 @@ def upload_private_video(video_path, metadata, access_token, opener=urllib.reque
         "status": {
             "privacyStatus": "private",
             "selfDeclaredMadeForKids": False,
+            "containsSyntheticMedia": True,
         },
     }
-    boundary = "djel-upload-boundary-2026"
-    metadata_bytes = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-    body = (
-        b"--" + boundary.encode() + b"\r\n"
-        b"Content-Type: application/json; charset=UTF-8\r\n\r\n"
-        + metadata_bytes + b"\r\n"
-        b"--" + boundary.encode() + b"\r\n"
-        b"Content-Type: video/mp4\r\n\r\n"
-        + path.read_bytes() + b"\r\n"
-        b"--" + boundary.encode() + b"--"
-    )
-    url = UPLOAD_URL + "?" + urllib.parse.urlencode({
-        "uploadType": "multipart", "part": "snippet,status"
+    file_size = path.stat().st_size
+    init_url = UPLOAD_URL + "?" + urllib.parse.urlencode({
+        "uploadType": "resumable", "part": "snippet,status"
     })
-    request = urllib.request.Request(
-        url, data=body, method="POST",
+    init_request = urllib.request.Request(
+        init_url,
+        data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+        method="POST",
         headers={
             "Authorization": f"Bearer {access_token}",
-            "Content-Type": f"multipart/related; boundary={boundary}",
-            "Content-Length": str(len(body)),
+            "Content-Type": "application/json; charset=UTF-8",
+            "X-Upload-Content-Type": "video/mp4",
+            "X-Upload-Content-Length": str(file_size),
         },
     )
     try:
-        with opener(request, timeout=300) as response:
+        with opener(init_request, timeout=60) as response:
+            session_url = response.headers.get("Location")
+            if not isinstance(session_url, str) or not session_url.startswith("https://"):
+                raise YouTubeUploadError("YouTube did not return a valid HTTPS resumable upload URL.")
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")[:1500]
+        raise YouTubeUploadError(f"YouTube upload initialization failed (HTTP {exc.code}): {detail}") from exc
+    except (urllib.error.URLError, TimeoutError) as exc:
+        raise YouTubeUploadError(f"YouTube upload initialization failed: {exc}") from exc
+
+    media_request = urllib.request.Request(
+        session_url,
+        data=path.read_bytes(),
+        method="PUT",
+        headers={
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "video/mp4",
+            "Content-Length": str(file_size),
+            "Content-Range": f"bytes 0-{file_size - 1}/{file_size}",
+        },
+    )
+    try:
+        with opener(media_request, timeout=300) as response:
             result = json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")[:1500]
-        raise YouTubeUploadError(f"YouTube upload failed (HTTP {exc.code}): {detail}") from exc
+        raise YouTubeUploadError(f"YouTube media upload failed (HTTP {exc.code}): {detail}") from exc
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
-        raise YouTubeUploadError(f"YouTube upload failed: {exc}") from exc
+        raise YouTubeUploadError(f"YouTube media upload failed: {exc}") from exc
 
     video_id = result.get("id")
     privacy = result.get("status", {}).get("privacyStatus")
+    synthetic_disclosure = result.get("status", {}).get("containsSyntheticMedia")
     if not isinstance(video_id, str) or not video_id:
         raise YouTubeUploadError("YouTube response did not include a video ID.")
     if privacy != "private":
         raise YouTubeUploadError("YouTube did not confirm private visibility; check YouTube Studio.")
-    return {"video_id": video_id, "privacy_status": "private",
-            "url": f"https://www.youtube.com/watch?v={video_id}"}
+    if synthetic_disclosure is not True:
+        raise YouTubeUploadError("YouTube did not confirm the synthetic-content disclosure; check YouTube Studio.")
+    return {
+        "video_id": video_id,
+        "privacy_status": "private",
+        "contains_synthetic_media": True,
+        "url": f"https://www.youtube.com/watch?v={video_id}",
+    }
 
 
 def main():
@@ -120,8 +145,11 @@ def main():
     report_path = report_dir / f"{args.publication_date}-private-upload.json"
 
     if os.environ.get("YOUTUBE_PRIVATE_UPLOAD_ENABLED", "").strip().lower() != "true":
-        report = {"status": "disabled", "uploaded": False,
-                  "message": "Private upload is disabled. Set repository variable YOUTUBE_PRIVATE_UPLOAD_ENABLED=true to enable private review uploads."}
+        report = {
+            "status": "disabled",
+            "uploaded": False,
+            "message": "Private upload is disabled. Set repository variable YOUTUBE_PRIVATE_UPLOAD_ENABLED=true to enable private review uploads.",
+        }
         report_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
         print(report["message"])
         return 0
