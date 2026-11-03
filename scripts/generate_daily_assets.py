@@ -18,8 +18,6 @@ SCHEMA = {
         "short_description": {"type": "STRING"},
         "scenes": {
             "type": "ARRAY",
-            "minItems": 4,
-            "maxItems": 6,
             "items": {
                 "type": "OBJECT",
                 "properties": {
@@ -44,15 +42,11 @@ SCHEMA = {
         "poll_question": {"type": "STRING"},
         "poll_options": {
             "type": "ARRAY",
-            "minItems": 2,
-            "maxItems": 4,
             "items": {"type": "STRING"},
         },
         "pinned_comment": {"type": "STRING"},
         "hashtags": {
             "type": "ARRAY",
-            "minItems": 3,
-            "maxItems": 8,
             "items": {"type": "STRING"},
         },
     },
