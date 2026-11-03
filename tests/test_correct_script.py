@@ -26,6 +26,12 @@ class StructuredCorrectionTests(unittest.TestCase):
         self.assertTrue(result[1])
         self.assertTrue(result[2])
 
+    def test_gemini_retry_policy_covers_temporary_server_and_rate_limit_errors(self):
+        from scripts.correct_script import MAX_GEMINI_ATTEMPTS, RETRYABLE_HTTP_STATUS
+        self.assertEqual(MAX_GEMINI_ATTEMPTS, 5)
+        self.assertTrue({429, 500, 502, 503, 504}.issubset(RETRYABLE_HTTP_STATUS))
+        self.assertNotIn(400, RETRYABLE_HTTP_STATUS)
+
     def test_review_and_correction_load_source_notes_from_file(self):
         # File-reading is covered by the CLI scripts; this regression protects
         # the intended path contract in their usage documentation/prompt.
