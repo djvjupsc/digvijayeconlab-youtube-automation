@@ -1,0 +1,70 @@
+name: DigvijayEconLab Chatterbox voice test
+
+on:
+  workflow_dispatch:
+    inputs:
+      language:
+        description: "Narration language"
+        required: true
+        type: choice
+        options:
+          - hi
+          - en
+        default: hi
+      text:
+        description: "Text to synthesize (long text is split into 300-character requests)"
+        required: true
+        type: string
+        default: "नमस्कार! स्वागत है आपका DigvijayEconLab में। यहाँ हम अर्थशास्त्र के कठिन विषयों को सरल भाषा में समझते हैं।"
+
+permissions:
+  contents: read
+
+jobs:
+  voice-test:
+    name: Generate a private-reference Chatterbox sample
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Chatterbox client
+        run: python -m pip install --upgrade gradio_client huggingface_hub numpy
+
+      - name: Generate test narration
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          CHATTERBOX_SPACE: ${{ vars.CHATTERBOX_SPACE }}
+          CHATTERBOX_REFERENCE_REPO: ${{ vars.CHATTERBOX_REFERENCE_REPO }}
+          CHATTERBOX_REFERENCE_FILENAME: ${{ vars.CHATTERBOX_REFERENCE_FILENAME }}
+          VOICE_LANGUAGE: ${{ inputs.language }}
+          VOICE_TEXT: ${{ inputs.text }}
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          from scripts.chatterbox_tts import synthesize
+
+          output = Path("output/chatterbox-voice-test.wav")
+          result = synthesize(
+              os.environ["VOICE_TEXT"],
+              os.environ["VOICE_LANGUAGE"],
+              output,
+              seed=2026,
+          )
+          print(result)
+          PY
+
+      - name: Upload test audio
+        uses: actions/upload-artifact@v4
+        with:
+          name: digvijayeconlab-chatterbox-voice-test
+          path: output/chatterbox-voice-test.wav
+          if-no-files-found: error
+          retention-days: 7
