@@ -6,6 +6,11 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+try:
+    from .gemini_client import generate_content
+except ImportError:
+    from gemini_client import generate_content
+
 MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
 API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
 
@@ -97,21 +102,10 @@ English and Hindi explanations for each substantive teaching point. Include sour
         "contents": [{"role": "user", "parts": [{"text": user_prompt}]}],
         "generationConfig": {"temperature": 0.4, "maxOutputTokens": 8192},
     }
-    request = urllib.request.Request(
-        API_URL,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={"x-goog-api-key": api_key, "Content-Type": "application/json"},
-        method="POST",
-    )
-
     try:
-        with urllib.request.urlopen(request, timeout=120) as response:
-            result = json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")[:1000]
-        raise SystemExit(f"Gemini API request failed (HTTP {exc.code}): {detail}") from exc
-    except (urllib.error.URLError, TimeoutError) as exc:
-        raise SystemExit(f"Gemini API connection failed: {exc}") from exc
+        result = generate_content(API_URL, api_key, payload, label="Gemini script generation", timeout=120)
+    except RuntimeError as exc:
+        raise SystemExit(str(exc)) from exc
 
     candidates = result.get("candidates", [])
     if not candidates:
