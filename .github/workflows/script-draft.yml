@@ -46,8 +46,8 @@ jobs:
 
       - name: Generate educational script draft
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          OPENAI_MODEL: gpt-4.1-mini
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: gemini-2.5-flash-lite
           SCRIPT_TOPIC: ${{ inputs.topic }}
           SCRIPT_LANGUAGE: ${{ inputs.language }}
           SCRIPT_FORMAT: ${{ inputs.content_format }}
