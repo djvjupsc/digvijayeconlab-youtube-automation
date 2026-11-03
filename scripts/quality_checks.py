@@ -57,8 +57,8 @@ ANSWER_LINE_PATTERN = re.compile(
     r"(?im)^\s*.*\b(?:Correct\s+Answer|सही\s+उत्तर)\b.*[:：]"
 )
 EXPLANATION_LINE_PATTERN = re.compile(
-    r"(?im)^\s*.*\bExplanation(?:\s*\([^)]*\))?\b.*[:：]|"
-    r"(?im)^\s*.*व्याख्या.*[:：]"
+    r"^\s*.*(?:\bExplanation\b|व्याख्या).*[:：]",
+    flags=re.IGNORECASE | re.MULTILINE,
 )
 
 
