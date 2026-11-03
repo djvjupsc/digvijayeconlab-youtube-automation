@@ -1,4 +1,3 @@
-import json
 import os
 import sys
 import urllib.error
@@ -10,6 +9,8 @@ API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:gene
 
 
 def call_gemini(api_key, payload):
+    import json
+
     request = urllib.request.Request(
         API_URL,
         data=json.dumps(payload).encode("utf-8"),
@@ -24,6 +25,13 @@ def call_gemini(api_key, payload):
         raise SystemExit(f"Gemini correction failed (HTTP {exc.code}): {detail}") from exc
     except (urllib.error.URLError, TimeoutError) as exc:
         raise SystemExit(f"Gemini correction connection failed: {exc}") from exc
+
+
+def extract_section(text, start_marker, end_marker):
+    if start_marker not in text or end_marker not in text:
+        raise SystemExit(f"Gemini response is missing required section marker: {start_marker}")
+    section = text.split(start_marker, 1)[1].split(end_marker, 1)[0]
+    return section.strip()
 
 
 def main():
@@ -49,11 +57,20 @@ notation, grammar, formatting, and consistency problems. Resolve [VERIFY] marker
 only when source notes establish the answer; otherwise retain a clear
 [HUMAN VERIFY: ...] marker and list it as unresolved. If a factual change is not
 supported by source notes, do not silently apply it. Do not remove caveats to make
-the script appear ready. Return valid JSON only with exactly these keys:
-corrected_script (complete corrected Markdown script), correction_log (array of
-specific changes or reasons retained), unresolved_items (array of human/source
-verification items). The script must not include the correction log. Never label
-the script fact-checked, certified, or approved for publication."""
+the script appear ready. Never label the script fact-checked, certified, or approved
+for publication.
+
+Return plain text using these exact delimiters, with no JSON and no code fences:
+<<<CORRECTED_SCRIPT_START>>>
+the complete corrected Markdown script
+<<<CORRECTED_SCRIPT_END>>>
+<<<CORRECTION_LOG_START>>>
+one bullet per specific correction or reason an issue was retained
+<<<CORRECTION_LOG_END>>>
+<<<UNRESOLVED_ITEMS_START>>>
+one bullet per item requiring human/source verification, or write "- None reported; human review is still required."
+<<<UNRESOLVED_ITEMS_END>>>
+Do not omit or rename any delimiter. Do not put commentary outside these sections."""
 
     user_prompt = f"""SOURCE NOTES:
 {source_notes if source_notes.strip() else "[No source notes supplied. Factual claims cannot be independently verified.]"}
@@ -61,16 +78,12 @@ ORIGINAL SCRIPT:
 {script}
 ACADEMIC REVIEW REPORT:
 {review}
-Apply safe, evidence-grounded corrections and return the required JSON."""
+Apply safe, evidence-grounded corrections and return the delimited response."""
 
     payload = {
         "systemInstruction": {"parts": [{"text": system_prompt}]},
         "contents": [{"role": "user", "parts": [{"text": user_prompt}]}],
-        "generationConfig": {
-            "temperature": 0.1,
-            "maxOutputTokens": 8192,
-            "responseMimeType": "application/json",
-        },
+        "generationConfig": {"temperature": 0.1, "maxOutputTokens": 8192},
     }
     result = call_gemini(api_key, payload)
     candidates = result.get("candidates", [])
@@ -78,41 +91,33 @@ Apply safe, evidence-grounded corrections and return the required JSON."""
         raise SystemExit("Gemini returned no correction candidate.")
     parts = candidates[0].get("content", {}).get("parts", [])
     raw = "\n".join(p.get("text", "") for p in parts if p.get("text"))
-    try:
-        data = json.loads(raw)
-    except (json.JSONDecodeError, TypeError) as exc:
-        raise SystemExit(f"Gemini returned invalid correction JSON: {exc}") from exc
+    if not raw.strip():
+        raise SystemExit("Gemini returned an empty correction response.")
 
-    corrected = data.get("corrected_script")
-    log = data.get("correction_log", [])
-    unresolved = data.get("unresolved_items", [])
-    if not isinstance(corrected, str) or not corrected.strip():
-        raise SystemExit("Correction response did not contain a complete corrected_script.")
-    if not isinstance(log, list) or not isinstance(unresolved, list):
-        raise SystemExit("Correction log or unresolved_items has an invalid format.")
+    corrected = extract_section(raw, "<<<CORRECTED_SCRIPT_START>>>", "<<<CORRECTED_SCRIPT_END>>>")
+    log_text = extract_section(raw, "<<<CORRECTION_LOG_START>>>", "<<<CORRECTION_LOG_END>>>")
+    unresolved_text = extract_section(raw, "<<<UNRESOLVED_ITEMS_START>>>", "<<<UNRESOLVED_ITEMS_END>>>")
+    if not corrected:
+        raise SystemExit("Correction response did not contain a complete corrected script.")
 
     corrected_dir, report_dir = Path("output/corrected_scripts"), Path("output/corrections")
     corrected_dir.mkdir(parents=True, exist_ok=True)
     report_dir.mkdir(parents=True, exist_ok=True)
     corrected_path = corrected_dir / script_path.name
     report_path = report_dir / f"{script_path.stem}-correction-log.md"
-    corrected_path.write_text(corrected.strip() + "\n", encoding="utf-8")
+    corrected_path.write_text(corrected + "\n", encoding="utf-8")
 
-    lines = [
-        "# Script Correction Log", "",
-        "> AI-assisted editing only. Not factual certification or publication approval.", "",
-        "## Changes made", "",
-    ]
-    lines.extend([f"- {item}" for item in log] or ["- No specific changes reported."])
-    lines.extend(["", "## Unresolved human-verification items", ""])
-    lines.extend([f"- {item}" for item in unresolved] or
-                 ["- None reported by the correction model; human review is still required."])
-    lines.extend([
-        "", "## Required human action", "",
+    report = (
+        "# Script Correction Log\n\n"
+        "> AI-assisted editing only. Not factual certification or publication approval.\n\n"
+        "## Changes made\n\n" + (log_text or "- No specific changes reported.") + "\n\n"
+        "## Unresolved human-verification items\n\n" +
+        (unresolved_text or "- None reported; human review is still required.") +
+        "\n\n## Required human action\n\n"
         "Compare the corrected script with the original, verify factual claims against "
-        "authoritative sources, and approve all edits before production.",
-    ])
-    report_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        "authoritative sources, and approve all edits before production.\n"
+    )
+    report_path.write_text(report, encoding="utf-8")
     print(f"Corrected script generated: {corrected_path}")
     print(f"Correction log generated: {report_path}")
     print("Status: EDITED DRAFT ONLY — human comparison, fact-check, and approval required.")
