@@ -1,0 +1,26 @@
+{
+  "brand": "DigvijayEconLab",
+  "language": ["Hindi", "English"],
+  "timezone": "Asia/Kolkata",
+  "audience": "MPPSC Assistant Professor Economics aspirants",
+  "content_pillars": [
+    "MPPSC Assistant Professor Economics syllabus",
+    "Economics concepts explained with Indian examples",
+    "Previous-year-question analysis",
+    "Topic-wise multiple-choice questions with explanations",
+    "Indian economy and Madhya Pradesh economy"
+  ],
+  "quality_rules": {
+    "require_original_script": true,
+    "require_answer_explanations_for_mcqs": true,
+    "require_source_notes_for_factual_claims": true,
+    "avoid_repetitive_mass_production": true,
+    "no_unlicensed_music": true,
+    "no_fake_engagement": true
+  },
+  "publishing": {
+    "enabled": false,
+    "default_privacy": "private",
+    "require_human_approval": true
+  }
+}
