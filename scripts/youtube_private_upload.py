@@ -1,6 +1,7 @@
-"""Upload the audited daily Short to YouTube as PRIVATE for human review.
+"""Stage audited Shorts or one featured lesson as PRIVATE YouTube videos.
 
-Uses YouTube's resumable-upload protocol. This script has no public-publishing path.
+Uses the YouTube resumable-upload protocol. This script deliberately has no public
+publishing path. The channel owner makes every public-release decision in Studio.
 """
 import json
 import os
@@ -45,16 +46,16 @@ def upload_private_video(video_path, metadata, access_token, opener=urllib.reque
     """Initiate a resumable upload, send the MP4, and verify PRIVATE visibility."""
     path = Path(video_path)
     if not path.is_file() or path.stat().st_size == 0:
-        raise YouTubeUploadError("Short MP4 is missing or empty.")
-    title = metadata.get("short_title")
-    description = metadata.get("short_description", "")
+        raise YouTubeUploadError("Video MP4 is missing or empty.")
+    title = metadata.get("video_title") or metadata.get("short_title")
+    description = metadata.get("description") or metadata.get("short_description", "")
     if not isinstance(title, str) or not title.strip():
-        raise YouTubeUploadError("Short title is missing.")
+        raise YouTubeUploadError("Video title is missing.")
     if not isinstance(description, str):
-        raise YouTubeUploadError("Short description must be text.")
+        raise YouTubeUploadError("Video description must be text.")
     tags = metadata.get("tags", ["DigvijayEconLab", "Economics"])
     if not isinstance(tags, list) or any(not isinstance(tag, str) for tag in tags):
-        raise YouTubeUploadError("Short tags must be a list of strings.")
+        raise YouTubeUploadError("Video tags must be a list of strings.")
 
     payload = {
         "snippet": {
@@ -133,37 +134,96 @@ def upload_private_video(video_path, metadata, access_token, opener=urllib.reque
     }
 
 
+def _load_upload_job(root, publication_date, kind):
+    if kind == "short":
+        audit_path = root / "output/shorts" / f"{publication_date}-prepublish-audit.json"
+        metadata_path = root / "output/shorts" / f"{publication_date}-short.json"
+        video_path = root / "output/shorts" / f"{publication_date}-digvijayeconlab-short.mp4"
+        if not audit_path.is_file() or not metadata_path.is_file() or not video_path.is_file():
+            return None, "Short audit, storyboard or rendered MP4 is missing."
+        audit = json.loads(audit_path.read_text(encoding="utf-8"))
+        if audit.get("status") != "pass" or audit.get("human_review_required") is not True:
+            return None, "Short is not eligible: technical audit did not pass or human review flag is missing."
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        return (video_path, metadata, audit), None
+
+    render_path = root / "output/longform" / f"{publication_date}-longform-render.json"
+    if not render_path.is_file():
+        return None, "Long-form render report is missing."
+    render = json.loads(render_path.read_text(encoding="utf-8"))
+    technical = render.get("technical", {})
+    eligible = (
+        render.get("audit_status") == "pass"
+        and render.get("upload_eligible") is True
+        and render.get("voice_clone_used") is True
+        and render.get("music") == "none"
+        and render.get("review_required") is True
+        and technical.get("width") == 1920
+        and technical.get("height") == 1080
+        and technical.get("video_codec") == "h264"
+        and int(technical.get("audio_streams", 0)) > 0
+        and float(technical.get("duration_seconds", 0)) > 0
+    )
+    if not eligible:
+        return None, "Long-form video is not eligible: owner voice, audit, no-music, human-review or technical checks did not pass."
+    video_path = Path(render.get("video", ""))
+    if not video_path.is_absolute():
+        video_path = root / video_path
+    if not video_path.is_file():
+        return None, "Long-form MP4 is missing."
+    seo_path = root / "output/seo" / f"{publication_date}-seo-metadata.json"
+    if not seo_path.is_file():
+        return None, "Long-form SEO metadata is missing."
+    seo_rows = json.loads(seo_path.read_text(encoding="utf-8"))
+    unit = int(render.get("unit", 0))
+    metadata = next((row for row in seo_rows if int(row.get("unit", 0)) == unit), None)
+    if not metadata:
+        return None, "Long-form SEO metadata for the featured unit is missing."
+    metadata = {
+        "video_title": metadata.get("video_title"),
+        "description": metadata.get("description"),
+        "tags": metadata.get("tags", []),
+    }
+    return (video_path, metadata, render), None
+
+
 def main():
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("publication_date")
+    parser.add_argument("--kind", choices=("short", "longform"), default="short")
     parser.add_argument("--root", default=".")
     args = parser.parse_args()
     root = Path(args.root)
     report_dir = root / "output/youtube"
     report_dir.mkdir(parents=True, exist_ok=True)
-    report_path = report_dir / f"{args.publication_date}-private-upload.json"
+    report_path = report_dir / f"{args.publication_date}-{args.kind}-private-upload.json"
 
     if os.environ.get("YOUTUBE_PRIVATE_UPLOAD_ENABLED", "").strip().lower() != "true":
         report = {
             "status": "disabled",
+            "kind": args.kind,
             "uploaded": False,
-            "message": "Private upload is disabled. Set repository variable YOUTUBE_PRIVATE_UPLOAD_ENABLED=true to enable private review uploads.",
+            "message": "Private upload is disabled. Set YOUTUBE_PRIVATE_UPLOAD_ENABLED=true to enable PRIVATE review uploads.",
         }
-        report_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+        report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         print(report["message"])
         return 0
 
-    audit_path = root / "output/shorts" / f"{args.publication_date}-prepublish-audit.json"
-    storyboard_path = root / "output/shorts" / f"{args.publication_date}-short.json"
-    video_path = root / "output/shorts" / f"{args.publication_date}-digvijayeconlab-short.mp4"
-    if not audit_path.is_file():
-        raise SystemExit("Private upload blocked: pre-publication audit report is missing.")
-    audit = json.loads(audit_path.read_text(encoding="utf-8"))
-    if audit.get("status") != "pass" or audit.get("human_review_required") is not True:
-        raise SystemExit("Private upload blocked: technical audit did not pass or review flag is missing.")
-    if not storyboard_path.is_file() or not video_path.is_file():
-        raise SystemExit("Private upload blocked: storyboard or rendered Short is missing.")
+    try:
+        job, issue = _load_upload_job(root, args.publication_date, args.kind)
+    except (OSError, json.JSONDecodeError, KeyError, ValueError) as exc:
+        raise SystemExit(f"Could not validate the {args.kind} upload package: {exc}") from exc
+    if issue:
+        report = {
+            "status": "skipped_not_eligible",
+            "kind": args.kind,
+            "uploaded": False,
+            "message": issue,
+        }
+        report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        print(issue)
+        return 0
 
     credentials = [os.environ.get(key) for key in (
         "YOUTUBE_OAUTH_CLIENT_ID", "YOUTUBE_OAUTH_CLIENT_SECRET", "YOUTUBE_OAUTH_REFRESH_TOKEN"
@@ -171,20 +231,21 @@ def main():
     if not all(credentials):
         raise SystemExit("Private upload blocked: YouTube OAuth GitHub secrets are incomplete.")
 
+    video_path, metadata, audit = job
     try:
         token = _refresh_access_token(*credentials)
-        metadata = json.loads(storyboard_path.read_text(encoding="utf-8"))
         result = upload_private_video(video_path, metadata, token)
     except (OSError, json.JSONDecodeError, YouTubeUploadError) as exc:
         raise SystemExit(str(exc)) from exc
 
     report = {
         "status": "uploaded_private",
+        "kind": args.kind,
         "uploaded": True,
         **result,
         "human_review_required": True,
         "public_publishing": "not_supported_by_this_script",
-        "next_step": "Review the private video in YouTube Studio. Publish manually only after checking accuracy, rights, captions and the altered-content disclosure.",
+        "next_step": "Review the private video in YouTube Studio. Publish manually only after checking academic accuracy, rights, captions and the altered-content disclosure.",
     }
     report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(report, ensure_ascii=False, indent=2))
