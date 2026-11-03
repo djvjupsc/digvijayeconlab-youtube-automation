@@ -313,8 +313,40 @@ Ten SEO inputs (use the supplied playlist title for each unit; match unit number
     (community_dir / f"{date}-community-post.md").write_text(
         "\n".join(community) + "\n", encoding="utf-8"
     )
+    seo_by_unit = sorted(data["seo_metadata"], key=lambda item: item["unit"])
+    seo_markdown = [
+        f"# YouTube SEO Metadata — DigvijayEconLab — {date}",
+        "",
+        "> Draft metadata only. Keywords are editorial suggestions, not search-volume or ranking claims.",
+        "",
+    ]
+    for item in seo_by_unit:
+        seo_markdown += [
+            f"## Unit {item['unit']}",
+            f"**Playlist:** {item['playlist_title']}",
+            f"**Primary title:** {item['video_title']}",
+            "**Alternative titles:**",
+            *[f"- {title}" for title in item["alternative_titles"]],
+            f"**Primary keyword:** {item['primary_keyword']}",
+            f"**Secondary keywords:** {', '.join(item['secondary_keywords'])}",
+            "",
+            "**Description:**",
+            item["description"],
+            "",
+            f"**Tags:** {', '.join(item['tags'])}",
+            f"**Hashtags:** {' '.join(item['hashtags'])}",
+            f"**Thumbnail text options:** {' | '.join(item['thumbnail_text_options'])}",
+            "",
+        ]
+    (seo_dir / f"{date}-seo-metadata.md").write_text(
+        "\\n".join(seo_markdown) + "\\n", encoding="utf-8"
+    )
+    (seo_dir / f"{date}-seo-metadata.json").write_text(
+        json.dumps(seo_by_unit, ensure_ascii=False, indent=2) + "\\n", encoding="utf-8"
+    )
     print(f"Short storyboard and structured scene file saved for {date}.")
     print(f"Community post and poll draft saved for {date}.")
+    print(f"SEO metadata for all ten units saved for {date}.")
 
 
 if __name__ == "__main__":
