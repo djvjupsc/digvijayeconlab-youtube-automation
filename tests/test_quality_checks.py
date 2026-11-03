@@ -140,5 +140,32 @@ Price and quantity demanded are inversely related, other things equal.
         self.assertNotIn("MCQ_EXPLANATION_GAP", codes)
 
 
+    def test_counts_actual_generated_mcq_heading_and_bilingual_labels(self):
+        source = """## Learning Objectives
+Understand the law of demand.
+## Definition
+The law describes an inverse price-quantity demanded relationship.
+## Worked Example / Application
+Assume a hypothetical market. Price falls from ₹10 to ₹8, while quantity demanded rises from 20 to 25 units.
+## Recap
+Price and quantity demanded move in opposite directions, other things equal.
+"""
+        for number in range(1, 6):
+            source += (
+                f"\\n### MCQ {number}\\n"
+                "A) Option A\\nB) Option B\\nC) Option C\\nD) Option D\\n"
+                "* **Correct Answer / सही उत्तर:** B\\n"
+                "* **Explanation (English):** The English rationale.\\n"
+                "* **Explanation (Hindi):** हिंदी में व्याख्या।\\n"
+            )
+        from scripts.quality_checks import count_mcq_sections
+        self.assertEqual(count_mcq_sections(source), (5, 5, 5))
+        findings = analyze_script(source, "Concept Explainer", "English")
+        codes = {item["code"] for item in findings}
+        self.assertNotIn("MCQ_COUNT_BELOW_MINIMUM", codes)
+        self.assertNotIn("MCQ_ANSWER_GAP", codes)
+        self.assertNotIn("MCQ_EXPLANATION_GAP", codes)
+
+
 if __name__ == "__main__":
     unittest.main()
