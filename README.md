@@ -23,7 +23,7 @@ The repository is in **safe setup mode**. Script drafting is available as a manu
 4. Download the `digvijayeconlab-script-draft` artifact from the completed workflow run.
 5. Fact-check and edit the draft before using it in a video.
 
-The workflow uses the Gemini API model `gemini-2.5-flash-lite`. Availability, free-tier quotas, model access and provider terms can change. Free-tier use is subject to Google's applicable limits and data-use terms; do not submit personal, confidential, or sensitive information. This workflow does not configure paid billing.
+The workflow uses the Gemini Developer API model `gemini-3.5-flash-lite`. Google currently lists this model with free-tier input and output pricing, subject to project eligibility and rate limits. Free-tier requests may be used by Google to improve its products; do not submit personal, confidential, or sensitive information. This workflow does not configure paid billing. A Google AI Pro consumer subscription is separate from Gemini Developer API access and does not automatically provide API credits or free-tier eligibility.
 
 ## Run the preflight locally
 
