@@ -1,3 +1,4 @@
+import json
 import os
 import sys
 import urllib.error
@@ -7,10 +8,18 @@ from pathlib import Path
 MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
 API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
 
+RESPONSE_SCHEMA = {
+    "type": "OBJECT",
+    "properties": {
+        "corrected_script": {"type": "STRING"},
+        "correction_log": {"type": "ARRAY", "items": {"type": "STRING"}},
+        "unresolved_items": {"type": "ARRAY", "items": {"type": "STRING"}},
+    },
+    "required": ["corrected_script", "correction_log", "unresolved_items"],
+}
+
 
 def call_gemini(api_key, payload):
-    import json
-
     request = urllib.request.Request(
         API_URL,
         data=json.dumps(payload).encode("utf-8"),
@@ -27,10 +36,40 @@ def call_gemini(api_key, payload):
         raise SystemExit(f"Gemini correction connection failed: {exc}") from exc
 
 
-def extract_section(text, start_marker, end_marker):
-    if start_marker not in text or end_marker not in text:
-        raise ValueError(f"Missing section marker: {start_marker}")
-    return text.split(start_marker, 1)[1].split(end_marker, 1)[0].strip()
+def parse_structured_response(raw, original_script):
+    """Return (script, correction_log, unresolved_items, fallback_used).
+
+    Never attempt to salvage partial JSON or unstructured model output.
+    """
+    try:
+        data = json.loads(raw)
+        if not isinstance(data, dict):
+            raise ValueError("Response root must be a JSON object.")
+        corrected = data.get("corrected_script")
+        changes = data.get("correction_log")
+        unresolved = data.get("unresolved_items")
+        if not isinstance(corrected, str) or not corrected.strip():
+            raise ValueError("corrected_script must be a non-empty string.")
+        if not isinstance(changes, list) or not all(isinstance(x, str) for x in changes):
+            raise ValueError("correction_log must be an array of strings.")
+        if not isinstance(unresolved, list) or not all(isinstance(x, str) for x in unresolved):
+            raise ValueError("unresolved_items must be an array of strings.")
+        return corrected.strip(), changes, unresolved, False
+    except (json.JSONDecodeError, ValueError) as exc:
+        return (
+            original_script,
+            [
+                "No edits were applied. Gemini did not return a valid structured response; "
+                "the original script was retained unchanged.",
+                f"Structured-response validation issue: {exc}",
+            ],
+            [
+                "Review the original script manually; the AI correction stage did not "
+                "produce a safely validated revision.",
+                "Verify factual claims against authoritative sources.",
+            ],
+            True,
+        )
 
 
 def main():
@@ -52,24 +91,20 @@ Apply only corrections supported by the supplied script, review, or source notes
 Do not browse, invent facts, invent citations, or claim independent verification.
 Preserve topic, teaching sequence, examples, MCQs, answer keys, bilingual structure,
 and useful detail unless a specific issue requires a change. Correct clear editorial,
-notation, grammar, formatting, and consistency problems. Resolve [VERIFY] markers
-only when source notes establish the answer; otherwise retain a clear
-[HUMAN VERIFY: ...] marker and list it as unresolved. If a factual change is not
-supported by source notes, do not silently apply it. Do not remove caveats to make
-the script appear ready. Never label the script fact-checked, certified, or approved
-for publication.
+notation, grammar, formatting, translation parity, and consistency problems.
+Resolve [VERIFY] markers only when source notes establish the answer; otherwise
+retain a clear [HUMAN VERIFY: ...] marker and list it as unresolved. If a factual
+change is not supported by source notes, do not silently apply it. Do not remove
+caveats to make the script appear ready. Never label the script fact-checked,
+certified, or approved for publication.
 
-Return plain text using these exact delimiters, with no JSON and no code fences:
-<<<CORRECTED_SCRIPT_START>>>
-the complete corrected Markdown script
-<<<CORRECTED_SCRIPT_END>>>
-<<<CORRECTION_LOG_START>>>
-one bullet per specific correction or reason an issue was retained
-<<<CORRECTION_LOG_END>>>
-<<<UNRESOLVED_ITEMS_START>>>
-one bullet per item requiring human/source verification, or write "- None reported; human review is still required."
-<<<UNRESOLVED_ITEMS_END>>>
-Do not omit or rename any delimiter. Do not put commentary outside these sections."""
+Return only a JSON object matching the supplied response schema:
+- corrected_script: the complete corrected Markdown script as one string
+- correction_log: array of concise strings describing actual changes or why issues
+  were retained; do not claim changes that were not made
+- unresolved_items: array of strings for every item needing human/source verification
+If no safe corrections can be made, return the original script unchanged and explain
+that in correction_log. Do not include Markdown fences or commentary outside JSON."""
 
     user_prompt = f"""SOURCE NOTES:
 {source_notes if source_notes.strip() else "[No source notes supplied. Factual claims cannot be independently verified.]"}
@@ -77,50 +112,32 @@ ORIGINAL SCRIPT:
 {script}
 ACADEMIC REVIEW REPORT:
 {review}
-Apply safe, evidence-grounded corrections and return the delimited response."""
+Apply safe, evidence-grounded corrections. Preserve all material content and the bilingual structure."""
 
     payload = {
         "systemInstruction": {"parts": [{"text": system_prompt}]},
         "contents": [{"role": "user", "parts": [{"text": user_prompt}]}],
-        "generationConfig": {"temperature": 0.1, "maxOutputTokens": 8192},
+        "generationConfig": {
+            "temperature": 0.1,
+            "maxOutputTokens": 8192,
+            "responseMimeType": "application/json",
+            "responseSchema": RESPONSE_SCHEMA,
+        },
     }
     result = call_gemini(api_key, payload)
     candidates = result.get("candidates", [])
     if not candidates:
         raise SystemExit("Gemini returned no correction candidate.")
-    parts = candidates[0].get("content", {}).get("parts", [])
+    candidate = candidates[0]
+    finish_reason = candidate.get("finishReason", "")
+    parts = candidate.get("content", {}).get("parts", [])
     raw = "\n".join(p.get("text", "") for p in parts if p.get("text"))
     if not raw.strip():
         raise SystemExit("Gemini returned an empty correction response.")
+    if finish_reason == "MAX_TOKENS":
+        raw = ""  # Truncated output must never be accepted as a complete revision.
 
-    markers = (
-        ("<<<CORRECTED_SCRIPT_START>>>", "<<<CORRECTED_SCRIPT_END>>>"),
-        ("<<<CORRECTION_LOG_START>>>", "<<<CORRECTION_LOG_END>>>"),
-        ("<<<UNRESOLVED_ITEMS_START>>>", "<<<UNRESOLVED_ITEMS_END>>>"),
-    )
-    fallback_used = False
-    try:
-        corrected, log_text, unresolved_text = [
-            extract_section(raw, start, end) for start, end in markers
-        ]
-        if not corrected:
-            raise ValueError("Corrected script section was empty.")
-    except ValueError as exc:
-        # Never guess where an unstructured or truncated model response begins.
-        # Preserve the source script verbatim and let the independent second
-        # review run on it instead of failing the entire workflow.
-        fallback_used = True
-        corrected = script
-        log_text = (
-            "- No edits were applied. Gemini did not return all required "
-            "section markers; the original script was retained unchanged.\n"
-            f"- Formatting issue: {exc}"
-        )
-        unresolved_text = (
-            "- Review the original script manually; the AI correction stage "
-            "did not produce a safely parseable revision.\n"
-            "- Verify factual claims against authoritative sources."
-        )
+    corrected, changes, unresolved, fallback_used = parse_structured_response(raw, script)
 
     corrected_dir, report_dir = Path("output/corrected_scripts"), Path("output/corrections")
     corrected_dir.mkdir(parents=True, exist_ok=True)
@@ -129,12 +146,15 @@ Apply safe, evidence-grounded corrections and return the delimited response."""
     report_path = report_dir / f"{script_path.stem}-correction-log.md"
     corrected_path.write_text(corrected.rstrip() + "\n", encoding="utf-8")
 
+    changes_text = "\n".join(f"- {item}" for item in changes) or "- No changes reported."
+    unresolved_text = "\n".join(f"- {item}" for item in unresolved) or (
+        "- None reported; human review is still required."
+    )
     report = (
         "# Script Correction Log\n\n"
         "> AI-assisted editing only. Not factual certification or publication approval.\n\n"
-        "## Changes made\n\n" + (log_text or "- No specific changes reported.") + "\n\n"
-        "## Unresolved human-verification items\n\n" +
-        (unresolved_text or "- None reported; human review is still required.") +
+        "## Changes made / retained issues\n\n" + changes_text + "\n\n"
+        "## Unresolved human-verification items\n\n" + unresolved_text +
         "\n\n## Required human action\n\n"
         "Compare the corrected script with the original, verify factual claims against "
         "authoritative sources, and approve all edits before production.\n"
@@ -143,7 +163,11 @@ Apply safe, evidence-grounded corrections and return the delimited response."""
     print(f"Corrected script generated: {corrected_path}")
     print(f"Correction log generated: {report_path}")
     if fallback_used:
-        print("WARNING: Gemini response format was invalid; original script retained unchanged.")
+        print("WARNING: Structured response validation failed; original script retained unchanged.")
+    elif corrected.strip() == script.strip():
+        print("NOTICE: No textual changes were made; inspect the correction log.")
+    else:
+        print("Structured correction response validated successfully.")
     print("Status: EDITED DRAFT ONLY — human comparison, fact-check, and approval required.")
 
 
