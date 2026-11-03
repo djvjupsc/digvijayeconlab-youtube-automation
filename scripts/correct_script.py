@@ -2,6 +2,7 @@ import json
 import os
 import re
 import sys
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -25,6 +26,10 @@ RESPONSE_SCHEMA = {
 }
 
 
+RETRYABLE_HTTP_STATUS = {408, 429, 500, 502, 503, 504}
+MAX_GEMINI_ATTEMPTS = 5
+
+
 def call_gemini(api_key, payload):
     request = urllib.request.Request(
         API_URL,
@@ -32,14 +37,37 @@ def call_gemini(api_key, payload):
         headers={"x-goog-api-key": api_key, "Content-Type": "application/json"},
         method="POST",
     )
-    try:
-        with urllib.request.urlopen(request, timeout=150) as response:
-            return json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")[:1000]
-        raise SystemExit(f"Gemini correction failed (HTTP {exc.code}): {detail}") from exc
-    except (urllib.error.URLError, TimeoutError) as exc:
-        raise SystemExit(f"Gemini correction connection failed: {exc}") from exc
+    for attempt in range(1, MAX_GEMINI_ATTEMPTS + 1):
+        try:
+            with urllib.request.urlopen(request, timeout=150) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="replace")[:1000]
+            if exc.code not in RETRYABLE_HTTP_STATUS or attempt == MAX_GEMINI_ATTEMPTS:
+                raise SystemExit(
+                    f"Gemini correction failed (HTTP {exc.code}) after {attempt} attempt(s): {detail}"
+                ) from exc
+            retry_after = exc.headers.get("Retry-After") if exc.headers else None
+            try:
+                delay = min(60, max(1, int(retry_after))) if retry_after else min(30, 4 * (2 ** (attempt - 1)))
+            except ValueError:
+                delay = min(30, 4 * (2 ** (attempt - 1)))
+            print(
+                f"Gemini returned temporary HTTP {exc.code}; retrying "
+                f"attempt {attempt + 1}/{MAX_GEMINI_ATTEMPTS} in {delay}s."
+            )
+            time.sleep(delay)
+        except (urllib.error.URLError, TimeoutError) as exc:
+            if attempt == MAX_GEMINI_ATTEMPTS:
+                raise SystemExit(
+                    f"Gemini correction connection failed after {attempt} attempts: {exc}"
+                ) from exc
+            delay = min(30, 4 * (2 ** (attempt - 1)))
+            print(
+                f"Gemini connection issue; retrying "
+                f"attempt {attempt + 1}/{MAX_GEMINI_ATTEMPTS} in {delay}s."
+            )
+            time.sleep(delay)
 
 
 def parse_structured_response(raw, original_script):
