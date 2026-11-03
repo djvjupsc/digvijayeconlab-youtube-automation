@@ -158,7 +158,8 @@ def _run(command, env, label):
     print(f"\n===== {label} =====", flush=True)
     subprocess.run(command, cwd=ROOT, env=env, check=True)
     if label.startswith(("Generate Unit", "Review original Unit", "Correct Unit", "Review corrected Unit", "Generate the daily Short")):
-        time.sleep(4.0)  # Keep sequential Gemini calls near 15 requests/minute or slower.\n
+        time.sleep(4.0)  # Keep sequential Gemini calls near 15 requests/minute or slower.
+
 
 def process(args):
     manifest = load_json(args.manifest)
