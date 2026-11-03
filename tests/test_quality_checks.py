@@ -95,6 +95,32 @@ Demand curves slope downward.
             {item["code"] for item in findings}
         )
 
+    def test_accepts_demand_schedule_with_nested_bilingual_subheadings(self):
+        source = """## Learning Objectives
+Understand demand.
+## Definition
+Demand is the relationship between price and quantity demanded.
+## 4. Demand Schedule and Mathematical Derivation
+### English
+A demand schedule shows the inverse relationship between price and quantity demanded.
+The function Qd = 40 - 2P gives the following hypothetical schedule.
+### Hindi
+मांग अनुसूची कीमत और मांग की मात्रा के बीच विपरीत संबंध दिखाती है।
+| Price | Quantity |
+|---:|---:|
+| 10 | 20 |
+| 20 | 15 |
+| 30 | 10 |
+| 40 | 5 |
+## Recap
+A lower price is associated with greater quantity demanded, other things equal.
+"""
+        findings = analyze_script(source, "Concept Explainer", "Bilingual")
+        self.assertNotIn(
+            "WORKED_EXAMPLE_OR_DEMAND_SCHEDULE_MISSING",
+            {item["code"] for item in findings}
+        )
+
     def test_accepts_populated_demand_schedule_table(self):
         source = """## Learning Objectives
 Understand demand.
