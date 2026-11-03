@@ -24,8 +24,8 @@ class OriginalVerificationMarkerTests(unittest.TestCase):
     def test_preserves_duplicate_occurrences_of_same_marker(self):
         marker = "[VERIFY source needed]"
         updated, changes, unresolved = preserve_original_verification_markers(
-            f"First claim {marker}. Second claim {marker}.",
-            "# Corrected draft without markers."
+            "# Corrected draft without markers.",
+            f"First claim {marker}. Second claim {marker}."
         )
         self.assertEqual(updated.count(marker), 2)
         self.assertEqual(len(changes), 2)
