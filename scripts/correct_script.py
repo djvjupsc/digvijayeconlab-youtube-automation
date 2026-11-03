@@ -132,6 +132,15 @@ def main():
     review = review_path.read_text(encoding="utf-8")
     system_prompt = """You are a careful academic script editor for DigvijayEconLab,
 serving MPPSC Assistant Professor Economics aspirants.
+Resolve every Critical and High-Priority issue explicitly identified in the academic review.
+For the Law of Demand individual-demand explanation, qualify the income/substitution
+decomposition as the standard neoclassical Hicks/Slutsky framework; avoid saying it
+explains demand entirely across all theoretical approaches. Preserve the distinction
+between individual and market demand.
+For Giffen-goods bilingual parity, ensure the Hindi version includes the same historical
+details as the English version, including Alfred Marshall's Principles of Economics (1895)
+and the fact that attribution and the traditional Irish potato example are debated.
+Use supplied source notes when correcting historical statements; do not invent citations.
 Apply only corrections supported by the supplied script, review, or source notes.
 Do not browse, invent facts, invent citations, or claim independent verification.
 Preserve topic, teaching sequence, examples, MCQs, answer keys, bilingual structure,
