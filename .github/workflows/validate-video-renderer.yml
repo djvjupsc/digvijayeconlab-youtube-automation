@@ -1,0 +1,64 @@
+name: Validate educational video renderer
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-renderer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install renderer dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ffmpeg fonts-noto-core fonts-dejavu-core
+          python -m pip install --upgrade pip
+          python -m pip install Pillow
+
+      - name: Compile project and run existing tests
+        run: |
+          python -m compileall -q scripts tests
+          python -m unittest discover -s tests -v
+
+      - name: Validate caption timing and demand-curve drawing
+        run: |
+          python - <<'PY'
+          import tempfile
+          from pathlib import Path
+          from PIL import Image, ImageDraw
+          from scripts.render_longform_video import draw_demand_curve, write_group_srt
+
+          with tempfile.TemporaryDirectory() as directory:
+              root = Path(directory)
+              srt = root / "sample.srt"
+              write_group_srt(
+                  "The law of demand explains the inverse relationship between price and quantity demanded. मांग का नियम कीमत और मांग की मात्रा के बीच विपरीत संबंध बताता है।",
+                  12.5,
+                  srt,
+              )
+              content = srt.read_text(encoding="utf-8")
+              assert "00:00:00,000 -->" in content
+              assert "मांग का नियम" in content
+              assert "-->" in content
+
+              image = Image.new("RGB", (1920, 1080), (8, 22, 48))
+              draw_demand_curve(ImageDraw.Draw(image), (255, 196, 90))
+              graph = root / "demand-curve.png"
+              image.save(graph)
+              assert graph.stat().st_size > 1000
+
+          print("Renderer checks passed: bilingual SRT and demand-curve graphic.")
+          PY
