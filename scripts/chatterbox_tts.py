@@ -106,7 +106,7 @@ def _get_client():
         token = os.environ.get("HF_TOKEN", "").strip() or None
         try:
             from gradio_client import Client
-            _CLIENT = Client(space, hf_token=token, verbose=False)
+            _CLIENT = Client(space, token=token, verbose=False)
         except Exception as exc:
             raise RuntimeError(
                 f"Unable to connect to the free Chatterbox Space {space}. "
