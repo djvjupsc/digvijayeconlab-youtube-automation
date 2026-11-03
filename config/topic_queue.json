@@ -2,15 +2,87 @@
   "version": 1,
   "description": "Controlled DigvijayEconLab Economics topic queue. Add new items with status pending; existing IDs and topic names must remain unique.",
   "items": [
-    {"id":"micro-elasticity-of-demand","topic":"Elasticity of Demand","language":"Bilingual","content_format":"Concept Explainer","source_notes":"","status":"pending"},
-    {"id":"micro-types-of-price-elasticity","topic":"Types and Degrees of Price Elasticity of Demand","language":"Bilingual","content_format":"Concept Explainer","source_notes":"","status":"pending"},
-    {"id":"micro-income-cross-elasticity","topic":"Income Elasticity and Cross Elasticity of Demand","language":"Bilingual","content_format":"Concept Explainer","source_notes":"","status":"pending"},
-    {"id":"micro-cardinal-consumer-equilibrium","topic":"Consumer Equilibrium: Cardinal Utility Analysis","language":"Bilingual","content_format":"Concept Explainer","source_notes":"","status":"pending"},
-    {"id":"micro-indifference-curve-analysis","topic":"Indifference Curve Analysis","language":"Bilingual","content_format":"Concept Explainer","source_notes":"","status":"pending"},
-    {"id":"micro-production-function","topic":"Production Function: Short Run and Long Run","language":"Bilingual","content_format":"Concept Explainer","source_notes":"","status":"pending"},
-    {"id":"micro-law-variable-proportions","topic":"Law of Variable Proportions","language":"Bilingual","content_format":"Concept Explainer","source_notes":"","status":"pending"},
-    {"id":"micro-returns-to-scale","topic":"Returns to Scale","language":"Bilingual","content_format":"Concept Explainer","source_notes":"","status":"pending"},
-    {"id":"micro-cost-curves","topic":"Cost Concepts and Cost Curves","language":"Bilingual","content_format":"Concept Explainer","source_notes":"","status":"pending"},
-    {"id":"micro-perfect-competition","topic":"Perfect Competition: Price and Output Determination","language":"Bilingual","content_format":"Concept Explainer","source_notes":"","status":"pending"}
+    {
+      "id": "micro-elasticity-of-demand",
+      "topic": "Elasticity of Demand",
+      "language": "Bilingual",
+      "content_format": "Concept Explainer",
+      "source_notes": "",
+      "status": "processing",
+      "claimed_by": "41595451762",
+      "claimed_at": "2026-11-03T07:18:37Z"
+    },
+    {
+      "id": "micro-types-of-price-elasticity",
+      "topic": "Types and Degrees of Price Elasticity of Demand",
+      "language": "Bilingual",
+      "content_format": "Concept Explainer",
+      "source_notes": "",
+      "status": "pending"
+    },
+    {
+      "id": "micro-income-cross-elasticity",
+      "topic": "Income Elasticity and Cross Elasticity of Demand",
+      "language": "Bilingual",
+      "content_format": "Concept Explainer",
+      "source_notes": "",
+      "status": "pending"
+    },
+    {
+      "id": "micro-cardinal-consumer-equilibrium",
+      "topic": "Consumer Equilibrium: Cardinal Utility Analysis",
+      "language": "Bilingual",
+      "content_format": "Concept Explainer",
+      "source_notes": "",
+      "status": "pending"
+    },
+    {
+      "id": "micro-indifference-curve-analysis",
+      "topic": "Indifference Curve Analysis",
+      "language": "Bilingual",
+      "content_format": "Concept Explainer",
+      "source_notes": "",
+      "status": "pending"
+    },
+    {
+      "id": "micro-production-function",
+      "topic": "Production Function: Short Run and Long Run",
+      "language": "Bilingual",
+      "content_format": "Concept Explainer",
+      "source_notes": "",
+      "status": "pending"
+    },
+    {
+      "id": "micro-law-variable-proportions",
+      "topic": "Law of Variable Proportions",
+      "language": "Bilingual",
+      "content_format": "Concept Explainer",
+      "source_notes": "",
+      "status": "pending"
+    },
+    {
+      "id": "micro-returns-to-scale",
+      "topic": "Returns to Scale",
+      "language": "Bilingual",
+      "content_format": "Concept Explainer",
+      "source_notes": "",
+      "status": "pending"
+    },
+    {
+      "id": "micro-cost-curves",
+      "topic": "Cost Concepts and Cost Curves",
+      "language": "Bilingual",
+      "content_format": "Concept Explainer",
+      "source_notes": "",
+      "status": "pending"
+    },
+    {
+      "id": "micro-perfect-competition",
+      "topic": "Perfect Competition: Price and Output Determination",
+      "language": "Bilingual",
+      "content_format": "Concept Explainer",
+      "source_notes": "",
+      "status": "pending"
+    }
   ]
 }
