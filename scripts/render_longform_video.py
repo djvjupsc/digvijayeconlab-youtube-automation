@@ -305,11 +305,11 @@ def write_group_srt(text, duration, path):
         if line:
             lines.append(line)
         entries.append(
-            f"{index + 1}\\n{srt_timestamp(cursor)} --> {srt_timestamp(end)}\\n"
-            + "\\n".join(lines[:2])
+            f"{index + 1}\n{srt_timestamp(cursor)} --> {srt_timestamp(end)}\n"
+            + "\n".join(lines[:2])
         )
         cursor = end
-    Path(path).write_text("\\n\\n".join(entries) + "\\n", encoding="utf-8")
+    Path(path).write_text("\n\n".join(entries) + "\n", encoding="utf-8")
 
 
 def escape_filter_path(path):
@@ -489,7 +489,7 @@ def main():
         ],
     }
     report_path = output_dir / f"{date}-longform-render.json"
-    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\\n", encoding="utf-8")
+    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(report, ensure_ascii=False, indent=2))
 
 
