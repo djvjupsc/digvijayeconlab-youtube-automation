@@ -116,7 +116,7 @@ class TopicQueueTests(unittest.TestCase):
         finish(finish_args)
         self.assertEqual(load_queue(self.queue_path)["items"][0]["status"], "failed")
 
-    def test_recovers_only_stale_processing_claims(self):
+    def test_marks_stale_processing_claims_without_requeueing(self):
         data = load_queue(self.queue_path)
         data["items"][0]["status"] = "processing"
         data["items"][0]["claimed_by"] = "old-run"
@@ -128,7 +128,7 @@ class TopicQueueTests(unittest.TestCase):
         data["items"][1]["claimed_at"] = datetime.now(timezone.utc).isoformat()
         recovered = recover_stale_claims(data)
         self.assertEqual(recovered, ["topic-one"])
-        self.assertEqual(data["items"][0]["status"], "pending")
+        self.assertEqual(data["items"][0]["status"], "stale")
         self.assertEqual(data["items"][1]["status"], "processing")
 
     def test_rejects_invalid_format(self):
@@ -137,6 +137,24 @@ class TopicQueueTests(unittest.TestCase):
         save_queue(self.queue_path, data)
         with self.assertRaisesRegex(ValueError, "unsupported content format"):
             load_queue(self.queue_path)
+
+
+    def test_stale_item_is_not_selected_for_generation(self):
+        data = load_queue(self.queue_path)
+        data["items"][0]["status"] = "stale"
+        data["items"][1]["status"] = "completed"
+        save_queue(self.queue_path, data)
+        output_path = Path(self.temp_dir.name) / "github_output.txt"
+        args = type("Args", (), {
+            "queue": str(self.queue_path),
+            "run_id": "999",
+            "github_output": str(output_path),
+        })()
+        self.assertEqual(claim(args), 0)
+        outputs = output_path.read_text(encoding="utf-8")
+        self.assertIn("claimed", outputs)
+        self.assertIn("false", outputs)
+        self.assertEqual(load_queue(self.queue_path)["items"][0]["status"], "stale")
 
 
 if __name__ == "__main__":
