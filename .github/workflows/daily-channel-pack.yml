@@ -80,6 +80,8 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: gemini-3.5-flash-lite
+          HEYGEN_API_KEY: ${{ secrets.HEYGEN_API_KEY }}
+          HEYGEN_VOICE_ID: ${{ secrets.HEYGEN_VOICE_ID }}
         run: |
           python scripts/daily_production.py process --manifest output/daily_manifest.json
 
@@ -97,6 +99,7 @@ jobs:
             output/quality_checks/*.md
             output/shorts/*
             output/community/*
+            output/seo/*
           if-no-files-found: warn
           retention-days: 14
 

@@ -5,6 +5,7 @@ for MP4 assembly. No music or third-party media is added.
 """
 
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -128,8 +129,16 @@ def main():
 
     tts = shutil.which("espeak-ng") or shutil.which("espeak")
     ffmpeg = shutil.which("ffmpeg")
-    if not tts or not ffmpeg:
-        raise SystemExit("This renderer requires espeak-ng (or espeak) and ffmpeg.")
+    heygen_enabled = bool(os.environ.get("HEYGEN_API_KEY") and os.environ.get("HEYGEN_VOICE_ID"))
+    if not heygen_enabled and not tts:
+        raise SystemExit("Configure HeyGen API credentials or install eSpeak NG for placeholder narration.")
+    if not ffmpeg:
+        raise SystemExit("This renderer requires ffmpeg.")
+    if heygen_enabled:
+        from heygen_tts import synthesize
+        print("Narration provider: HeyGen voice clone.")
+    else:
+        print("WARNING: HeyGen credentials are not configured; using generic eSpeak placeholder voice, not the channel owner's voice.")
     eng_font = find_font("DejaVu Sans", [
         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
     ])
@@ -157,8 +166,12 @@ def main():
             if i == len(scenes) - 1:
                 voice_hi += " " + data.get("outro_hi", "")
                 voice_en += " " + data.get("outro_en", "")
-            run([tts, "-v", "hi", "-s", "142", "-w", str(hindi_path), voice_hi], "creating Hindi narration")
-            run([tts, "-v", "en-us", "-s", "152", "-w", str(english_path), voice_en], "creating English narration")
+            if heygen_enabled:
+                synthesize(voice_hi, "hi", hindi_path, seed=7100 + i)
+                synthesize(voice_en, "en", english_path, seed=7200 + i)
+            else:
+                run([tts, "-v", "hi", "-s", "142", "-w", str(hindi_path), voice_hi], "creating Hindi placeholder narration")
+                run([tts, "-v", "en-us", "-s", "152", "-w", str(english_path), voice_en], "creating English placeholder narration")
             run([
                 ffmpeg, "-y", "-i", str(hindi_path), "-i", str(english_path),
                 "-filter_complex", "[0:a][1:a]concat=n=2:v=0:a=1[out]",
@@ -183,9 +196,22 @@ def main():
             "-c:a", "aac", "-movflags", "+faststart", str(final_path),
         ], "assembling the final Short MP4")
 
+    voice_provider = "HeyGen Professional Voice Clone" if heygen_enabled else "eSpeak generic placeholder (not the owner's voice)"
+    report = {
+        "video": str(final_path),
+        "format": "1080x1920 vertical",
+        "voice_provider": voice_provider,
+        "voice_clone_used": heygen_enabled,
+        "music": "none",
+        "review_required": True,
+    }
+    (output_dir / f"{date}-short-render.json").write_text(
+        json.dumps(report, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
     print(f"Rendered Shorts draft: {final_path}")
-    print("Format: 1080x1920 vertical, bilingual eSpeak placeholder narration, no music.")
-    print("Review Hindi/English pronunciation and academic claims before publishing.")
+    print(f"Voice provider: {voice_provider}")
+    print("Review voice likeness, Hindi/English pronunciation, factual claims, and pacing before publishing.")
 
 
 if __name__ == "__main__":

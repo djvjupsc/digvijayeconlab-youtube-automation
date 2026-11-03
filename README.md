@@ -30,7 +30,8 @@ Public video upload, public playlist creation, Community post publishing and You
 - `scripts/review_script.py` — creates an academic quality-control report; it does not rewrite the original script.
 - `scripts/correct_script.py` — requests schema-constrained JSON from Gemini, validates required fields, preserves original `[VERIFY ...]` markers, applies limited deterministic notation repairs, and records unresolved items.
 - `scripts/quality_checks.py` — deterministic structural and formatting checks.
-- `scripts/generate_daily_assets.py` — generates the daily bilingual Short storyboard and Community post/poll draft.
+- `scripts/generate_daily_assets.py` — generates the daily bilingual Short storyboard, Community post/poll draft, and validated SEO metadata (title variants, descriptions, tags, hashtags and thumbnail copy) for all ten unit lessons.
+- `scripts/heygen_tts.py` — generates Hindi and English narration from an authorized HeyGen voice clone using its TTS API. It reads `HEYGEN_API_KEY` and `HEYGEN_VOICE_ID` only from GitHub Actions secrets.
 - `scripts/render_short_video.py` — renders a 1080 × 1920 narrated Short draft using Pillow, eSpeak NG and FFmpeg; no music is added.
 - `scripts/topic_queue.py` — manages the legacy one-topic queue.
 - `tests/` — offline unit and regression tests.
@@ -88,7 +89,7 @@ These are catalogue entries, not live playlists. YouTube's playlist creation and
 
 ## Shorts and Community posts
 
-- The daily Short is rendered as a 1080 × 1920 MP4 with bilingual on-screen text and synthesized Hindi/English narration. The voice is a placeholder and may sound robotic; review pronunciation and pacing. No background music or third-party assets are added.
+- The daily Short is rendered as a 1080 × 1920 MP4 with bilingual on-screen text and narration. When `HEYGEN_API_KEY` and `HEYGEN_VOICE_ID` are configured, narration uses the authorized HeyGen voice clone. Until those secrets are present, the renderer uses an eSpeak generic placeholder clearly marked as not the owner’s voice. No background music or third-party assets are added.
 - The Community post is generated as text plus a poll draft and a suggested pinned comment. YouTube's documented Community post scheduling process is through YouTube Studio. The public YouTube Data API v3 reference does not offer a Community-post creation endpoint, so the automation does not attempt to publish it.
 - YouTube currently categorizes eligible square or vertical videos up to three minutes as Shorts for standard channels, subject to the platform's conditions. Keep every rendered Short within that limit and check copyright before publishing.
 
@@ -104,6 +105,16 @@ A successful workflow run only means the pipeline executed. It does **not** cert
 - Community copy, playlist metadata, copyrights and final titles.
 
 Resolve all verification markers and Critical/High issues against authoritative textbooks or sources before production use. Human approval is mandatory.
+
+## HeyGen voice matching
+
+The renderer calls HeyGen Voice TTS directly. Add these repository Actions secrets (never paste the values into chat):
+- `HEYGEN_API_KEY` — your HeyGen API key with voice-generation permissions.
+- `HEYGEN_VOICE_ID` — the voice ID of your own active HeyGen clone.
+
+Create an Instant Voice from a clean recording of your own voice or a Professional Voice Clone (PVC) for closer similarity. HeyGen currently documents Instant Voice creation from up to 60 seconds of speech; Professional Voice Clone uses at least 20 minutes, with 30 minutes to two hours recommended for a richer match. Use only your own voice or a voice you have explicit permission to clone. The renderer records whether the HeyGen clone was actually used. The Metricool publisher refuses to schedule the daily Short when that report does not confirm the owner's clone.
+
+HeyGen API pricing is usage-based and is separate from the HeyGen app subscription. Check the current plan/API allowance before running high-volume TTS. The code does not create or purchase a HeyGen voice clone; create the voice in your HeyGen account first, then add the voice ID as a GitHub secret.
 
 ## Gemini API and quota safeguards
 
