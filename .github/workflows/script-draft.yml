@@ -34,7 +34,7 @@ permissions:
 jobs:
   generate-draft:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -59,10 +59,19 @@ jobs:
             "$SCRIPT_FORMAT" \
             "$SCRIPT_SOURCE_NOTES"
 
-      - name: Save draft as workflow artifact
+      - name: Run academic quality review
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: gemini-3.5-flash-lite
+        run: |
+          python scripts/review_script.py output/scripts/*.md "$SCRIPT_SOURCE_NOTES"
+
+      - name: Save script and review report as workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: digvijayeconlab-script-draft
-          path: output/scripts/*.md
+          name: digvijayeconlab-reviewed-script-package
+          path: |
+            output/scripts/*.md
+            output/reviews/*.md
           if-no-files-found: error
           retention-days: 14
