@@ -41,7 +41,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends ffmpeg espeak-ng fonts-noto-core fonts-dejavu-core
           python -m pip install --upgrade pip
-          python -m pip install Pillow
+          python -m pip install Pillow gradio_client huggingface_hub
 
       - name: Run offline tests and validate the ten-unit plan
         run: |
@@ -82,6 +82,11 @@ jobs:
           GEMINI_MODEL: gemini-3.5-flash-lite
           HEYGEN_API_KEY: ${{ secrets.HEYGEN_API_KEY }}
           HEYGEN_VOICE_ID: ${{ secrets.HEYGEN_VOICE_ID }}
+          CHATTERBOX_ENABLED: ${{ vars.CHATTERBOX_ENABLED }}
+          CHATTERBOX_SPACE: ${{ vars.CHATTERBOX_SPACE }}
+          CHATTERBOX_REFERENCE_REPO: ${{ vars.CHATTERBOX_REFERENCE_REPO }}
+          CHATTERBOX_REFERENCE_FILENAME: ${{ vars.CHATTERBOX_REFERENCE_FILENAME }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           python scripts/daily_production.py process --manifest output/daily_manifest.json
 
