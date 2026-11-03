@@ -101,7 +101,12 @@ jobs:
           SCRIPT_UNIT: "Unit 1: Micro Economic Analysis"
           SCRIPT_FILENAME_PREFIX: "unit-01"
         run: |
-          python scripts/generate_script.py "Law of Demand" "Bilingual" "Concept Explainer"
+          SOURCE_NOTES=$(cat <<'NOTES'
+          Giffen-goods historical note: Alfred Marshall discussed an example attributed to Robert Giffen in Principles of Economics (1895), but the historical attribution and the traditional Irish potato example are debated; do not state as settled fact that Robert Giffen personally established the paradox or that Irish potatoes were empirically proven to be Giffen goods. Explain the theoretical condition accurately: a good can be Giffen when the negative income effect outweighs the substitution effect, so quantity demanded may rise as its own price rises, under restrictive conditions. Distinguish this from the Veblen/status-signalling effect.
+          Demand-curve note: the usual downward slope is explained by substitution effect and income effect; additional buyers/market participation is relevant to market demand, not a general explanation for an individual consumer demand curve.
+          NOTES
+          )
+          python scripts/generate_script.py "Law of Demand" "Bilingual" "Concept Explainer" "$SOURCE_NOTES"
 
       - name: Review original lesson draft
         env:
