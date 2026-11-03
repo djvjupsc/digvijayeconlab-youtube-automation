@@ -40,6 +40,8 @@ def _request(url, method="GET", token=None, body=None, content_type="application
     if body is not None:
         if isinstance(body, bytes):
             data = body
+            if content_type:
+                headers["Content-Type"] = content_type
         else:
             data = json.dumps(body, ensure_ascii=False).encode("utf-8")
             headers["Content-Type"] = content_type
@@ -143,13 +145,11 @@ def upload_media(path, token, user_id, blog_id):
             content_type="video/mp4",
             timeout=300,
         )
-        etag = headers.get("ETag")
-        if not etag:
-            # Metricool's simple completion contract uses fileUrl, not the ETag.
-            etag = ""
+        # Metricool's simple completion contract requires the file URL supplied
+        # by its transaction response. Do not guess an S3 URL from bucket/key.
         file_url = result.get("fileUrl")
-        if not file_url:
-            file_url = f"https://{bucket}.s3.amazonaws.com/{key}"
+        if not isinstance(file_url, str) or not file_url.startswith("https://"):
+            raise MetricoolError("Metricool simple upload transaction omitted its fileUrl.")
         complete_body = {"simple": {"fileUrl": file_url}}
     else:
         urls = result.get("parts")
