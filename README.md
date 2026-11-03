@@ -1,76 +1,125 @@
 # DigvijayEconLab YouTube Automation
 
-Cloud-based educational video production and YouTube publishing project for DigvijayEconLab.
+Cloud-based educational content production for DigvijayEconLab.
 
-## Current status
+## Current operating mode
 
-Script generation, academic review, and AI-assisted correction can now run automatically from a controlled topic queue:
-- Daily scheduled run at **08:00 Asia/Kolkata** (GitHub cron: 02:30 UTC).
-- Queue-triggered run whenever `config/topic_queue.json` is changed on `main`.
-- One unique queue item is claimed per run. Claim and final status are committed to the repository to prevent the same topic from being generated twice.
-- A run with no pending topic exits without calling Gemini.
-- Publishing remains disabled. All outputs are drafts and require human verification and approval.
+The **daily ten-unit production workflow** is scheduled for **08:00 Asia/Kolkata**. Each successful daily pack prepares material for the following publication date:
+
+- 10 bilingual full-lesson script packages: one lesson from every UGC NET Economics unit.
+- One bilingual 9:16 YouTube Short, rendered as an MP4 draft with synthetic placeholder narration.
+- One bilingual YouTube Community post draft, including a poll and suggested pinned comment.
+- Ten unit-specific playlist definitions with titles and descriptions.
+
+The next day's pack is generated one day ahead to allow academic verification, editing and scheduling. The suggested public release schedule is in `docs/daily-production-calendar.md` and `config/daily_timeline.json`.
+
+**Important:** full-length lesson scripts are generated and reviewed, but this workflow does not yet render those ten lessons into finished landscape MP4 videos. It renders the one daily Short draft. Community posts and the ten playlists are prepared as drafts/catalogue entries; they are not published or created on YouTube automatically.
+
+Public video upload, public playlist creation, Community post publishing and YouTube scheduling remain disabled. All content requires human approval.
 
 ## Project layout
 
 - `config/content_plan.json` — brand, audience, content pillars and publishing safeguards.
-- `config/topic_queue.json` — controlled topic queue and processing status.
-- `scripts/preflight.py` — validates the project configuration.
-- `scripts/topic_queue.py` — validates topic uniqueness, claims one pending topic, recovers stale claims, and records completed/failed runs.
-- `scripts/generate_script.py` — creates an educational Markdown draft through the Google Gemini API.
+- `config/unit_content_plan.json` — the ten syllabus units and their rotating topic sequences, based on the user-supplied UGC NET Economics syllabus, Subject Economics, Code No. 01.
+- `config/playlist_catalog.json` — ten playlist titles and descriptions; catalogue only, not created on YouTube.
+- `config/daily_timeline.json` — proposed Community, ten-lesson and Short release slots in India time.
+- `config/daily_production_state.json` — idempotency state and successful-day rotation counter.
+- `config/topic_queue.json` — separate legacy one-topic queue for manual/backlog drafts.
+- `scripts/daily_production.py` — claims one daily pack, rotates all ten unit topics, runs each lesson through the full generation/review/correction/re-review pipeline, generates promotional assets, and records completion.
+- `scripts/generate_script.py` — generates an individual educational Markdown lesson through Gemini.
 - `scripts/review_script.py` — creates an academic quality-control report; it does not rewrite the original script.
-- `scripts/correct_script.py` — requests schema-constrained JSON from Gemini, validates required fields, preserves every original `[VERIFY ...]` marker, applies evidence-grounded editorial corrections and narrow deterministic math-notation cleanup, and records unresolved items.
-- `scripts/quality_checks.py` — detects known notation corruption, mixed Latin/Devanagari words, unresolved verification markers, missing bilingual scripts, MCQ answer/explanation gaps, required content-structure gaps, and missing worked-example/application sections.
-- `tests/` — offline queue, correction, formatting, and deterministic quality-gate tests.
-- `.github/workflows/script-draft.yml` — daily, queue-triggered, and manually triggerable draft workflow.
-- `.github/workflows/quality-tests.yml` — runs offline tests on pull requests and pushes to main.
+- `scripts/correct_script.py` — requests schema-constrained JSON from Gemini, validates required fields, preserves original `[VERIFY ...]` markers, applies limited deterministic notation repairs, and records unresolved items.
+- `scripts/quality_checks.py` — deterministic structural and formatting checks.
+- `scripts/generate_daily_assets.py` — generates the daily bilingual Short storyboard and Community post/poll draft.
+- `scripts/render_short_video.py` — renders a 1080 × 1920 narrated Short draft using Pillow, eSpeak NG and FFmpeg; no music is added.
+- `scripts/topic_queue.py` — manages the legacy one-topic queue.
+- `tests/` — offline unit and regression tests.
+- `.github/workflows/daily-channel-pack.yml` — scheduled daily ten-unit production pack at 08:00 IST.
+- `.github/workflows/script-draft.yml` — legacy single-topic workflow, manually triggered or triggered by changes to its separate topic queue.
+- `.github/workflows/quality-tests.yml` — runs code compilation, unit tests and plan validation on pull requests and main pushes.
 
-## How automatic generation works
+## Daily production schedule
 
-1. The workflow runs at 08:00 India time each day. GitHub Actions can occasionally start scheduled jobs a little later than the exact minute.
-2. Adding a new queue item to `config/topic_queue.json` and committing it to `main` starts an additional queue-triggered run.
-3. The workflow validates the whole queue, claims the first `pending` item, and commits its `processing` status before making any Gemini request.
-4. It generates the script, performs the original academic review, applies schema-validated conservative correction, preserves the original review, and reviews the corrected draft.
-5. The completed script, original and corrected reviews, correction log, and deterministic quality reports are stored as a GitHub Actions artifact for 14 days.
-6. The queue item is marked `completed` only when the earlier workflow steps and artifact packaging succeed; otherwise it is marked `failed`. A `failed` item is not automatically retried. To retry it, change its status to `pending` after checking the failed run.
-7. A processing claim older than six hours is marked `stale` for manual review. It is **not** automatically put back into the queue, because an automatic retry could generate the same topic twice. After checking the Actions run and confirming that no usable draft was produced, change its status to `pending` manually to retry.
+The detailed schedule is in `docs/daily-production-calendar.md`.
 
-## Add a topic to the queue
+| India time | Planned activity |
+|---|---|
+| 08:00 | Generate next day's pack |
+| 08:30 | Community post preview/poll |
+| 09:00–18:00 | One lesson from Units 1–10, one per hour |
+| 19:00 | Daily Short |
+| 19:30 | Review comments and next-day plan |
 
-Edit `config/topic_queue.json` on `main` and add a new object inside `items`:
+These are recommended release slots, not active publishing automations. The daily workflow generates tomorrow's package at 08:00 today.
 
-```json
-{
-  "id": "macro-national-income",
-  "topic": "National Income: Concepts and Measurement",
-  "language": "Bilingual",
-  "content_format": "Concept Explainer",
-  "source_notes": "Optional notes from an authoritative textbook or official source.",
-  "status": "pending"
-}
-```
+## Topic rotation and duplicate protection
 
-Use a new lowercase ID with hyphens. Topic names must be unique even when capitalization or punctuation differs. Supported languages are `Bilingual`, `Hindi`, and `English`; supported formats are `Concept Explainer`, `MCQ Set`, and `Previous-Year-Question Analysis`. Do not reuse or reset a completed topic under a new ID. Completed, failed, and stale entries remain in the queue as the duplicate-prevention history. Stale entries require manual inspection before retry.
+1. The workflow validates the ten-unit plan and runs the complete offline regression suite.
+2. It claims today's pack and commits the claim state before calling Gemini.
+3. It selects one topic per unit using the successful-day rotation counter.
+4. Each of the ten lessons is generated, academically reviewed, corrected using validated structured output, and reviewed again.
+5. It generates one daily Short storyboard, one Community post and poll, then renders a vertical MP4 Short draft.
+6. It uploads all available outputs as a GitHub Actions artifact with 14-day retention.
+7. Only a successful pack advances the rotation counter. A failed pack does not advance to the next day's topics.
+8. A completed pack cannot be claimed twice on the same India-local date. A failed pack can be retried on the same date only by manually running the workflow with `retry_failed=true`.
 
-The initial queue contains ten Microeconomics topics. It intentionally excludes Law of Demand because that topic was already used for the earlier test draft.
+The current rotation starts at the first topic listed for each unit in `config/unit_content_plan.json`. Each successful day advances every unit by one topic. When one unit reaches the end of its list, that unit's topic sequence cycles to its beginning.
+
+## First daily pack
+
+The workflow's first scheduled run is **4 November 2026 at 08:00 IST**. It will prepare the publication pack for **5 November 2026**. This is one day ahead to allow review and editing.
+
+## Playlist setup
+
+The ten playlist definitions are in `config/playlist_catalog.json`. Titles are:
+
+1. UGC NET Economics Unit 1 | Micro Economics | DigvijayEconLab
+2. UGC NET Economics Unit 2 | Macro Economics | DigvijayEconLab
+3. UGC NET Economics Unit 3 | Statistics and Econometrics | DigvijayEconLab
+4. UGC NET Economics Unit 4 | Mathematical Economics | DigvijayEconLab
+5. UGC NET Economics Unit 5 | International Economics | DigvijayEconLab
+6. UGC NET Economics Unit 6 | Public Economics | DigvijayEconLab
+7. UGC NET Economics Unit 7 | Money and Banking | DigvijayEconLab
+8. UGC NET Economics Unit 8 | Growth and Development Economics | DigvijayEconLab
+9. UGC NET Economics Unit 9 | Environmental Economics and Demography | DigvijayEconLab
+10. UGC NET Economics Unit 10 | Indian Economy | DigvijayEconLab
+
+These are catalogue entries, not live playlists. YouTube's playlist creation and playlist-item insertion endpoints need a write OAuth scope. The existing Cloudflare OAuth grant was configured for upload/read/analytics and does not currently include `youtube` or `youtube.force-ssl`. This project has not requested a new scope or re-authorized the channel.
+
+## Shorts and Community posts
+
+- The daily Short is rendered as a 1080 × 1920 MP4 with bilingual on-screen text and synthesized Hindi/English narration. The voice is a placeholder and may sound robotic; review pronunciation and pacing. No background music or third-party assets are added.
+- The Community post is generated as text plus a poll draft and a suggested pinned comment. YouTube's documented Community post scheduling process is through YouTube Studio. The public YouTube Data API v3 reference does not offer a Community-post creation endpoint, so the automation does not attempt to publish it.
+- YouTube currently categorizes eligible square or vertical videos up to three minutes as Shorts for standard channels, subject to the platform's conditions. Keep every rendered Short within that limit and check copyright before publishing.
 
 ## Academic quality and human approval
 
-The workflow runs offline unit tests before calling Gemini. The original and corrected drafts are each reviewed with deterministic structural checks and an AI-assisted academic audit. Critical or High deterministic findings force a HOLD verdict. Original `[VERIFY]` markers are preserved in the corrected draft even if the correction model removes or alters them.
+The original and corrected lesson drafts are each checked by deterministic structural rules and an AI-assisted academic audit. Critical or High deterministic findings force a HOLD verdict. Original `[VERIFY]` markers are preserved in the corrected draft even if the correction model removes or alters them.
 
-A successful GitHub Actions run means the workflow executed; it does **not** certify economics accuracy, source reliability, translation equivalence, MCQ correctness, or exam suitability. Review the original and corrected scripts, both academic reports, correction log, and deterministic quality reports. Independently verify claims against authoritative textbooks or supplied sources. A report showing HOLD must not be treated as ready for production. Human approval is mandatory.
+A successful workflow run only means the pipeline executed. It does **not** certify economics accuracy, source reliability, Hindi-English equivalence, MCQ correctness, exam suitability or publication readiness. Review:
+- All ten original and corrected lesson scripts.
+- All ten original and corrected academic review reports.
+- Every correction log and deterministic report.
+- The Short's factual claims, pronunciation, subtitles, rendering and duration.
+- Community copy, playlist metadata, copyrights and final titles.
 
-## Gemini API
+Resolve all verification markers and Critical/High issues against authoritative textbooks or sources before production use. Human approval is mandatory.
 
-The workflow uses Gemini Developer API model `gemini-3.5-flash-lite` through the GitHub Actions secret `GEMINI_API_KEY`. Gemini Developer API access is separate from a Google AI Pro consumer subscription. Availability, free-tier eligibility, and rate limits depend on Google's current policies. Free-tier requests may be used by Google to improve its products; do not submit personal, confidential, or sensitive information. No paid billing is configured by this repository.
+## Gemini API and quota safeguards
 
-## Publishing safeguards
+The workflow uses Gemini Developer API model `gemini-3.5-flash-lite` through the GitHub Actions secret `GEMINI_API_KEY`. Gemini Developer API access is separate from a Google AI Pro consumer subscription. Rate limits depend on the Google AI Studio project and model; check the active limits in AI Studio. This daily batch can require up to 41 sequential Gemini requests (10 scripts × generation/review/correction/re-review, plus one Short/Community generation request). The workflow spaces AI requests to reduce rate-limit pressure, but the free-tier project may still reject or exhaust the daily batch. No paid billing is configured. If quota is insufficient, reduce output volume or request a separate billing decision; do not bypass quality gates.
 
-Publishing remains disabled. There are no YouTube upload or publish steps in this workflow. The content plan keeps human approval mandatory. Do not enable automatic public uploads until OAuth production eligibility, YouTube API compliance, content accuracy, copyright checks, and end-to-end private-upload tests have been addressed.
+Free-tier requests may be used by Google to improve its products. Do not submit personal, confidential or sensitive information.
 
-## Security rules
+## Security and publishing safeguards
 
-- Never commit Google OAuth client secrets, refresh tokens, access tokens, API keys, passwords, or `.env` files.
-- Store deployment credentials only through GitHub Actions Secrets or Cloudflare Worker Secrets.
+- Never commit Google OAuth client secrets, refresh tokens, access tokens, API keys, passwords or `.env` files.
+- Store credentials only through GitHub Actions Secrets or Cloudflare Worker Secrets.
 - Do not make this repository public.
 - Do not use or modify the separate PixelToolkit project for this automation.
+- No automatic YouTube uploads, public playlist creation or public Community publishing are enabled.
+- Do not add OAuth scopes, enable billing or change account/security settings without explicit authorization.
+
+## 14-day pilot
+
+The initial operating plan is a 14-day pilot. Review workflow completion, Gemini quota, academic review workload, CTR, retention by unit, and Short-to-long-video traffic before treating ten daily lessons as a permanent public release cadence. Ten long-form releases per day is a high volume; reduce public release frequency rather than sacrificing quality.
