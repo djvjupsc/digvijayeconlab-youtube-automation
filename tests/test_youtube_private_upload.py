@@ -101,6 +101,7 @@ class YouTubePrivateUploadTests(unittest.TestCase):
                 "audit_status": "pass",
                 "upload_eligible": True,
                 "voice_clone_used": True,
+                "voice_reference_stored_in_repository": False,
                 "music": "none",
                 "review_required": True,
                 "unit": 1,
@@ -133,7 +134,7 @@ class YouTubePrivateUploadTests(unittest.TestCase):
             (root / "output/longform/2026-11-04-longform-render.json").write_text(
                 json.dumps({
                     "audit_status": "blocked", "upload_eligible": False,
-                    "voice_clone_used": False, "music": "none",
+                    "voice_clone_used": False, "voice_reference_stored_in_repository": False, "music": "none",
                     "review_required": True, "unit": 1,
                     "video": "output/longform/lesson.mp4",
                     "technical": {"width": 1920, "height": 1080,
