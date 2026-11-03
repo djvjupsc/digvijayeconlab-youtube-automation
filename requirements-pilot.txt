@@ -1,0 +1,4 @@
+numpy
+Pillow
+gradio_client
+huggingface_hub
