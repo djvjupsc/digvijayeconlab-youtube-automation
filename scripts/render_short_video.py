@@ -1,7 +1,7 @@
-"""Render a simple bilingual 9:16 narrated Short draft from generated scenes.
+"""Render a bilingual 9:16 Short draft using Chatterbox, HeyGen or eSpeak fallback.
 
-Uses eSpeak NG for editable placeholder narration, Pillow for slide cards, and FFmpeg
-for MP4 assembly. No music or third-party media is added.
+Chatterbox is the preferred free reference-voice provider when explicitly enabled.
+The private reference recording is fetched at runtime and never stored in this repo.
 """
 
 import json
@@ -129,16 +129,23 @@ def main():
 
     tts = shutil.which("espeak-ng") or shutil.which("espeak")
     ffmpeg = shutil.which("ffmpeg")
+    chatterbox_enabled = os.environ.get("CHATTERBOX_ENABLED", "").strip().lower() in {"1", "true", "yes"}
     heygen_enabled = bool(os.environ.get("HEYGEN_API_KEY") and os.environ.get("HEYGEN_VOICE_ID"))
-    if not heygen_enabled and not tts:
-        raise SystemExit("Configure HeyGen API credentials or install eSpeak NG for placeholder narration.")
     if not ffmpeg:
         raise SystemExit("This renderer requires ffmpeg.")
-    if heygen_enabled:
+    if chatterbox_enabled:
+        from chatterbox_tts import synthesize
+        voice_provider = "Chatterbox Multilingual V3 (private reference voice)"
+        print("Narration provider: free Chatterbox Multilingual V3.")
+    elif heygen_enabled:
         from heygen_tts import synthesize
+        voice_provider = "HeyGen voice clone"
         print("Narration provider: HeyGen voice clone.")
+    elif tts:
+        voice_provider = "eSpeak generic placeholder (not the owner's voice)"
+        print("WARNING: No owner voice provider is configured; using generic eSpeak placeholder narration.")
     else:
-        print("WARNING: HeyGen credentials are not configured; using generic eSpeak placeholder voice, not the channel owner's voice.")
+        raise SystemExit("Enable Chatterbox, configure HeyGen, or install eSpeak NG for placeholder narration.")
     eng_font = find_font("DejaVu Sans", [
         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
     ])
@@ -166,7 +173,7 @@ def main():
             if i == len(scenes) - 1:
                 voice_hi += " " + data.get("outro_hi", "")
                 voice_en += " " + data.get("outro_en", "")
-            if heygen_enabled:
+            if chatterbox_enabled or heygen_enabled:
                 synthesize(voice_hi, "hi", hindi_path, seed=7100 + i)
                 synthesize(voice_en, "en", english_path, seed=7200 + i)
             else:
@@ -196,12 +203,13 @@ def main():
             "-c:a", "aac", "-movflags", "+faststart", str(final_path),
         ], "assembling the final Short MP4")
 
-    voice_provider = "HeyGen Professional Voice Clone" if heygen_enabled else "eSpeak generic placeholder (not the owner's voice)"
+    voice_clone_used = chatterbox_enabled or heygen_enabled
     report = {
         "video": str(final_path),
         "format": "1080x1920 vertical",
         "voice_provider": voice_provider,
-        "voice_clone_used": heygen_enabled,
+        "voice_clone_used": voice_clone_used,
+        "voice_reference_stored_in_repository": False,
         "music": "none",
         "review_required": True,
     }
