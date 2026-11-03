@@ -98,7 +98,7 @@ def call_gemini(api_key, payload):
         raise SystemExit(f"Gemini daily-asset connection failed: {exc}") from exc
 
 
-def validate(data):
+def validate(data, expected_playlist_titles=None):
     if not isinstance(data, dict):
         raise ValueError("Response root must be an object.")
     required_strings = [
@@ -143,9 +143,13 @@ def validate(data):
                 raise ValueError(f"SEO Unit {unit} is missing {key}.")
         if len(item["video_title"]) > 95:
             raise ValueError(f"SEO Unit {unit} title exceeds the safe 95-character target.")
-        if not isinstance(item.get("tags"), list) or not item["tags"]:
-            raise ValueError(f"SEO Unit {unit} must contain tags.")
-        tag_length = sum(len(tag.strip()) + 1 for tag in item["tags"] if isinstance(tag, str))
+        if expected_playlist_titles and item["playlist_title"] != expected_playlist_titles.get(unit):
+            raise ValueError(f"SEO Unit {unit} playlist title does not match the controlled playlist catalogue.")
+        if len(item["description"]) > 5000:
+            raise ValueError(f"SEO Unit {unit} description exceeds 5,000 characters.")
+        if not isinstance(item.get("tags"), list) or not item["tags"] or not all(isinstance(tag, str) and tag.strip() for tag in item["tags"]):
+            raise ValueError(f"SEO Unit {unit} must contain non-empty string tags.")
+        tag_length = sum(len(tag.strip()) + 1 for tag in item["tags"])
         if tag_length > 450:
             raise ValueError(f"SEO Unit {unit} tags exceed the 450-character safe limit.")
         if not isinstance(item.get("alternative_titles"), list) or len(item["alternative_titles"]) < 2:
@@ -238,7 +242,7 @@ Ten SEO inputs (use the supplied playlist title for each unit; match unit number
     if candidates[0].get("finishReason") == "MAX_TOKENS" or not raw.strip():
         raise SystemExit("Gemini response was empty or truncated; no promo assets accepted.")
     try:
-        data = validate(json.loads(raw))
+        expected_playlists = {int(item["unit"]): item["playlist_title"] for item in manifest["units"]}\n        data = validate(json.loads(raw), expected_playlists)
     except (json.JSONDecodeError, ValueError) as exc:
         raise SystemExit(f"Gemini daily-asset JSON validation failed: {exc}") from exc
 
