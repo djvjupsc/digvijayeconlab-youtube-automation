@@ -78,7 +78,7 @@ practice questions, and source/verification notes."""
             "reasoning, answer, and exam relevance for each included question."
         )
 
-    user_prompt = f"""Brand: DigvijayEconLab
+    unit_context = os.environ.get("SCRIPT_UNIT", "")\n    user_prompt = f"""Brand: DigvijayEconLab\nUnit: {unit_context or "Not specified"}
 Audience: MPPSC Assistant Professor Economics aspirants
 Topic: {topic}
 Language: {language}
@@ -125,7 +125,7 @@ English and Hindi explanations for each substantive teaching point. Include sour
 
     output_dir = Path("output/scripts")
     output_dir.mkdir(parents=True, exist_ok=True)
-    output_path = output_dir / clean_filename(topic)
+    unit_prefix = os.environ.get("SCRIPT_FILENAME_PREFIX", "").strip()\n    filename_topic = f"{unit_prefix} {topic}" if unit_prefix else topic\n    output_path = output_dir / clean_filename(filename_topic)
     output_path.write_text(content.strip() + "\n", encoding="utf-8")
     print(f"Draft generated: {output_path}")
     print("Status: DRAFT ONLY — human fact-check and approval required.")
