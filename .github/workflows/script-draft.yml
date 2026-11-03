@@ -78,6 +78,10 @@ jobs:
             output/reviews/*.md \
             "$SCRIPT_SOURCE_NOTES"
 
+      - name: Preserve original academic review
+        run: |
+          cp output/reviews/*-quality-review.md output/reviews/original-quality-review.md
+
       - name: Review corrected script
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
