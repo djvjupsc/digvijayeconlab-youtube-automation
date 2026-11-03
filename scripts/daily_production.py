@@ -113,9 +113,7 @@ def prepare(args):
         state["last_status"] = "stale"
         state["active_run_id"] = None
         state["stale_detected_at"] = now.isoformat()
-        save_json(args.state, state)
-        print("An earlier daily pack was interrupted. It is marked stale for manual review; no new pack is started.")
-        return {"claimed": "false", "reason": "stale_previous_run"}
+        print("An earlier daily pack was interrupted. Its partial draft is retained as history; the same uncompleted rotation slot will be attempted again.")
 
     if last_claimed_date == run_date.isoformat():
         if active_status == "completed":
