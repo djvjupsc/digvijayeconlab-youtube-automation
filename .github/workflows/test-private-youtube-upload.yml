@@ -1,0 +1,94 @@
+name: Test YouTube private upload
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_private_test:
+        description: "Upload a 5-second generated test pattern to the connected channel as PRIVATE"
+        required: true
+        type: choice
+        options:
+          - "no"
+          - "yes"
+        default: "no"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: digvijayeconlab-private-upload-test
+  cancel-in-progress: false
+
+jobs:
+  private-upload-test:
+    if: inputs.confirm_private_test == 'yes'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Generate a five-second test video
+        run: |
+          ffmpeg -hide_banner -loglevel error \
+            -f lavfi -i "testsrc2=size=640x360:rate=24:duration=5" \
+            -an -c:v libx264 -pix_fmt yuv420p -movflags +faststart \
+            /tmp/digvijayeconlab-private-upload-test.mp4
+          test -s /tmp/digvijayeconlab-private-upload-test.mp4
+
+      - name: Upload test video as PRIVATE and verify response
+        env:
+          YOUTUBE_OAUTH_CLIENT_ID: ${{ secrets.YOUTUBE_OAUTH_CLIENT_ID }}
+          YOUTUBE_OAUTH_CLIENT_SECRET: ${{ secrets.YOUTUBE_OAUTH_CLIENT_SECRET }}
+          YOUTUBE_OAUTH_REFRESH_TOKEN: ${{ secrets.YOUTUBE_OAUTH_REFRESH_TOKEN }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from scripts.youtube_private_upload import _refresh_access_token, upload_private_video
+
+          names = (
+              "YOUTUBE_OAUTH_CLIENT_ID",
+              "YOUTUBE_OAUTH_CLIENT_SECRET",
+              "YOUTUBE_OAUTH_REFRESH_TOKEN",
+          )
+          credentials = [os.environ.get(name, "") for name in names]
+          if not all(credentials):
+              raise SystemExit("Upload test blocked: one or more YouTube OAuth secrets are missing.")
+
+          token = _refresh_access_token(*credentials)
+          result = upload_private_video(
+              "/tmp/digvijayeconlab-private-upload-test.mp4",
+              {
+                  "video_title": "PRIVATE UPLOAD TEST — DigvijayEconLab (do not publish)",
+                  "description": (
+                      "Automated five-second technical test of the DigvijayEconLab "
+                      "YouTube upload connection. This video is intended to remain PRIVATE. "
+                      "Delete it after verification. No educational content."
+                  ),
+                  "tags": ["DigvijayEconLab", "private upload test"],
+              },
+              token,
+          )
+          if result.get("privacy_status") != "private":
+              raise SystemExit("Upload test failed: YouTube did not confirm PRIVATE visibility.")
+          print(json.dumps({
+              "status": "success",
+              "video_id": result["video_id"],
+              "privacy_status": result["privacy_status"],
+              "contains_synthetic_media": result["contains_synthetic_media"],
+              "watch_url": result["url"],
+              "action_required": "Verify PRIVATE visibility in YouTube Studio, then delete this test video.",
+          }, indent=2))
+          PY
+
+      - name: Explain skipped run
+        if: inputs.confirm_private_test != 'yes'
+        run: echo "No upload performed. Re-run and explicitly select yes to authorize the PRIVATE test upload."
