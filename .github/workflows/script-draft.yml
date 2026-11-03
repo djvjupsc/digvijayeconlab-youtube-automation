@@ -48,12 +48,16 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_MODEL: gpt-4.1-mini
+          SCRIPT_TOPIC: ${{ inputs.topic }}
+          SCRIPT_LANGUAGE: ${{ inputs.language }}
+          SCRIPT_FORMAT: ${{ inputs.content_format }}
+          SCRIPT_SOURCE_NOTES: ${{ inputs.source_notes }}
         run: |
           python scripts/generate_script.py \
-            "${{ inputs.topic }}" \
-            "${{ inputs.language }}" \
-            "${{ inputs.content_format }}" \
-            "${{ inputs.source_notes }}"
+            "$SCRIPT_TOPIC" \
+            "$SCRIPT_LANGUAGE" \
+            "$SCRIPT_FORMAT" \
+            "$SCRIPT_SOURCE_NOTES"
 
       - name: Save draft as workflow artifact
         uses: actions/upload-artifact@v4
