@@ -200,7 +200,7 @@ options, and the exact matching playlist title supplied below. Avoid keyword stu
 near-identical tags, fake urgency, guaranteed-question claims, fabricated search-volume numbers,
 and unsupported claims such as "most expected" unless sourced. Do not add made-up chapters or
 timestamps. These are editorial metadata suggestions, not verified search-volume rankings.
-Return only JSON matching the response schema.
+Return only JSON matching the response schema."""
     user_prompt = f"""Publication date: {manifest['publication_date']}
 Brand: DigvijayEconLab
 Today's ten planned lesson topics:
@@ -215,13 +215,13 @@ For the Community post, mention all ten unit areas but avoid adding any unconfir
 The Short must be a genuine lesson, not merely an advertisement.
 
 Ten SEO inputs (use the supplied playlist title for each unit; match unit numbers exactly):
-{seo_context}"
+{seo_context}"""
     payload = {
         "systemInstruction": {"parts": [{"text": system_prompt}]},
         "contents": [{"role": "user", "parts": [{"text": user_prompt}]}],
         "generationConfig": {
             "temperature": 0.35,
-            "maxOutputTokens": 6000,
+            "maxOutputTokens": 8192,
             "responseMimeType": "application/json",
             "responseSchema": SCHEMA,
         },
