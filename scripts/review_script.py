@@ -20,7 +20,14 @@ def main():
         raise SystemExit("Usage: review_script.py SCRIPT_PATH [SOURCE_NOTES]")
 
     script_path = Path(sys.argv[1])
-    source_notes = sys.argv[2] if len(sys.argv) > 2 else ""
+    source_notes_path = Path(sys.argv[2]) if len(sys.argv) > 2 else None
+    source_notes = (
+        source_notes_path.read_text(encoding="utf-8")
+        if source_notes_path and source_notes_path.is_file()
+        else ""
+    )
+    if source_notes_path and not source_notes_path.is_file():
+        raise SystemExit(f"Source notes file not found: {source_notes_path}")
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         raise SystemExit("GEMINI_API_KEY is not configured.")
