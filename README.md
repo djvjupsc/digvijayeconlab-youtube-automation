@@ -10,20 +10,20 @@ The repository is in **safe setup mode**. Script drafting is available as a manu
 
 - `config/content_plan.json` — brand, audience, content pillars and publishing safeguards.
 - `scripts/preflight.py` — validates the project configuration.
-- `scripts/generate_script.py` — creates an educational Markdown draft through the OpenAI API.
+- `scripts/generate_script.py` — creates an educational Markdown draft through the Google Gemini API.
 - `.github/workflows/preflight.yml` — manually runs the configuration check.
 - `.github/workflows/script-draft.yml` — manually generates a script draft and stores it as a workflow artifact.
 - `.env.example` — names of future configuration values only; contains no credentials.
 
 ## Generate a script draft
 
-1. Add a repository Actions secret named `OPENAI_API_KEY` under **Settings → Secrets and variables → Actions**. Never put the key in source files or workflow inputs.
+1. Add a repository Actions secret named `GEMINI_API_KEY` under **Settings → Secrets and variables → Actions**. Never put the key in source files or workflow inputs.
 2. Open **Actions → DigvijayEconLab script draft → Run workflow**.
 3. Enter a topic, choose the language and format, and optionally provide source notes.
 4. Download the `digvijayeconlab-script-draft` artifact from the completed workflow run.
 5. Fact-check and edit the draft before using it in a video.
 
-The workflow uses `gpt-4.1-mini` by default. OpenAI API usage may incur charges under the user's API account; a ChatGPT subscription does not include API usage credits.
+The workflow uses the Gemini API model `gemini-2.5-flash-lite`. Availability, free-tier quotas, model access and provider terms can change. Free-tier use is subject to Google's applicable limits and data-use terms; do not submit personal, confidential, or sensitive information. This workflow does not configure paid billing.
 
 ## Run the preflight locally
 
