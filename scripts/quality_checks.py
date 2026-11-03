@@ -149,7 +149,7 @@ def analyze_script(text, content_format="Concept Explainer", language="Bilingual
         minimum_mcqs = 5
 
     question_pattern = re.compile(
-        r"(?im)^\s*(?:\*\*\s*)?(?:Q(?:uestion)?\s*0*\d+|प्रश्न\s*0*\d+)\b"
+        r"(?im)^\s*(?:#{1,6}\s*)?(?:\*\*\s*)?(?:Q(?:uestion)?\s*0*\d+|प्रश्न\s*0*\d+)\b"
     )
     question_count = len(question_pattern.findall(text))
     answer_count = len(re.findall(r"(?i)Correct\s+Answer(?:\s*\*{0,2})?\s*[:：]\*{0,2}", text))
@@ -238,7 +238,7 @@ def analyze_script(text, content_format="Concept Explainer", language="Bilingual
 
 def render_report(text, findings, content_format="Concept Explainer", language="Bilingual"):
     question_count = len(re.findall(
-        r"(?im)^\s*(?:\*\*\s*)?(?:Q(?:uestion)?\s*0*\d+|प्रश्न\s*0*\d+)\b", text
+        r"(?im)^\s*(?:#{1,6}\s*)?(?:\*\*\s*)?(?:Q(?:uestion)?\s*0*\d+|प्रश्न\s*0*\d+)\b", text
     ))
     answer_count = len(re.findall(r"(?i)Correct\s+Answer(?:\s*\*{0,2})?\s*[:：]\*{0,2}", text))
     explanation_count = len(re.findall(r"(?i)Explanation(?:\s*\*{0,2})?\s*[:：]\*{0,2}", text))
