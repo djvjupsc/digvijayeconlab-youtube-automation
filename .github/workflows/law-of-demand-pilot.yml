@@ -42,13 +42,14 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-pilot.txt
 
       - name: Install free rendering dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends ffmpeg espeak-ng fonts-noto-core fonts-dejavu-core
-          python -m pip install --upgrade pip
-          python -m pip install numpy Pillow gradio_client huggingface_hub
+          python -m pip install -r requirements-pilot.txt
 
       - name: Run repository quality tests
         run: |
