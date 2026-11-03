@@ -169,6 +169,7 @@ def process(args):
         ROOT / "output/corrected_scripts",
         ROOT / "output/corrections",
         ROOT / "output/quality_checks",
+        ROOT / "output/seo",
     ]
     for directory in output_dirs:
         if directory.exists():
