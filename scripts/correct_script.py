@@ -29,9 +29,8 @@ def call_gemini(api_key, payload):
 
 def extract_section(text, start_marker, end_marker):
     if start_marker not in text or end_marker not in text:
-        raise SystemExit(f"Gemini response is missing required section marker: {start_marker}")
-    section = text.split(start_marker, 1)[1].split(end_marker, 1)[0]
-    return section.strip()
+        raise ValueError(f"Missing section marker: {start_marker}")
+    return text.split(start_marker, 1)[1].split(end_marker, 1)[0].strip()
 
 
 def main():
@@ -94,18 +93,41 @@ Apply safe, evidence-grounded corrections and return the delimited response."""
     if not raw.strip():
         raise SystemExit("Gemini returned an empty correction response.")
 
-    corrected = extract_section(raw, "<<<CORRECTED_SCRIPT_START>>>", "<<<CORRECTED_SCRIPT_END>>>")
-    log_text = extract_section(raw, "<<<CORRECTION_LOG_START>>>", "<<<CORRECTION_LOG_END>>>")
-    unresolved_text = extract_section(raw, "<<<UNRESOLVED_ITEMS_START>>>", "<<<UNRESOLVED_ITEMS_END>>>")
-    if not corrected:
-        raise SystemExit("Correction response did not contain a complete corrected script.")
+    markers = (
+        ("<<<CORRECTED_SCRIPT_START>>>", "<<<CORRECTED_SCRIPT_END>>>"),
+        ("<<<CORRECTION_LOG_START>>>", "<<<CORRECTION_LOG_END>>>"),
+        ("<<<UNRESOLVED_ITEMS_START>>>", "<<<UNRESOLVED_ITEMS_END>>>"),
+    )
+    fallback_used = False
+    try:
+        corrected, log_text, unresolved_text = [
+            extract_section(raw, start, end) for start, end in markers
+        ]
+        if not corrected:
+            raise ValueError("Corrected script section was empty.")
+    except ValueError as exc:
+        # Never guess where an unstructured or truncated model response begins.
+        # Preserve the source script verbatim and let the independent second
+        # review run on it instead of failing the entire workflow.
+        fallback_used = True
+        corrected = script
+        log_text = (
+            "- No edits were applied. Gemini did not return all required "
+            "section markers; the original script was retained unchanged.\n"
+            f"- Formatting issue: {exc}"
+        )
+        unresolved_text = (
+            "- Review the original script manually; the AI correction stage "
+            "did not produce a safely parseable revision.\n"
+            "- Verify factual claims against authoritative sources."
+        )
 
     corrected_dir, report_dir = Path("output/corrected_scripts"), Path("output/corrections")
     corrected_dir.mkdir(parents=True, exist_ok=True)
     report_dir.mkdir(parents=True, exist_ok=True)
     corrected_path = corrected_dir / script_path.name
     report_path = report_dir / f"{script_path.stem}-correction-log.md"
-    corrected_path.write_text(corrected + "\n", encoding="utf-8")
+    corrected_path.write_text(corrected.rstrip() + "\n", encoding="utf-8")
 
     report = (
         "# Script Correction Log\n\n"
@@ -120,6 +142,8 @@ Apply safe, evidence-grounded corrections and return the delimited response."""
     report_path.write_text(report, encoding="utf-8")
     print(f"Corrected script generated: {corrected_path}")
     print(f"Correction log generated: {report_path}")
+    if fallback_used:
+        print("WARNING: Gemini response format was invalid; original script retained unchanged.")
     print("Status: EDITED DRAFT ONLY — human comparison, fact-check, and approval required.")
 
 
