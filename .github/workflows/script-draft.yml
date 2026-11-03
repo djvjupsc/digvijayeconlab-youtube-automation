@@ -63,6 +63,7 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: gemini-3.5-flash-lite
+          SCRIPT_SOURCE_NOTES: ${{ inputs.source_notes }}
         run: |
           python scripts/review_script.py output/scripts/*.md "$SCRIPT_SOURCE_NOTES"
 
