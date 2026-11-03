@@ -48,6 +48,32 @@ def sanitize_math_notation(text):
     return text, changes
 
 
+
+
+QUESTION_HEADING_PATTERN = re.compile(
+    r"(?im)^\s*(?:#{1,6}\s*)?(?:\*\*\s*)?(?:MCQ\s*0*\d+|Q(?:uestion)?\s*0*\d+|प्रश्न\s*0*\d+)\b"
+)
+ANSWER_LINE_PATTERN = re.compile(
+    r"(?im)^\s*.*\b(?:Correct\s+Answer|सही\s+उत्तर)\b.*[:：]"
+)
+EXPLANATION_LINE_PATTERN = re.compile(
+    r"(?im)^\s*.*\bExplanation(?:\s*\([^)]*\))?\b.*[:：]|"
+    r"(?im)^\s*.*व्याख्या.*[:：]"
+)
+
+
+def count_mcq_sections(text):
+    """Count numbered MCQ blocks and blocks with explicit answer/explanation labels."""
+    matches = list(QUESTION_HEADING_PATTERN.finditer(text))
+    sections = [
+        text[match.start():matches[index + 1].start() if index + 1 < len(matches) else len(text)]
+        for index, match in enumerate(matches)
+    ]
+    answer_count = sum(1 for section in sections if ANSWER_LINE_PATTERN.search(section))
+    explanation_count = sum(1 for section in sections if EXPLANATION_LINE_PATTERN.search(section))
+    return len(sections), answer_count, explanation_count
+
+
 def _issue(code, severity, message, snippet="", blocking=None):
     if blocking is None:
         blocking = severity in {"Critical", "High"}
@@ -148,12 +174,7 @@ def analyze_script(text, content_format="Concept Explainer", language="Bilingual
     else:
         minimum_mcqs = 5
 
-    question_pattern = re.compile(
-        r"(?im)^\s*(?:#{1,6}\s*)?(?:\*\*\s*)?(?:Q(?:uestion)?\s*0*\d+|प्रश्न\s*0*\d+)\b"
-    )
-    question_count = len(question_pattern.findall(text))
-    answer_count = len(re.findall(r"(?i)Correct\s+Answer(?:\s*\*{0,2})?\s*[:：]\*{0,2}", text))
-    explanation_count = len(re.findall(r"(?i)Explanation(?:\s*\*{0,2})?\s*[:：]\*{0,2}", text))
+    question_count, answer_count, explanation_count = count_mcq_sections(text)
 
     if question_count < minimum_mcqs:
         findings.append(_issue(
@@ -237,11 +258,7 @@ def analyze_script(text, content_format="Concept Explainer", language="Bilingual
 
 
 def render_report(text, findings, content_format="Concept Explainer", language="Bilingual"):
-    question_count = len(re.findall(
-        r"(?im)^\s*(?:#{1,6}\s*)?(?:\*\*\s*)?(?:Q(?:uestion)?\s*0*\d+|प्रश्न\s*0*\d+)\b", text
-    ))
-    answer_count = len(re.findall(r"(?i)Correct\s+Answer(?:\s*\*{0,2})?\s*[:：]\*{0,2}", text))
-    explanation_count = len(re.findall(r"(?i)Explanation(?:\s*\*{0,2})?\s*[:：]\*{0,2}", text))
+    question_count, answer_count, explanation_count = count_mcq_sections(text)
     latin_count = len(re.findall(r"[A-Za-z]", text))
     devanagari_count = len(re.findall(r"[\u0900-\u097F]", text))
     blockers = [item for item in findings if item["blocking"]]
