@@ -69,26 +69,38 @@ def parse_lesson(markdown):
     sections = []
     heading = "Lesson overview"
     paragraphs = []
+    paragraph_lines = []
     in_code = False
     skip_section = False
 
-    def flush():
-        nonlocal paragraphs
+    def flush_paragraph():
+        nonlocal paragraph_lines
+        if paragraph_lines:
+            text = plain_text(" ".join(paragraph_lines))
+            if text and len(text) >= 12 and not VERIFY_RE.search(text):
+                paragraphs.append(text)
+            paragraph_lines = []
+
+    def flush_section():
+        flush_paragraph()
         if paragraphs:
             sections.append((heading, paragraphs[:]))
-            paragraphs = []
+            paragraphs.clear()
 
     for raw in markdown.splitlines():
         line = raw.strip()
         if line.startswith("```") or line.startswith("~~~"):
+            flush_paragraph()
             in_code = not in_code
             continue
-        if in_code or not line:
-            flush()
+        if in_code:
+            continue
+        if not line:
+            flush_paragraph()
             continue
         match = HEADING_RE.match(line)
         if match:
-            flush()
+            flush_section()
             heading = plain_text(match.group(1))
             normalized = heading.casefold()
             skip_section = any(term in normalized for term in (
@@ -99,14 +111,11 @@ def parse_lesson(markdown):
             continue
         if line.startswith(">"):
             line = line.lstrip("> ")
-        text = plain_text(line)
-        if not text or VERIFY_RE.search(text):
-            continue
-        if len(text) < 12:
-            continue
-        paragraphs.append(text)
-    flush()
+        if re.match(r"^(?:[-*+]\\s+|\\d+[.)]\\s+)", line):
+            flush_paragraph()
+        paragraph_lines.append(line)
 
+    flush_section()
     if not sections:
         raise ValueError("No narratable lesson content was found in the corrected Markdown.")
     return sections
