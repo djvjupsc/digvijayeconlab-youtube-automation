@@ -97,6 +97,7 @@ jobs:
             output/quality_checks/*.md
             output/shorts/*
             output/community/*
+            output/seo/*
           if-no-files-found: warn
           retention-days: 14
 
