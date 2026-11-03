@@ -191,10 +191,10 @@ def analyze_script(text, content_format="Concept Explainer", language="Bilingual
 
         # Require a dedicated, populated worked-example/application or demand-schedule
         # section. A passing mention of an example elsewhere in the script is not enough.
-        headings = list(re.finditer(r"(?m)^#{1,6}\\s+(.+?)\\s*$", text))
+        headings = list(re.finditer(r"(?m)^#{1,6}\s+(.+?)\s*$", text))
         example_heading = re.compile(
-            r"(?:worked\\s+example|example|application|demand\\s+schedule|"
-            r"worked\\s+application|उदाहरण|अनुप्रयोग|मांग\\s+अनुसूची|मांग\\s+सारणी)",
+            r"(?:worked\s+example|example|application|demand\s+schedule|"
+            r"worked\s+application|उदाहरण|अनुप्रयोग|मांग\s+अनुसूची|मांग\s+सारणी)",
             flags=re.IGNORECASE,
         )
         valid_example_section = False
@@ -214,7 +214,7 @@ def analyze_script(text, content_format="Concept Explainer", language="Bilingual
             body_text = " ".join(body_lines)
             table_rows = sum(1 for line in body_lines if line.startswith("|"))
             if len(body_text) >= 30 and (
-                len(re.findall(r"\\w+", body_text, flags=re.UNICODE)) >= 6
+                len(re.findall(r"\w+", body_text, flags=re.UNICODE)) >= 6
                 or table_rows >= 3
             ):
                 valid_example_section = True
