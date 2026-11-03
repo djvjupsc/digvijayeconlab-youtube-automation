@@ -405,7 +405,7 @@ def main():
             else:
                 render_report = json.loads(short_render_path.read_text(encoding="utf-8"))
                 if not render_report.get("voice_clone_used"):
-                    skipped.append("Short not scheduled: it was not narrated with the configured owner's HeyGen voice clone.")
+                    skipped.append("Short not scheduled: it was not narrated with the configured owner's reference voice clone (Chatterbox or HeyGen).")
                 else:
                     short_data = json.loads(short_json_path.read_text(encoding="utf-8"))
                     focus = short_data["focus_unit"]
