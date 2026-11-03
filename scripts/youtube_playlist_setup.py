@@ -92,13 +92,17 @@ def ensure_playlists(catalog, access_token, request_json=_request_json):
     items = catalog.get("items", [])
     if len(items) != 10:
         raise YouTubePlaylistError("Playlist catalogue must contain exactly ten configured playlists.")
+    # Validate the complete catalogue before making any API calls. This prevents
+    # partial playlist creation when a later row contains invalid metadata.
+    for row in items:
+        title = row.get("title")
+        if not isinstance(title, str) or not title.strip():
+            raise YouTubePlaylistError("Playlist catalogue contains an empty title.")
     existing = fetch_existing_playlists(access_token, request_json=request_json)
     created, reused = [], []
     for row in items:
-        title = row.get("title")
+        title = row["title"]
         description = row.get("description", "")
-        if not isinstance(title, str) or not title.strip():
-            raise YouTubePlaylistError("Playlist catalogue contains an empty title.")
         if title in existing:
             reused.append({"title": title, "playlist_id": existing[title]})
             continue
