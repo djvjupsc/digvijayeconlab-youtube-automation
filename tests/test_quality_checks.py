@@ -116,5 +116,29 @@ A lower price is associated with greater quantity demanded, other things equal.
         )
 
 
+    def test_counts_mcqs_with_markdown_heading_prefixes(self):
+        source = """## Learning Objectives
+Understand demand.
+## Definition
+Demand is the relationship between price and quantity demanded.
+## Worked Example / Application
+Assume a hypothetical market. Price falls from 10 to 8, while quantity rises from 20 to 25 units.
+## Recap
+Price and quantity demanded are inversely related, other things equal.
+"""
+        for number in range(1, 6):
+            source += (
+                f"\\n### Q{number}. Question?\\n"
+                "A) Option A\\nB) Option B\\nC) Option C\\nD) Option D\\n"
+                "* **Correct Answer:** B\\n"
+                "* **Explanation:** This is the explanation.\\n"
+            )
+        findings = analyze_script(source, "Concept Explainer", "English")
+        codes = {item["code"] for item in findings}
+        self.assertNotIn("MCQ_COUNT_BELOW_MINIMUM", codes)
+        self.assertNotIn("MCQ_ANSWER_GAP", codes)
+        self.assertNotIn("MCQ_EXPLANATION_GAP", codes)
+
+
 if __name__ == "__main__":
     unittest.main()
