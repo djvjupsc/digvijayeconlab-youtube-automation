@@ -11,8 +11,6 @@ class GeminiClientRetryTests(unittest.TestCase):
     @patch("scripts.gemini_client.urllib.request.urlopen")
     def test_retries_temporary_503_then_succeeds(self, urlopen, sleep):
         success = io.BytesIO(json.dumps({"ok": True}).encode("utf-8"))
-        success.__enter__ = lambda self=success: self
-        success.__exit__ = lambda *args: False
         temporary = gemini_client.urllib.error.HTTPError(
             "https://example.invalid", 503, "busy", {}, io.BytesIO(b"temporary")
         )
