@@ -276,6 +276,18 @@ def main():
         raise SystemExit(f"Expected one corrected script for featured Unit {unit}; found {len(script_matches)}.")
     script_path = script_matches[0]
     markdown = script_path.read_text(encoding="utf-8")
+    review_path = root / "output/reviews" / f"{script_path.stem}-quality-review.md"
+    if not review_path.is_file():
+        raise SystemExit("Long-form render blocked: corrected academic review report is missing.")
+    review_text = review_path.read_text(encoding="utf-8")
+    verdict = ""
+    review_lines = review_text.splitlines()
+    for line_index, line in enumerate(review_lines):
+        if "overall verdict" in line.casefold():
+            verdict = next((entry.strip() for entry in review_lines[line_index + 1:] if entry.strip()), "")
+            break
+    if not any(word in verdict.casefold() for word in ("ready", "approved", "pass")):
+        raise SystemExit("Long-form render blocked: corrected academic review has no explicit READY/APPROVED verdict.")
     if VERIFY_RE.search(markdown):
         raise SystemExit("Long-form render blocked: unresolved [VERIFY] marker exists in corrected lesson.")
     if len(markdown) < 1200:
@@ -346,6 +358,7 @@ def main():
     voice_clone_used = chatterbox_enabled and all("Chatterbox" in provider for provider in providers)
     report = {
         "status": "rendered",
+        "audit_status": "pass" if voice_clone_used else "blocked",
         "publication_date": date,
         "unit": unit,
         "topic": topic,
