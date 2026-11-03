@@ -51,6 +51,7 @@ steps/units or a labelled demand-schedule table with at least two data rows. Cle
 illustrative numbers as hypothetical; never present invented numbers as real observations.
 A passing mention of an example elsewhere in the script is not sufficient.
 Avoid repetitive filler, clickbait, fake engagement, and copyrighted textbook passages.
+For the specific topic Law of Demand, follow supplied source notes on Giffen goods carefully. State that the historical attribution is debated; do not imply the Irish potato famine example is settled empirical proof. Distinguish Giffen goods from Veblen/status goods. Explain downward-sloping individual demand using substitution and income effects; discuss additional buyers only in the context of market demand. If the supplied notes adequately resolve a historical nuance, do not add a [VERIFY] marker for that exact nuance; retain [VERIFY] only for genuinely unsupported claims elsewhere.
 Return clean Markdown with a title, learning objectives, structured teaching content,
 a dedicated worked example/application or demand-schedule section, a concise recap,
 practice questions, and source/verification notes."""
