@@ -49,11 +49,34 @@ SCHEMA = {
             "type": "ARRAY",
             "items": {"type": "STRING"},
         },
+        "seo_metadata": {
+            "type": "ARRAY",
+            "items": {
+                "type": "OBJECT",
+                "properties": {
+                    "unit": {"type": "INTEGER"},
+                    "video_title": {"type": "STRING"},
+                    "alternative_titles": {"type": "ARRAY", "items": {"type": "STRING"}},
+                    "primary_keyword": {"type": "STRING"},
+                    "secondary_keywords": {"type": "ARRAY", "items": {"type": "STRING"}},
+                    "description": {"type": "STRING"},
+                    "tags": {"type": "ARRAY", "items": {"type": "STRING"}},
+                    "hashtags": {"type": "ARRAY", "items": {"type": "STRING"}},
+                    "thumbnail_text_options": {"type": "ARRAY", "items": {"type": "STRING"}},
+                    "playlist_title": {"type": "STRING"},
+                },
+                "required": [
+                    "unit", "video_title", "alternative_titles", "primary_keyword",
+                    "secondary_keywords", "description", "tags", "hashtags",
+                    "thumbnail_text_options", "playlist_title",
+                ],
+            },
+        },
     },
     "required": [
         "short_title", "short_description", "scenes", "outro_en",
         "outro_hi", "community_post", "poll_question", "poll_options",
-        "pinned_comment", "hashtags",
+        "pinned_comment", "hashtags", "seo_metadata",
     ],
 }
 
@@ -104,6 +127,31 @@ def validate(data):
         raise ValueError("Poll options must be non-empty strings.")
     if not isinstance(data.get("hashtags"), list) or not data["hashtags"]:
         raise ValueError("At least one hashtag is required.")
+    seo = data.get("seo_metadata")
+    if not isinstance(seo, list) or len(seo) != 10:
+        raise ValueError("SEO metadata must contain exactly one entry for each of ten units.")
+    seen_units = set()
+    for item in seo:
+        if not isinstance(item, dict):
+            raise ValueError("Every SEO metadata entry must be an object.")
+        unit = item.get("unit")
+        if not isinstance(unit, int) or unit < 1 or unit > 10 or unit in seen_units:
+            raise ValueError("SEO metadata must contain each unit number 1–10 exactly once.")
+        seen_units.add(unit)
+        for key in ["video_title", "primary_keyword", "description", "playlist_title"]:
+            if not isinstance(item.get(key), str) or not item[key].strip():
+                raise ValueError(f"SEO Unit {unit} is missing {key}.")
+        if len(item["video_title"]) > 95:
+            raise ValueError(f"SEO Unit {unit} title exceeds the safe 95-character target.")
+        if not isinstance(item.get("tags"), list) or not item["tags"]:
+            raise ValueError(f"SEO Unit {unit} must contain tags.")
+        tag_length = sum(len(tag.strip()) + 1 for tag in item["tags"] if isinstance(tag, str))
+        if tag_length > 450:
+            raise ValueError(f"SEO Unit {unit} tags exceed the 450-character safe limit.")
+        if not isinstance(item.get("alternative_titles"), list) or len(item["alternative_titles"]) < 2:
+            raise ValueError(f"SEO Unit {unit} needs at least two alternative titles.")
+        if not isinstance(item.get("thumbnail_text_options"), list) or not item["thumbnail_text_options"]:
+            raise ValueError(f"SEO Unit {unit} needs thumbnail text options.")
     return data
 
 
@@ -121,6 +169,15 @@ def main():
         for item in manifest["units"]
     )
     focus = manifest["short_focus"]
+    script_excerpts = []
+    for item in manifest["units"]:
+        candidates = sorted((Path("output/corrected_scripts")).glob(f"unit-{item['unit']:02d}-*.md"))
+        excerpt = candidates[0].read_text(encoding="utf-8")[:2200] if candidates else "[Corrected script excerpt unavailable]"
+        script_excerpts.append(
+            f"UNIT {item['unit']} — {item['unit_name']}\nTOPIC: {item['topic']}\n"
+            f"PLAYLIST: {item['playlist_title']}\nCORRECTED SCRIPT EXCERPT:\n{excerpt}"
+        )
+    seo_context = "\n\n".join(script_excerpts)
     system_prompt = """You create clear, accurate and original bilingual educational promotional content
 for DigvijayEconLab, aimed at Economics exam aspirants in India.
 Use only the supplied topic labels; do not invent data, exam questions, statistics, policy details,
@@ -134,7 +191,16 @@ No copyrighted characters, music, movie references, brand imitations or fake cla
 Also create one concise bilingual YouTube Community text post that previews today's ten lessons.
 Create a relevant, non-leading poll with two to four short options. Do not claim the videos have
 already been published. State that the lessons are today's learning plan/drafts if publication status
-is not known. Return only JSON matching the response schema."""
+is not known. Also generate SEO metadata for every one of the ten full lesson videos. For each unit provide:
+one accurate main title (prefer 55–75 characters and never exceed 95), two alternate titles,
+one primary keyword, four to six relevant secondary keyword phrases, a useful natural description
+with the main topic in its opening lines, a concise comma-separated-style tag array that stays
+under 450 characters in total, three to five hashtags, two or three very short thumbnail text
+options, and the exact matching playlist title supplied below. Avoid keyword stuffing, repeated
+near-identical tags, fake urgency, guaranteed-question claims, fabricated search-volume numbers,
+and unsupported claims such as "most expected" unless sourced. Do not add made-up chapters or
+timestamps. These are editorial metadata suggestions, not verified search-volume rankings.
+Return only JSON matching the response schema.
     user_prompt = f"""Publication date: {manifest['publication_date']}
 Brand: DigvijayEconLab
 Today's ten planned lesson topics:
@@ -146,7 +212,10 @@ Topic: {focus['topic']}
 
 Prepare the bilingual Short storyboard and one Community post with poll.
 For the Community post, mention all ten unit areas but avoid adding any unconfirmed video URLs.
-The Short must be a genuine lesson, not merely an advertisement."""
+The Short must be a genuine lesson, not merely an advertisement.
+
+Ten SEO inputs (use the supplied playlist title for each unit; match unit numbers exactly):
+{seo_context}"
     payload = {
         "systemInstruction": {"parts": [{"text": system_prompt}]},
         "contents": [{"role": "user", "parts": [{"text": user_prompt}]}],
@@ -175,6 +244,8 @@ The Short must be a genuine lesson, not merely an advertisement."""
 
     date = manifest["publication_date"]
     root = Path("output")
+    seo_dir = root / "seo"
+    seo_dir.mkdir(parents=True, exist_ok=True)
     shorts_dir = root / "shorts"
     community_dir = root / "community"
     shorts_dir.mkdir(parents=True, exist_ok=True)
