@@ -7,6 +7,11 @@ import urllib.request
 from pathlib import Path
 
 try:
+    from .gemini_client import generate_content
+except ImportError:
+    from gemini_client import generate_content
+
+try:
     from .quality_checks import analyze_script, render_report
 except ImportError:
     from quality_checks import analyze_script, render_report
@@ -87,20 +92,10 @@ SCRIPT TO REVIEW:
         "contents": [{"role": "user", "parts": [{"text": user_prompt}]}],
         "generationConfig": {"temperature": 0.2, "maxOutputTokens": 8192},
     }
-    request = urllib.request.Request(
-        API_URL,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={"x-goog-api-key": api_key, "Content-Type": "application/json"},
-        method="POST",
-    )
     try:
-        with urllib.request.urlopen(request, timeout=120) as response:
-            result = json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")[:1000]
-        raise SystemExit(f"Gemini review failed (HTTP {exc.code}): {detail}") from exc
-    except (urllib.error.URLError, TimeoutError) as exc:
-        raise SystemExit(f"Gemini review connection failed: {exc}") from exc
+        result = generate_content(API_URL, api_key, payload, label="Gemini academic review", timeout=120)
+    except RuntimeError as exc:
+        raise SystemExit(str(exc)) from exc
 
     candidates = result.get("candidates", [])
     if not candidates:
