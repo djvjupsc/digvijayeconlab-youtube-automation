@@ -205,13 +205,10 @@ def analyze_script(text, content_format="Concept Explainer", language="Bilingual
             if not example_heading.search(heading_text):
                 continue
             example_heading_found = True
-            start_line = text.count("\\n", 0, match.start()) + 1
-            end_line = (
-                text.count("\\n", 0, headings[index + 1].start()) + 1
-                if index + 1 < len(headings) else len(lines)
-            )
+            body_start = match.end()
+            body_end = headings[index + 1].start() if index + 1 < len(headings) else len(text)
             body_lines = [
-                line.strip() for line in lines[start_line:end_line - 1]
+                line.strip() for line in text[body_start:body_end].splitlines()
                 if line.strip() and line.strip() not in {"---", "***", "___"}
             ]
             body_text = " ".join(body_lines)
