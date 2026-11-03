@@ -343,10 +343,10 @@ Ten SEO inputs (use the supplied playlist title for each unit; match unit number
             "",
         ]
     (seo_dir / f"{date}-seo-metadata.md").write_text(
-        "\\n".join(seo_markdown) + "\\n", encoding="utf-8"
+        "\n".join(seo_markdown) + "\n", encoding="utf-8"
     )
     (seo_dir / f"{date}-seo-metadata.json").write_text(
-        json.dumps(seo_by_unit, ensure_ascii=False, indent=2) + "\\n", encoding="utf-8"
+        json.dumps(seo_by_unit, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
     print(f"Short storyboard and structured scene file saved for {date}.")
     print(f"Community post and poll draft saved for {date}.")
