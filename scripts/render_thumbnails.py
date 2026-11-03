@@ -41,7 +41,7 @@ def find_font(family, candidates):
 
 
 def wrap_lines(draw, text, font, max_width, max_lines=3):
-    words = re.sub(r"\\s+", " ", str(text or "")).strip().split()
+    words = re.sub(r"\s+", " ", str(text or "")).strip().split()
     lines, current = [], ""
     for word in words:
         candidate = f"{current} {word}".strip()
