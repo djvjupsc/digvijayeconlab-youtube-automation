@@ -44,7 +44,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Test structured correction validation
+      - name: Test correction validation and deterministic quality gates
         run: python -m unittest discover -s tests -v
 
       - name: Generate educational script draft
@@ -67,6 +67,9 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: gemini-3.5-flash-lite
           SCRIPT_SOURCE_NOTES: ${{ inputs.source_notes }}
+          SCRIPT_FORMAT: ${{ inputs.content_format }}
+          SCRIPT_LANGUAGE: ${{ inputs.language }}
+          REVIEW_STAGE: original
         run: |
           python scripts/review_script.py output/scripts/*.md "$SCRIPT_SOURCE_NOTES"
 
@@ -90,6 +93,9 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: gemini-3.5-flash-lite
           SCRIPT_SOURCE_NOTES: ${{ inputs.source_notes }}
+          SCRIPT_FORMAT: ${{ inputs.content_format }}
+          SCRIPT_LANGUAGE: ${{ inputs.language }}
+          REVIEW_STAGE: corrected
         run: |
           python scripts/review_script.py output/corrected_scripts/*.md "$SCRIPT_SOURCE_NOTES"
 
@@ -102,5 +108,6 @@ jobs:
             output/reviews/*.md
             output/corrected_scripts/*.md
             output/corrections/*.md
+            output/quality_checks/*.md
           if-no-files-found: error
           retention-days: 14

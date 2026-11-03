@@ -5,6 +5,11 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+try:
+    from .quality_checks import sanitize_math_notation
+except ImportError:
+    from quality_checks import sanitize_math_notation
+
 MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
 API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
 
@@ -92,6 +97,9 @@ Do not browse, invent facts, invent citations, or claim independent verification
 Preserve topic, teaching sequence, examples, MCQs, answer keys, bilingual structure,
 and useful detail unless a specific issue requires a change. Correct clear editorial,
 notation, grammar, formatting, translation parity, and consistency problems.
+Prefer plain Unicode arrows (↑ and ↓) and simple derivative text such as dQ_d/dP.
+Avoid nested LaTeX formatting macros such as raisebox and tiny. Do not emit control
+characters inside formulas or text.
 Resolve [VERIFY] markers only when source notes establish the answer; otherwise
 retain a clear [HUMAN VERIFY: ...] marker and list it as unresolved. If a factual
 change is not supported by source notes, do not silently apply it. Do not remove
@@ -105,7 +113,6 @@ Return only a JSON object matching the supplied response schema:
 - unresolved_items: array of strings for every item needing human/source verification
 If no safe corrections can be made, return the original script unchanged and explain
 that in correction_log. Do not include Markdown fences or commentary outside JSON."""
-
     user_prompt = f"""SOURCE NOTES:
 {source_notes if source_notes.strip() else "[No source notes supplied. Factual claims cannot be independently verified.]"}
 ORIGINAL SCRIPT:
@@ -138,6 +145,12 @@ Apply safe, evidence-grounded corrections. Preserve all material content and the
         raw = ""  # Truncated output must never be accepted as a complete revision.
 
     corrected, changes, unresolved, fallback_used = parse_structured_response(raw, script)
+
+    # Apply only known, deterministic notation repairs after a valid structured response.
+    # On fallback, preserve the original byte-for-byte content and let the gate report issues.
+    if not fallback_used:
+        corrected, notation_changes = sanitize_math_notation(corrected)
+        changes.extend(notation_changes)
 
     corrected_dir, report_dir = Path("output/corrected_scripts"), Path("output/corrections")
     corrected_dir.mkdir(parents=True, exist_ok=True)

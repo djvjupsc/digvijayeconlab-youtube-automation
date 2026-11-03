@@ -37,20 +37,51 @@ Create original, accurate material for MPPSC Assistant Professor Economics aspir
 Do not fabricate statistics, quotations, citations, PYQs, dates, policies, or source references.
 Use only the supplied source notes for specific factual claims. If notes are absent or insufficient,
 mark claims that need verification as [VERIFY] rather than inventing details.
-For MCQs, provide four options, the correct answer, and a clear explanation for every question.
+For MCQs, provide four options, one clearly marked correct answer, and a clear explanation for every question.
+Use clean Markdown and robust notation. Prefer readable Unicode arrows (↑ and ↓) and simple
+plain-text derivative notation such as dQ_d/dP. Do not use nested formatting macros such as
+raisebox or tiny, and do not put control characters inside mathematical expressions.
+For Bilingual output, provide the English explanation followed by a faithful Hindi equivalent
+for each substantive teaching point or paragraph. Do not blend Latin and Devanagari characters
+inside a single word. Keep standard English technical terms in parentheses where useful.
 Avoid repetitive filler, clickbait, fake engagement, and copyrighted textbook passages.
 Return clean Markdown with a title, learning objectives, structured teaching content,
-a concise recap, and a short quality-control checklist."""
+examples or applications, a concise recap, practice questions, and source/verification notes."""
+
+    if content_format == "Concept Explainer":
+        format_requirements = (
+            "Concept Explainer requirements: include learning objectives, a clear definition, "
+            "assumptions or scope where relevant, step-by-step explanation, suitable examples or "
+            "applications, a concise recap, and at least 5 distinct MCQs. Each MCQ needs four options, "
+            "one correct answer, and an explanation. Add a labelled schedule/curve description only "
+            "where it genuinely helps explain the topic; never invent data."
+        )
+    elif content_format == "MCQ Set":
+        format_requirements = (
+            "MCQ Set requirements: provide at least 10 distinct topic-relevant MCQs, each with four "
+            "options, one correct answer, and an explanation. Avoid duplicate questions and ambiguous "
+            "distractors. Include a short concept map or revision recap."
+        )
+    else:
+        format_requirements = (
+            "Previous-Year-Question Analysis requirements: analyze at least 3 questions only when "
+            "actual question text or a reliable source is supplied. Never invent or label a question "
+            "as an actual PYQ without evidence. If actual PYQs are not supplied, clearly label any "
+            "new questions as PYQ-style practice, not previous-year questions. Explain the concept, "
+            "reasoning, answer, and exam relevance for each included question."
+        )
 
     user_prompt = f"""Brand: DigvijayEconLab
 Audience: MPPSC Assistant Professor Economics aspirants
 Topic: {topic}
 Language: {language}
 Format: {content_format}
+Format-specific requirements:
+{format_requirements}
 Source notes supplied by the user:
 {source_notes if source_notes.strip() else "[No source notes supplied. Avoid unsupported factual claims and mark verification gaps.]"}
-Target: a useful, classroom-ready first draft. For bilingual output, explain in Hindi and provide
-the corresponding English terminology. Include source/verification notes at the end."""
+Target: a useful, classroom-ready first draft. For bilingual output, provide corresponding
+English and Hindi explanations for each substantive teaching point. Include source/verification notes at the end."""
 
     payload = {
         "systemInstruction": {"parts": [{"text": system_prompt}]},
