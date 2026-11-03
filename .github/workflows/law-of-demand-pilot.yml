@@ -132,7 +132,8 @@ jobs:
         run: |
           python scripts/correct_script.py \
             "output/scripts/unit-01-law-of-demand.md" \
-            "output/reviews/unit-01-law-of-demand-quality-review.md"
+            "output/reviews/unit-01-law-of-demand-quality-review.md" \
+            "output/source_notes/law-of-demand-source-notes.md"
 
       - name: Apply explicit human fact-check attestation
         if: inputs.confirm_human_fact_check == 'yes'
