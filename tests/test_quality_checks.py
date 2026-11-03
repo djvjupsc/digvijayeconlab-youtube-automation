@@ -151,7 +151,7 @@ Assume a hypothetical market. Price falls from ₹10 to ₹8, while quantity dem
 Price and quantity demanded move in opposite directions, other things equal.
 """
         for number in range(1, 6):
-            source += "\\n".join([
+            source += chr(10).join([
                 f"### MCQ {number}",
                 "A) Option A",
                 "B) Option B",
@@ -160,7 +160,7 @@ Price and quantity demanded move in opposite directions, other things equal.
                 "* **Correct Answer / सही उत्तर:** B",
                 "* **Explanation (English):** The English rationale.",
                 "* **Explanation (Hindi):** हिंदी में व्याख्या।",
-            ]) + "\\n"
+            ]) + chr(10)
         from scripts.quality_checks import count_mcq_sections
         self.assertEqual(count_mcq_sections(source), (5, 5, 5))
         findings = analyze_script(source, "Concept Explainer", "English")
