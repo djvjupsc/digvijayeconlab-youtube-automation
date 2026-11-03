@@ -135,7 +135,7 @@ jobs:
             output/shorts/*
             output/community/*
             output/seo/*
-            output/metricool/*
+            output/youtube/*
             output/youtube-playlists.json
           if-no-files-found: warn
           retention-days: 14
