@@ -58,6 +58,13 @@ class DailyAssetsValidationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "voiceover_hi"):
             validate(payload)
 
+    def test_rejects_playlist_title_not_in_controlled_catalogue(self):
+        payload = self.valid_payload()
+        expected = {i: f"UGC NET Economics Unit {i} | DigvijayEconLab" for i in range(1, 11)}
+        expected[1] = "Different playlist title"
+        with self.assertRaisesRegex(ValueError, "does not match"):
+            validate(payload, expected)
+
     def test_rejects_duplicate_or_missing_unit_seo_metadata(self):
         payload = self.valid_payload()
         payload["seo_metadata"][1]["unit"] = 1
