@@ -135,7 +135,7 @@ def main():
     if not ffmpeg:
         raise SystemExit("This renderer requires ffmpeg.")
     if heygen_enabled:
-        from scripts.heygen_tts import synthesize
+        from heygen_tts import synthesize
         print("Narration provider: HeyGen voice clone.")
     else:
         print("WARNING: HeyGen credentials are not configured; using generic eSpeak placeholder voice, not the channel owner's voice.")
