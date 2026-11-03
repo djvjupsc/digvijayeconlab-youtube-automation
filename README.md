@@ -24,7 +24,7 @@ The repository is in **safe setup mode**. Script drafting is available as a manu
 5. Download the `digvijayeconlab-script-draft` artifact from the completed workflow run.
 6. Fact-check and edit the draft before using it in a video.
 
-The workflow defaults to `gemini-2.5-flash-lite`. Google provides a free tier for selected Gemini API models subject to account eligibility, quotas and rate limits. Free-tier prompts and responses may be used by Google to improve its products; do not submit personal, confidential, or sensitive information. Free-tier availability and model limits can change. Check the current AI Studio quota and official pricing before use.
+The workflow defaults to `gemini-3.1-flash-lite`. Google provides a free tier for selected Gemini API models subject to account eligibility, quotas and rate limits. Free-tier prompts and responses may be used by Google to improve its products; do not submit personal, confidential, or sensitive information. Free-tier availability and model limits can change. Check the current AI Studio quota and official pricing before use.
 
 ## Run the preflight locally
 
