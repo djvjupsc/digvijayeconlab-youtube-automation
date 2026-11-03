@@ -33,7 +33,7 @@ Script generation, academic review, and AI-assisted correction can now run autom
 4. It generates the script, performs the original academic review, applies schema-validated conservative correction, preserves the original review, and reviews the corrected draft.
 5. The completed script, original and corrected reviews, correction log, and deterministic quality reports are stored as a GitHub Actions artifact for 14 days.
 6. The queue item is marked `completed` only when the earlier workflow steps and artifact packaging succeed; otherwise it is marked `failed`. A `failed` item is not automatically retried. To retry it, change its status to `pending` after checking the failed run.
-7. A processing claim older than six hours is considered stale and can be returned to `pending` on the next run.
+7. A processing claim older than six hours is marked `stale` for manual review. It is **not** automatically put back into the queue, because an automatic retry could generate the same topic twice. After checking the Actions run and confirming that no usable draft was produced, change its status to `pending` manually to retry.
 
 ## Add a topic to the queue
 
@@ -50,7 +50,7 @@ Edit `config/topic_queue.json` on `main` and add a new object inside `items`:
 }
 ```
 
-Use a new lowercase ID with hyphens. Topic names must be unique even when capitalization or punctuation differs. Supported languages are `Bilingual`, `Hindi`, and `English`; supported formats are `Concept Explainer`, `MCQ Set`, and `Previous-Year-Question Analysis`. Do not reuse or reset a completed topic under a new ID. Completed and failed entries remain in the queue as the duplicate-prevention history.
+Use a new lowercase ID with hyphens. Topic names must be unique even when capitalization or punctuation differs. Supported languages are `Bilingual`, `Hindi`, and `English`; supported formats are `Concept Explainer`, `MCQ Set`, and `Previous-Year-Question Analysis`. Do not reuse or reset a completed topic under a new ID. Completed, failed, and stale entries remain in the queue as the duplicate-prevention history. Stale entries require manual inspection before retry.
 
 The initial queue contains ten Microeconomics topics. It intentionally excludes Law of Demand because that topic was already used for the earlier test draft.
 
