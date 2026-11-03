@@ -202,13 +202,18 @@ def draw_slide(group, index, total, unit, unit_name, topic, font_regular, font_b
 
     draw.rounded_rectangle((104, y + 12, WIDTH - 104, y + 17), radius=2, fill=accent)
     y += 62
+    show_demand_graph = any(
+        "demand" in str(value).casefold() or "मांग" in str(value)
+        for value in (group.get("heading", ""), topic)
+    )
     display = []
     for paragraph in group["paragraphs"]:
         # Keep each slide readable; the complete paragraph remains in narration.
         sentences = re.split(r"(?<=[.!?।॥])\s+", paragraph)
         display.append(sentences[0] if sentences else paragraph)
+    text_width = 1040 if show_demand_graph else WIDTH - 250
     for point in display[:4]:
-        lines = wrap_lines(draw, point, body_font, WIDTH - 250, max_lines=3)
+        lines = wrap_lines(draw, point, body_font, text_width, max_lines=3)
         draw.ellipse((112, y + 16, 130, y + 34), fill=accent)
         for line in lines:
             draw.text((160, y), line, font=body_font, fill=(239, 245, 251))
@@ -221,6 +226,8 @@ def draw_slide(group, index, total, unit, unit_name, topic, font_regular, font_b
     if y < 840:
         sub = ImageFont.truetype(hindi_font, 30)
         draw.text((104, 875), f"{unit_name}  |  {topic}", font=sub, fill=accent)
+    if show_demand_graph:
+        draw_demand_curve(draw, accent)
     draw.text((104, 985), "BILINGUAL ECONOMICS LESSON  •  हिंदी + ENGLISH", font=footer,
               fill=(205, 222, 237))
     path = Path(path)
@@ -246,6 +253,86 @@ def run_ffmpeg(command, label):
     except subprocess.CalledProcessError as exc:
         detail = (exc.stderr or exc.stdout or "")[-2000:]
         raise RuntimeError(f"FFmpeg failed while {label}: {detail}") from exc
+
+def audio_duration(path):
+    result = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+         "-of", "default=noprint_wrappers=1:nokey=1", str(path)],
+        check=True, capture_output=True, text=True,
+    )
+    duration = float(result.stdout.strip())
+    if duration <= 0:
+        raise RuntimeError("Narration audio duration is invalid.")
+    return duration
+
+
+def caption_chunks(text, max_chars=88):
+    chunks, current = [], ""
+    for word in str(text).split():
+        candidate = f"{current} {word}".strip()
+        if current and len(candidate) > max_chars:
+            chunks.append(current)
+            current = word
+        else:
+            current = candidate
+    if current:
+        chunks.append(current)
+    return chunks
+
+
+def srt_timestamp(seconds):
+    ms = max(0, int(round(seconds * 1000)))
+    hours, rem = divmod(ms, 3600000)
+    minutes, rem = divmod(rem, 60000)
+    secs, millis = divmod(rem, 1000)
+    return f"{hours:02d}:{minutes:02d}:{secs:02d},{millis:03d}"
+
+
+def write_group_srt(text, duration, path):
+    chunks = caption_chunks(text)
+    total = sum(len(item) for item in chunks) or 1
+    cursor, entries = 0.0, []
+    for index, chunk in enumerate(chunks):
+        end = duration if index == len(chunks) - 1 else cursor + duration * len(chunk) / total
+        words, lines, line = chunk.split(), [], ""
+        for word in words:
+            candidate = f"{line} {word}".strip()
+            if line and len(candidate) > 44:
+                lines.append(line)
+                line = word
+            else:
+                line = candidate
+        if line:
+            lines.append(line)
+        entries.append(
+            f"{index + 1}\\n{srt_timestamp(cursor)} --> {srt_timestamp(end)}\\n"
+            + "\\n".join(lines[:2])
+        )
+        cursor = end
+    Path(path).write_text("\\n\\n".join(entries) + "\\n", encoding="utf-8")
+
+
+def escape_filter_path(path):
+    return str(Path(path).resolve()).replace("\\\\", "/").replace(":", "\\\\:").replace("'", "\\\\'")
+
+
+def draw_demand_curve(draw, accent):
+    left, top, right, bottom = 1260, 350, 1780, 790
+    draw.rounded_rectangle((left, top, right, bottom), radius=24,
+                           fill=(13, 35, 62), outline=accent, width=3)
+    x0, y0, x1, y1 = left + 78, bottom - 72, right - 38, top + 52
+    axis = (225, 237, 248)
+    draw.line((x0, y0, x1, y0), fill=axis, width=5)
+    draw.line((x0, y0, x0, y1), fill=axis, width=5)
+    draw.polygon([(x1, y0), (x1 - 18, y0 - 10), (x1 - 18, y0 + 10)], fill=axis)
+    draw.polygon([(x0, y1), (x0 - 10, y1 + 18), (x0 + 10, y1 + 18)], fill=axis)
+    points = [(x0 + 55 + step / 30 * 350, y1 + 38 + step / 30 * 245) for step in range(31)]
+    draw.line(points, fill=accent, width=9, joint="curve")
+    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 27)
+    draw.text((left + 24, top + 18), "LAW OF DEMAND", font=font, fill=(255, 255, 255))
+    draw.text((x0 - 30, y1 - 8), "P", font=font, fill=(255, 255, 255))
+    draw.text((x1 - 5, y0 + 14), "Q", font=font, fill=(255, 255, 255))
+    draw.text((points[13][0] + 15, points[13][1] - 38), "D", font=font, fill=accent)
 
 
 def ffprobe(path):
@@ -347,12 +434,22 @@ def main():
                 chatterbox_enabled, espeak,
             )
             providers.append(provider.get("provider", "unknown"))
+            subtitle_path = temp / f"captions-{index:02d}.srt"
+            write_group_srt(paragraph_text, audio_duration(audio_path), subtitle_path)
+            subtitle_filter = (
+                f"zoompan=z='min(zoom+0.00035,1.035)':d=1:s={WIDTH}x{HEIGHT}:fps=30,"
+                f"subtitles='{escape_filter_path(subtitle_path)}':"
+                "force_style='FontName=Noto Sans Devanagari,FontSize=22,"
+                "PrimaryColour=&H00FFFFFF,OutlineColour=&H00102030,"
+                "BorderStyle=1,Outline=2,Shadow=1,Alignment=2,MarginV=52'"
+            )
             run_ffmpeg([
                 ffmpeg, "-y", "-loop", "1", "-framerate", "30", "-i", str(image_path),
-                "-i", str(audio_path), "-c:v", "libx264", "-preset", "veryfast",
-                "-tune", "stillimage", "-vf", "format=yuv420p", "-c:a", "aac",
-                "-b:a", "160k", "-shortest", "-movflags", "+faststart", str(segment_path),
-            ], f"rendering lesson section {index + 1}")
+                "-i", str(audio_path), "-vf", subtitle_filter,
+                "-c:v", "libx264", "-preset", "veryfast", "-tune", "stillimage",
+                "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k",
+                "-shortest", "-movflags", "+faststart", str(segment_path),
+            ], f"rendering lesson section {index + 1} with motion and captions")
             segments.append(segment_path)
 
         concat_file = temp / "segments.txt"
@@ -384,8 +481,10 @@ def main():
         "upload_eligible": bool(voice_clone_used and not VERIFY_RE.search(markdown)),
         "technical": technical,
         "limitations": [
-            "This renderer converts the corrected Markdown into narrated typography slides; it does not add stock footage or music.",
-            "Review slide pacing, pronunciation, equations, diagrams and academic accuracy before publication.",
+            "Demand-focused lessons include an original downward-sloping demand-curve teaching diagram.",
+            "Slides use subtle Ken Burns motion and burned-in phrase-timed captions; timing is estimated from narration length, not word-level forced alignment.",
+            "The renderer uses original typography slides and diagrams; it does not add stock footage or music.",
+            "Review slide pacing, pronunciation, equations, diagrams, captions and academic accuracy before publication.",
             "A successful render is not a copyright or academic-quality certification.",
         ],
     }
