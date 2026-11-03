@@ -100,9 +100,20 @@ jobs:
         run: |
           python scripts/daily_production.py process --manifest output/daily_manifest.json
 
+      - name: Audit the generated Short before any publishing attempt
+        if: steps.prepare.outputs.claimed == 'true'
+        run: |
+          DATE=$(python -c "import json; print(json.load(open('output/daily_manifest.json'))['publication_date'])")
+          python scripts/prepublish_audit.py \\
+            "output/shorts/$DATE-short.json" \\
+            "output/shorts/$DATE-short-render.json" \\
+            "output/shorts/$DATE-digvijayeconlab-short.mp4" \\
+            "output/shorts/$DATE-prepublish-audit.json"
+
       - name: Schedule quality-gated videos through Metricool
         if: steps.prepare.outputs.claimed == 'true'
         env:
+          PUBLIC_PUBLISHING_ENABLED: ${{ secrets.PUBLIC_PUBLISHING_ENABLED }}
           METRICOOL_API_TOKEN: ${{ secrets.METRICOOL_API_TOKEN }}
           METRICOOL_USER_ID: ${{ secrets.METRICOOL_USER_ID }}
           METRICOOL_BLOG_ID: ${{ secrets.METRICOOL_BLOG_ID }}

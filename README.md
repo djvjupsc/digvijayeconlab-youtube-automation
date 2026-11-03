@@ -207,3 +207,16 @@ Add these repository **variables**:
 When enabled, Chatterbox takes priority over HeyGen. If Chatterbox is disabled, the existing HeyGen integration remains available; if neither clone provider is configured, the renderer uses eSpeak placeholder narration. The report records the provider and whether a reference voice clone was used, but never records the token or reference-audio contents.
 
 The adapter sends narration text and the reference audio to the public ResembleAI Hugging Face Space for synthesis. Only use a recording of your own voice or a recording you have explicit permission to use. Chatterbox output contains an imperceptible Perth watermark and is MIT-licensed; the model's free Space remains subject to service availability and its usage limits.
+
+
+## Pre-publication safety controls
+
+The daily workflow runs `scripts/prepublish_audit.py` on the generated Short. It verifies that the MP4 is present, H.264, 1080×1920, no longer than three minutes, includes narration, uses the configured owner-authorized voice clone, and has no music track (the current renderer adds no music or third-party visual assets). A failed audit stops the publishing job.
+
+The audit is not a copyright certificate. It cannot query Content ID, establish third-party licensing, or guarantee that YouTube will not issue a claim. Check YouTube Studio's copyright checks and retain licences/permissions for any external asset. The current Short renderer creates its own typography slides and uses narration only; no external stock clips, music or movie footage are included.
+
+**Public scheduling is disabled by default.** The Metricool publisher requires the repository Actions secret `PUBLIC_PUBLISHING_ENABLED=true` in addition to the existing Metricool credentials. Leave it unset/false for draft-only operation. Only enable it after confirming the Metricool account is connected to the correct DigvijayEconLab YouTube channel and reviewing the workflow output. When enabled, eligible videos may be scheduled publicly without another confirmation prompt.
+
+The audit report records `publish_authorized: false` and `human_review_required: true`; the workflow's publication switch is a separate account-owner authorization. Review educational accuracy, pronunciation, subtitles, originality, thumbnail/title accuracy, advertiser suitability, asset rights, and whether altered/synthetic-content disclosure applies before enabling public scheduling.
+
+YouTube's monetization review evaluates channel-level originality and authenticity. Avoid repetitive mass-produced videos, generic template-only slideshows, scraped content, and minimally transformed third-party material. AI assistance is not automatically disqualifying, but the creator's original teaching, analysis and educational value must be clear.
