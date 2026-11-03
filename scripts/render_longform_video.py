@@ -121,28 +121,39 @@ def parse_lesson(markdown):
 
 
 def group_sections(sections, max_chars=MAX_GROUP_CHARS):
+    """Group paragraphs by heading and language without dropping lesson content."""
     groups = []
     for heading, paragraphs in sections:
-        current, current_len = [], 0
+        current, current_len, current_language = [], 0, None
         for paragraph in paragraphs:
-            # Keep a single very long paragraph intact; Chatterbox splits it into API-sized chunks.
-            if current and current_len + len(paragraph) > max_chars:
-                groups.append({"heading": heading, "paragraphs": current})
+            paragraph_language = language_for(paragraph)
+            language_changed = current and paragraph_language != current_language
+            would_overflow = current and current_len + len(paragraph) > max_chars
+            if language_changed or would_overflow:
+                groups.append({
+                    "heading": heading,
+                    "paragraphs": current,
+                    "language": current_language,
+                })
                 current, current_len = [], 0
+            if not current:
+                current_language = paragraph_language
             current.append(paragraph)
             current_len += len(paragraph)
         if current:
-            groups.append({"heading": heading, "paragraphs": current})
+            groups.append({
+                "heading": heading,
+                "paragraphs": current,
+                "language": current_language,
+            })
     if not groups:
         raise ValueError("The corrected script did not contain usable paragraph groups.")
-    if len(groups) > 28:
-        overflow = [paragraph for group in groups[27:] for paragraph in group["paragraphs"]]
-        groups = groups[:27] + [{
-            "heading": "Further explanation and worked applications",
-            "paragraphs": overflow,
-        }]
+    if len(groups) > 36:
+        raise ValueError(
+            f"The lesson creates {len(groups)} narration groups; simplify the video draft "
+            "or split the lesson before rendering. No content has been discarded."
+        )
     return groups
-
 
 def wrap_lines(draw, text, font, max_width, max_lines=5):
     words = str(text).split()
@@ -325,7 +336,7 @@ def main():
         temp = Path(tmp)
         for index, group in enumerate(groups):
             paragraph_text = " ".join(group["paragraphs"])
-            language = language_for(paragraph_text)
+            language = group.get("language") or language_for(paragraph_text)
             image_path = temp / f"slide-{index:02d}.png"
             audio_path = temp / f"narration-{index:02d}.wav"
             segment_path = temp / f"segment-{index:02d}.mp4"
