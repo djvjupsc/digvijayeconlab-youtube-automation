@@ -47,8 +47,24 @@ jobs:
 
       - name: Install free rendering dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends ffmpeg espeak-ng fonts-noto-core fonts-dejavu-core
+          set -euo pipefail
+          packages=()
+          command -v ffmpeg >/dev/null 2>&1 || packages+=(ffmpeg)
+          command -v ffprobe >/dev/null 2>&1 || packages+=(ffmpeg)
+          command -v espeak-ng >/dev/null 2>&1 || packages+=(espeak-ng)
+          if ! fc-match -f '%{family}' 'Noto Sans Devanagari' 2>/dev/null | grep -qi 'Noto Sans Devanagari'; then
+            packages+=(fonts-noto-core)
+          fi
+          if ! fc-match -f '%{family}' 'DejaVu Sans' 2>/dev/null | grep -qi 'DejaVu Sans'; then
+            packages+=(fonts-dejavu-core)
+          fi
+          if (("${#packages[@]}" > 0)); then
+            echo "Installing missing system packages: ${packages[*]}"
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends "${packages[@]}"
+          else
+            echo "FFmpeg, eSpeak NG and required fonts are already available on the runner."
+          fi
           python -m pip install -r requirements-pilot.txt
 
       - name: Run repository quality tests
