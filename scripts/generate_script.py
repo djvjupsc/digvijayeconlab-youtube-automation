@@ -6,11 +6,14 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-API_URL = "https://api.openai.com/v1/chat/completions"
+MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-lite")
+API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
+
 
 def clean_filename(value: str) -> str:
     slug = re.sub(r"[^a-zA-Z0-9]+", "-", value.strip().lower()).strip("-")
     return (slug[:60] or "economics-script") + ".md"
+
 
 def main():
     if len(sys.argv) < 4:
@@ -18,9 +21,9 @@ def main():
 
     topic, language, content_format = sys.argv[1:4]
     source_notes = sys.argv[4] if len(sys.argv) > 4 else ""
-    api_key = os.environ.get("OPENAI_API_KEY")
+    api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
-        raise SystemExit("OPENAI_API_KEY is not configured. Add it as a GitHub Actions secret.")
+        raise SystemExit("GEMINI_API_KEY is not configured. Add it as a GitHub Actions secret.")
 
     allowed_languages = {"Hindi", "English", "Bilingual"}
     allowed_formats = {"Concept Explainer", "MCQ Set", "Previous-Year-Question Analysis"}
@@ -50,20 +53,14 @@ Target: a useful, classroom-ready first draft. For bilingual output, explain in 
 the corresponding English terminology. Include source/verification notes at the end."""
 
     payload = {
-        "model": os.environ.get("OPENAI_MODEL", "gpt-4.1-mini"),
-        "temperature": 0.4,
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
+        "systemInstruction": {"parts": [{"text": system_prompt}]},
+        "contents": [{"role": "user", "parts": [{"text": user_prompt}]}],
+        "generationConfig": {"temperature": 0.4, "maxOutputTokens": 8192},
     }
     request = urllib.request.Request(
         API_URL,
         data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
+        headers={"x-goog-api-key": api_key, "Content-Type": "application/json"},
         method="POST",
     )
 
@@ -72,16 +69,21 @@ the corresponding English terminology. Include source/verification notes at the 
             result = json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")[:1000]
-        raise SystemExit(f"OpenAI API request failed (HTTP {exc.code}): {detail}") from exc
+        raise SystemExit(f"Gemini API request failed (HTTP {exc.code}): {detail}") from exc
     except (urllib.error.URLError, TimeoutError) as exc:
-        raise SystemExit(f"OpenAI API connection failed: {exc}") from exc
+        raise SystemExit(f"Gemini API connection failed: {exc}") from exc
 
-    choices = result.get("choices", [])
-    if not choices:
-        raise SystemExit("The AI provider returned no script content.")
-    content = choices[0].get("message", {}).get("content", "")
+    candidates = result.get("candidates", [])
+    if not candidates:
+        feedback = result.get("promptFeedback", {})
+        raise SystemExit("Gemini returned no script candidate. Prompt feedback: " +
+                         json.dumps(feedback, ensure_ascii=False)[:800])
+
+    parts = candidates[0].get("content", {}).get("parts", [])
+    content = "\n".join(part.get("text", "") for part in parts if part.get("text"))
     if not content.strip():
-        raise SystemExit("The AI provider returned an empty script.")
+        finish_reason = candidates[0].get("finishReason", "unknown")
+        raise SystemExit(f"Gemini returned empty content (finish reason: {finish_reason}).")
 
     output_dir = Path("output/scripts")
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -89,6 +91,7 @@ the corresponding English terminology. Include source/verification notes at the 
     output_path.write_text(content.strip() + "\n", encoding="utf-8")
     print(f"Draft generated: {output_path}")
     print("Status: DRAFT ONLY — human fact-check and approval required.")
+
 
 if __name__ == "__main__":
     main()
