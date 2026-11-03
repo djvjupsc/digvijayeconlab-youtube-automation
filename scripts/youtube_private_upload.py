@@ -156,6 +156,7 @@ def _load_upload_job(root, publication_date, kind):
         render.get("audit_status") == "pass"
         and render.get("upload_eligible") is True
         and render.get("voice_clone_used") is True
+        and render.get("voice_reference_stored_in_repository") is False
         and render.get("music") == "none"
         and render.get("review_required") is True
         and technical.get("width") == 1920
