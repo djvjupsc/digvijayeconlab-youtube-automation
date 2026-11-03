@@ -242,7 +242,8 @@ Ten SEO inputs (use the supplied playlist title for each unit; match unit number
     if candidates[0].get("finishReason") == "MAX_TOKENS" or not raw.strip():
         raise SystemExit("Gemini response was empty or truncated; no promo assets accepted.")
     try:
-        expected_playlists = {int(item["unit"]): item["playlist_title"] for item in manifest["units"]}\n        data = validate(json.loads(raw), expected_playlists)
+        expected_playlists = {int(item["unit"]): item["playlist_title"] for item in manifest["units"]}
+        data = validate(json.loads(raw), expected_playlists)
     except (json.JSONDecodeError, ValueError) as exc:
         raise SystemExit(f"Gemini daily-asset JSON validation failed: {exc}") from exc
 
