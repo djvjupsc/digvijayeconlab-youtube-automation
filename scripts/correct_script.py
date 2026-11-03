@@ -8,6 +8,11 @@ import urllib.request
 from pathlib import Path
 
 try:
+    from .gemini_client import generate_content, MAX_GEMINI_ATTEMPTS, RETRYABLE_HTTP_STATUS
+except ImportError:
+    from gemini_client import generate_content, MAX_GEMINI_ATTEMPTS, RETRYABLE_HTTP_STATUS
+
+try:
     from .quality_checks import sanitize_math_notation
 except ImportError:
     from quality_checks import sanitize_math_notation
@@ -26,48 +31,11 @@ RESPONSE_SCHEMA = {
 }
 
 
-RETRYABLE_HTTP_STATUS = {408, 429, 500, 502, 503, 504}
-MAX_GEMINI_ATTEMPTS = 5
-
-
 def call_gemini(api_key, payload):
-    request = urllib.request.Request(
-        API_URL,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={"x-goog-api-key": api_key, "Content-Type": "application/json"},
-        method="POST",
-    )
-    for attempt in range(1, MAX_GEMINI_ATTEMPTS + 1):
-        try:
-            with urllib.request.urlopen(request, timeout=150) as response:
-                return json.loads(response.read().decode("utf-8"))
-        except urllib.error.HTTPError as exc:
-            detail = exc.read().decode("utf-8", errors="replace")[:1000]
-            if exc.code not in RETRYABLE_HTTP_STATUS or attempt == MAX_GEMINI_ATTEMPTS:
-                raise SystemExit(
-                    f"Gemini correction failed (HTTP {exc.code}) after {attempt} attempt(s): {detail}"
-                ) from exc
-            retry_after = exc.headers.get("Retry-After") if exc.headers else None
-            try:
-                delay = min(60, max(1, int(retry_after))) if retry_after else min(30, 4 * (2 ** (attempt - 1)))
-            except ValueError:
-                delay = min(30, 4 * (2 ** (attempt - 1)))
-            print(
-                f"Gemini returned temporary HTTP {exc.code}; retrying "
-                f"attempt {attempt + 1}/{MAX_GEMINI_ATTEMPTS} in {delay}s."
-            )
-            time.sleep(delay)
-        except (urllib.error.URLError, TimeoutError) as exc:
-            if attempt == MAX_GEMINI_ATTEMPTS:
-                raise SystemExit(
-                    f"Gemini correction connection failed after {attempt} attempts: {exc}"
-                ) from exc
-            delay = min(30, 4 * (2 ** (attempt - 1)))
-            print(
-                f"Gemini connection issue; retrying "
-                f"attempt {attempt + 1}/{MAX_GEMINI_ATTEMPTS} in {delay}s."
-            )
-            time.sleep(delay)
+    try:
+        return generate_content(API_URL, api_key, payload, label="Gemini correction", timeout=150)
+    except RuntimeError as exc:
+        raise SystemExit(str(exc)) from exc
 
 
 def parse_structured_response(raw, original_script):
