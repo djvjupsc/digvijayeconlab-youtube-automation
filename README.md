@@ -134,3 +134,44 @@ Free-tier requests may be used by Google to improve its products. Do not submit 
 ## 14-day pilot
 
 The initial operating plan is a 14-day pilot. Review workflow completion, Gemini quota, academic review workload, CTR, retention by unit, and Short-to-long-video traffic before treating ten daily lessons as a permanent public release cadence. Ten long-form releases per day is a high volume; reduce public release frequency rather than sacrificing quality.
+
+
+## Metricool publishing integration
+
+The workflow includes an optional Metricool scheduler. It is **inactive until all three repository Actions secrets are present**:
+- `METRICOOL_API_TOKEN` — token from Metricool Account Settings → API.
+- `METRICOOL_USER_ID` — Metricool user ID.
+- `METRICOOL_BLOG_ID` — Metricool brand ID for the connected DigvijayEconLab YouTube channel.
+
+Metricool API access is limited to Advanced and Custom plans. Every API request uses the `X-Mc-Auth` header plus the user and brand IDs. The scheduler:
+- reads the channel's existing YouTube playlists from Metricool,
+- uploads finished MP4 files to Metricool media storage,
+- schedules eligible YouTube videos and Shorts with SEO title, description, tags, privacy and playlist ID,
+- checks existing scheduled posts for the same title/date before creating a duplicate,
+- writes a per-day publishing report into the artifact.
+
+### Public publishing gate
+
+The scheduler will not publish a daily batch unless all ten corrected lesson packages have original and corrected academic review reports, no unresolved `[VERIFY]` markers, explicit positive corrected-review verdicts, and deterministic reports with zero blocking findings. The daily Short is withheld unless its render report confirms the configured HeyGen voice clone was used. A generic eSpeak placeholder is never scheduled publicly.
+
+Long-form publishing is not active yet because the system currently creates ten reviewed lesson scripts, not ten finished landscape MP4s. The scheduler only looks for actual video files at `output/videos/unit-01.mp4` through `unit-10.mp4`; it will skip a unit if its MP4 is missing. Do not treat a script or PDF as a finished video file.
+
+### Playlist creation and Community posts
+
+The Metricool API can list existing YouTube playlists and assign an existing playlist ID to a scheduled video, but the current integration does not create a new playlist. To create all ten playlist containers automatically, the Google OAuth worker must be reauthorized with the YouTube Data API `youtube` scope, then the workflow can use `playlists.insert` for creation and `playlistItems.insert` for adding videos. The current Worker grant was authorized only with `youtube.upload`, `youtube.readonly` and `yt-analytics.readonly`; no new scope or consent was applied in this repository.
+
+Community posts and polls remain drafts for manual scheduling in YouTube Studio. The public YouTube Data API does not offer a Community-post creation endpoint, and Metricool's public API does not expose YouTube Community post publishing. Do not attempt to automate these with undocumented endpoints.
+
+### Connect Metricool
+
+1. Confirm that the Metricool account is on Advanced or Custom and that the DigvijayEconLab YouTube channel is connected to the correct brand.
+2. In Metricool, open Account Settings → API and create/copy the API token. Obtain the user ID and brand/blog ID from the Metricool brand URL or API profile list.
+3. In GitHub, open Settings → Secrets and variables → Actions → New repository secret. Add the three secrets above. Never paste the token into chat or commit it to the repository.
+4. Run the daily production workflow only after reviewing the first artifact and confirming the channel/brand IDs are correct. A test schedule should be private/draft first if the Metricool account supports it; public scheduling is otherwise an irreversible external action once the scheduled time arrives.
+
+No publishing request is made if the three Metricool secrets are absent. Once present, eligible videos are scheduled publicly according to `config/daily_timeline.json`; the scheduler does not have a per-video approval dialog. Remove/blank the secrets to disable all Metricool publishing quickly.
+
+### Voice clone setup
+
+Add the HeyGen API key and your own HeyGen voice ID as `HEYGEN_API_KEY` and `HEYGEN_VOICE_ID` GitHub Actions secrets. For a Professional Voice Clone, HeyGen currently specifies at least 20 minutes of your own clean recordings and recommends 30 minutes to two hours; the add-on has a separate paid cost. The current HeyGen TTS API can synthesize text in the chosen cloned voice. The workflow uses the exact configured voice ID for Hindi and English, but accent and pronunciation should be reviewed before public release.
+
