@@ -157,7 +157,8 @@ def prepare(args):
 def _run(command, env, label):
     print(f"\n===== {label} =====", flush=True)
     subprocess.run(command, cwd=ROOT, env=env, check=True)
-    if label.startswith(("Generate Unit", "Review original Unit", "Correct Unit", "Review corrected Unit", "Generate the daily Short")):\n        time.sleep(4.0)  # Keep sequential Gemini calls near 15 requests/minute or slower.\n
+    if label.startswith(("Generate Unit", "Review original Unit", "Correct Unit", "Review corrected Unit", "Generate the daily Short")):
+        time.sleep(4.0)  # Keep sequential Gemini calls near 15 requests/minute or slower.\n
 
 def process(args):
     manifest = load_json(args.manifest)
@@ -191,7 +192,8 @@ def process(args):
             "SCRIPT_FORMAT": item["content_format"],
             "SCRIPT_SOURCE_NOTES": item.get("source_notes", ""),
         })
-        slug = re.sub(r"[^a-z0-9]+", "-", f"{unit_prefix} {item['topic']}".strip().lower()).strip("-")[:60].strip("-") or "lesson"\n        script_path = ROOT / "output/scripts" / f"{slug}.md"
+        slug = re.sub(r"[^a-z0-9]+", "-", f"{unit_prefix} {item['topic']}".strip().lower()).strip("-")[:60].strip("-") or "lesson"
+        script_path = ROOT / "output/scripts" / f"{slug}.md"
         review_path = ROOT / "output/reviews" / f"{script_path.stem}-quality-review.md"
         corrected_path = ROOT / "output/corrected_scripts" / script_path.name
 
