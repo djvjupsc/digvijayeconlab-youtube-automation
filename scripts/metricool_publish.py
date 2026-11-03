@@ -330,6 +330,19 @@ def main():
     report_dir.mkdir(parents=True, exist_ok=True)
     report_path = report_dir / f"{date}-publishing-report.json"
 
+    publishing_enabled = os.environ.get("PUBLIC_PUBLISHING_ENABLED", "").strip().lower() == "true"
+    if not publishing_enabled:
+        report = {
+            "status": "draft_only_safety_switch_off",
+            "message": "Public scheduling is disabled. Set the repository Actions secret PUBLIC_PUBLISHING_ENABLED=true only after reviewing the safety policy and confirming the connected channel/brand.",
+            "publication_date": date,
+            "scheduled": [],
+            "skipped": ["No public video was scheduled because the explicit public-publishing safety switch is off."],
+        }
+        report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        print(report["message"])
+        return 0
+
     token = os.environ.get("METRICOOL_API_TOKEN")
     user_id = os.environ.get("METRICOOL_USER_ID")
     blog_id = os.environ.get("METRICOOL_BLOG_ID")
