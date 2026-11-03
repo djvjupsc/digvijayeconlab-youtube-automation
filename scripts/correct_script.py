@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import sys
 import urllib.error
 import urllib.request
@@ -77,6 +78,45 @@ def parse_structured_response(raw, original_script):
         )
 
 
+
+
+VERIFY_MARKER_PATTERN = re.compile(r"\\[(?:HUMAN\\s+)?VERIFY\\b[^\\]]*\\]", re.IGNORECASE)
+
+
+def preserve_original_verification_markers(corrected_script, original_script):
+    """Ensure every original [VERIFY] marker remains visible in the corrected draft."""
+    original_markers = VERIFY_MARKER_PATTERN.findall(original_script)
+    corrected_counts = {}
+    for marker in VERIFY_MARKER_PATTERN.findall(corrected_script):
+        corrected_counts[marker] = corrected_counts.get(marker, 0) + 1
+
+    missing = []
+    original_counts = {}
+    for marker in original_markers:
+        original_counts[marker] = original_counts.get(marker, 0) + 1
+    for marker, required_count in original_counts.items():
+        missing.extend([marker] * max(0, required_count - corrected_counts.get(marker, 0)))
+
+    if not missing:
+        return corrected_script, [], []
+
+    retained_section = (
+        "\\n\\n## Original Verification Markers Retained for Human Sign-off\\n\\n"
+        "> These markers were present in the original draft. The correction model removed or altered them, "
+        "so they have been restored automatically and remain unresolved until a human verifies the claims.\\n\\n"
+        + "\\n".join(f"- {marker}" for marker in missing)
+        + "\\n"
+    )
+    corrected_script = corrected_script.rstrip() + retained_section
+    changes = [
+        f"Restored original verification marker: {marker}" for marker in missing
+    ]
+    unresolved = [
+        f"Human verification still required for original marker: {marker}" for marker in missing
+    ]
+    return corrected_script, changes, unresolved
+
+
 def main():
     if len(sys.argv) < 3:
         raise SystemExit("Usage: correct_script.py SCRIPT_PATH REVIEW_PATH [SOURCE_NOTES]")
@@ -145,6 +185,11 @@ Apply safe, evidence-grounded corrections. Preserve all material content and the
         raw = ""  # Truncated output must never be accepted as a complete revision.
 
     corrected, changes, unresolved, fallback_used = parse_structured_response(raw, script)
+
+    # Never permit the correction model to silently drop or rewrite original verification markers.
+    corrected, marker_changes, marker_unresolved = preserve_original_verification_markers(corrected, script)
+    changes.extend(marker_changes)
+    unresolved.extend(marker_unresolved)
 
     # Apply only known, deterministic notation repairs after a valid structured response.
     # On fallback, preserve the original byte-for-byte content and let the gate report issues.
