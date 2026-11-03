@@ -7,7 +7,7 @@ Cloud-based educational content production for DigvijayEconLab.
 The **daily ten-unit production workflow** is scheduled for **08:00 Asia/Kolkata**. Each successful daily pack prepares material for the following publication date:
 
 - 10 bilingual full-lesson script packages: one lesson from every UGC NET Economics unit.
-- One bilingual 9:16 YouTube Short, rendered as an MP4 draft with synthetic placeholder narration.
+- One bilingual 9:16 YouTube Short, rendered as an MP4 draft using the free Chatterbox reference voice when configured; eSpeak is a clearly marked placeholder fallback.
 - One bilingual YouTube Community post draft, including a poll and suggested pinned comment.
 - Ten unit-specific playlist definitions with titles and descriptions.
 
@@ -15,7 +15,7 @@ The next day's pack is generated one day ahead to allow academic verification, e
 
 **Important:** full-length lesson scripts are generated and reviewed, but this workflow does not yet render those ten lessons into finished landscape MP4 videos. It renders the one daily Short draft. Community posts and the ten playlists are prepared as drafts/catalogue entries; they are not published or created on YouTube automatically.
 
-Public video upload, public playlist creation, Community post publishing and YouTube scheduling remain disabled. All content requires human approval.
+Public video publishing and automatic scheduling remain disabled. An optional uploader can place an audited Short in PRIVATE visibility for manual review. Public playlist creation is a separate one-time manual opt-in. Community posts remain drafts. All content requires human approval.
 
 ## Project layout
 
@@ -32,8 +32,7 @@ Public video upload, public playlist creation, Community post publishing and You
 - `scripts/quality_checks.py` — deterministic structural and formatting checks.
 - `scripts/generate_daily_assets.py` — generates the daily bilingual Short storyboard, Community post/poll draft, and validated SEO metadata (title variants, descriptions, tags, hashtags and thumbnail copy) for all ten unit lessons.
 - `scripts/chatterbox_tts.py` — generates Hindi and English narration through the free Chatterbox Multilingual V3 Hugging Face Space, using a reference recording downloaded from a private Hugging Face dataset at runtime.
-- `scripts/heygen_tts.py` — optional paid HeyGen TTS fallback; reads `HEYGEN_API_KEY` and `HEYGEN_VOICE_ID` only from GitHub Actions secrets.
-- `scripts/render_short_video.py` — renders a 1080 × 1920 narrated Short draft using Chatterbox (preferred when enabled), HeyGen or generic eSpeak fallback, Pillow and FFmpeg; no music is added.
+- `scripts/render_short_video.py` — renders a 1080 × 1920 narrated Short draft using free Chatterbox when enabled, or generic eSpeak placeholder narration; no paid TTS integration or music is used.
 - `scripts/topic_queue.py` — manages the legacy one-topic queue.
 - `tests/` — offline unit and regression tests.
 - `.github/workflows/daily-channel-pack.yml` — scheduled daily ten-unit production pack at 08:00 IST.
@@ -73,7 +72,7 @@ The workflow's first scheduled run is **4 November 2026 at 08:00 IST**. It will 
 
 ## Playlist setup
 
-The ten playlist definitions are in `config/playlist_catalog.json`. Titles are:
+The ten playlist definitions are in `config/playlist_catalog.json`. The scheduled daily workflow does not create them. A manual `workflow_dispatch` run has a separate `create_public_playlists` checkbox, off by default, for a one-time creation operation after confirming the OAuth scope and channel. Titles are:
 
 1. UGC NET Economics Unit 1 | Micro Economics | DigvijayEconLab
 2. UGC NET Economics Unit 2 | Macro Economics | DigvijayEconLab
@@ -90,7 +89,7 @@ These are catalogue entries, not live playlists. YouTube's playlist creation and
 
 ## Shorts and Community posts
 
-- The daily Short is rendered as a 1080 × 1920 MP4 with bilingual on-screen text and narration. When `CHATTERBOX_ENABLED=true` and the private Hugging Face reference-audio settings are configured, Chatterbox Multilingual V3 is preferred. Otherwise, configured HeyGen credentials are used; if neither owner-voice provider is configured, eSpeak is used as a generic placeholder clearly marked as not the owner’s voice. No background music or third-party assets are added.
+- The daily Short is rendered as a 1080 × 1920 MP4 with bilingual on-screen text and narration. When `CHATTERBOX_ENABLED=true` and the private Hugging Face reference-audio settings are configured, Chatterbox Multilingual V3 is used. Otherwise, eSpeak is used as a generic placeholder clearly marked as not the owner’s voice. No paid TTS provider, background music or third-party visuals are used.
 - The Community post is generated as text plus a poll draft and a suggested pinned comment. YouTube's documented Community post scheduling process is through YouTube Studio. The public YouTube Data API v3 reference does not offer a Community-post creation endpoint, so the automation does not attempt to publish it.
 - YouTube currently categorizes eligible square or vertical videos up to three minutes as Shorts for standard channels, subject to the platform's conditions. Keep every rendered Short within that limit and check copyright before publishing.
 
@@ -107,15 +106,11 @@ A successful workflow run only means the pipeline executed. It does **not** cert
 
 Resolve all verification markers and Critical/High issues against authoritative textbooks or sources before production use. Human approval is mandatory.
 
-## HeyGen voice matching
+## Free narration setup
 
-The renderer calls HeyGen Voice TTS directly. Add these repository Actions secrets (never paste the values into chat):
-- `HEYGEN_API_KEY` — your HeyGen API key with voice-generation permissions.
-- `HEYGEN_VOICE_ID` — the voice ID of your own active HeyGen clone.
+The automated narration path uses Chatterbox Multilingual V3 through the public Hugging Face Space and the user's own private reference recording. The project does not use a paid voice-generation API. Use only your own voice or a recording you have explicit permission to use. Review voice likeness, Hindi/English pronunciation and pacing before publication.
 
-Create an Instant Voice from a clean recording of your own voice or a Professional Voice Clone (PVC) for closer similarity. HeyGen currently documents Instant Voice creation from up to 60 seconds of speech; Professional Voice Clone uses at least 20 minutes, with 30 minutes to two hours recommended for a richer match. Use only your own voice or a voice you have explicit permission to clone. The renderer records whether the HeyGen clone was actually used. The Metricool publisher refuses to schedule the daily Short when that report does not confirm the owner's clone.
-
-HeyGen API pricing is usage-based and is separate from the HeyGen app subscription. Check the current plan/API allowance before running high-volume TTS. The code does not create or purchase a HeyGen voice clone; create the voice in your HeyGen account first, then add the voice ID as a GitHub secret.
+When Chatterbox is unavailable or disabled, eSpeak may be used to create a visual/audio draft, but the pre-publication audit blocks that generic voice from upload. This prevents a placeholder from being mistaken for the owner's cloned voice.
 
 ## Gemini API and quota safeguards
 
@@ -137,46 +132,23 @@ Free-tier requests may be used by Google to improve its products. Do not submit 
 The initial operating plan is a 14-day pilot. Review workflow completion, Gemini quota, academic review workload, CTR, retention by unit, and Short-to-long-video traffic before treating ten daily lessons as a permanent public release cadence. Ten long-form releases per day is a high volume; reduce public release frequency rather than sacrificing quality.
 
 
-## Metricool publishing integration
+## Free YouTube publishing workflow
 
-The workflow includes an optional Metricool scheduler. It is **inactive until all three repository Actions secrets are present**:
-- `METRICOOL_API_TOKEN` — token from Metricool Account Settings → API.
-- `METRICOOL_USER_ID` — Metricool user ID.
-- `METRICOOL_BLOG_ID` — Metricool brand ID for the connected DigvijayEconLab YouTube channel.
+The production workflow uses GitHub Actions, Python, FFmpeg, the YouTube Data API and the existing GitHub Actions OAuth secrets. It has no third-party social scheduler or paid publishing API dependency.
 
-Metricool API access is limited to Advanced and Custom plans. Every API request uses the `X-Mc-Auth` header plus the user and brand IDs. The scheduler:
-- reads the channel's existing YouTube playlists from Metricool,
-- uploads finished MP4 files to Metricool media storage,
-- schedules eligible YouTube videos and Shorts with SEO title, description, tags, privacy and playlist ID,
-- checks existing scheduled posts for the same title/date before creating a duplicate,
-- writes a per-day publishing report into the artifact.
+- The daily workflow can upload an audited Short as **PRIVATE** when the repository variable `YOUTUBE_PRIVATE_UPLOAD_ENABLED=true`.
+- The private uploader has no public-publishing code path. Review the upload in YouTube Studio and make any public-release decision manually.
+- The ten public playlists are created only when a user manually dispatches the workflow and explicitly selects `create_public_playlists=true`. This is off by default and requires the appropriate YouTube write scope.
+- Full-length lesson video rendering and upload are not yet implemented. The current daily workflow produces ten reviewed script packages and one Short draft.
+- Community text and poll content are generated as drafts. YouTube's public Data API does not provide a Community-post creation endpoint, so do not use undocumented endpoints.
 
-### Public publishing gate
+### OAuth and YouTube API limitations
 
-The scheduler will not publish a daily batch unless all ten corrected lesson packages have original and corrected academic review reports, no unresolved `[VERIFY]` markers, explicit positive corrected-review verdicts, and deterministic reports with zero blocking findings. The daily Short is withheld unless its render report confirms that the configured owner reference voice clone (Chatterbox or HeyGen) was used. A generic eSpeak placeholder is never scheduled publicly.
+The current external Google OAuth application is in Testing mode. Refresh tokens for YouTube scopes may expire after seven days, requiring the channel owner to authorize again and update the GitHub secret. This is not suitable for fully unattended long-running uploads until the OAuth configuration is resolved.
 
-Long-form publishing is not active yet because the system currently creates ten reviewed lesson scripts, not ten finished landscape MP4s. The scheduler only looks for actual video files at `output/videos/unit-01.mp4` through `unit-10.mp4`; it will skip a unit if its MP4 is missing. Do not treat a script or PDF as a finished video file.
+YouTube also restricts uploads from API projects that have not completed the required YouTube API compliance audit. Such uploads may be forced to PRIVATE. Therefore, private staging is the only automated upload mode in this repository; do not enable public publishing through an undocumented workaround.
 
-### Playlist creation and Community posts
-
-The Metricool API can list existing YouTube playlists and assign an existing playlist ID to a scheduled video, but the current integration does not create a new playlist. To create all ten playlist containers automatically, the Google OAuth worker must be reauthorized with the YouTube Data API `youtube` scope, then the workflow can use `playlists.insert` for creation and `playlistItems.insert` for adding videos. The current Worker grant was authorized only with `youtube.upload`, `youtube.readonly` and `yt-analytics.readonly`; no new scope or consent was applied in this repository.
-
-Community posts and polls remain drafts for manual scheduling in YouTube Studio. The public YouTube Data API does not offer a Community-post creation endpoint, and Metricool's public API does not expose YouTube Community post publishing. Do not attempt to automate these with undocumented endpoints.
-
-### Connect Metricool
-
-1. Confirm that the Metricool account is on Advanced or Custom and that the DigvijayEconLab YouTube channel is connected to the correct brand.
-2. In Metricool, open Account Settings → API and create/copy the API token. Obtain the user ID and brand/blog ID from the Metricool brand URL or API profile list.
-3. In GitHub, open Settings → Secrets and variables → Actions → New repository secret. Add the three secrets above. Never paste the token into chat or commit it to the repository.
-4. Run the daily production workflow only after reviewing the first artifact and confirming the channel/brand IDs are correct. A test schedule should be private/draft first if the Metricool account supports it; public scheduling is otherwise an irreversible external action once the scheduled time arrives.
-
-No publishing request is made if the three Metricool secrets are absent. Once present, eligible videos are scheduled publicly according to `config/daily_timeline.json`; the scheduler does not have a per-video approval dialog. Remove/blank the secrets to disable all Metricool publishing quickly.
-
-### Voice clone setup
-
-Add the HeyGen API key and your own HeyGen voice ID as `HEYGEN_API_KEY` and `HEYGEN_VOICE_ID` GitHub Actions secrets. For a Professional Voice Clone, HeyGen currently specifies at least 20 minutes of your own clean recordings and recommends 30 minutes to two hours; the add-on has a separate paid cost. The current HeyGen TTS API can synthesize text in the chosen cloned voice. The workflow uses the exact configured voice ID for Hindi and English, but accent and pronunciation should be reviewed before public release.
-
-
+Remove unused paid-scheduler credentials from GitHub Actions repository secrets once you confirm they are no longer needed. No source code in this repository should read them.
 
 ## Free Chatterbox voice clone setup
 
@@ -204,7 +176,7 @@ Add these repository **variables**:
 - `CHATTERBOX_REFERENCE_FILENAME` = `voice-reference.wav`
 - `CHATTERBOX_SPACE` = `ResembleAI/Chatterbox-Multilingual-TTS-V3`
 
-When enabled, Chatterbox takes priority over HeyGen. If Chatterbox is disabled, the existing HeyGen integration remains available; if neither clone provider is configured, the renderer uses eSpeak placeholder narration. The report records the provider and whether a reference voice clone was used, but never records the token or reference-audio contents.
+When enabled, Chatterbox is used. If it is disabled or unavailable, the renderer may use eSpeak placeholder narration for draft preview only; the pre-publication audit blocks uploads unless the configured owner reference voice clone was used. The report records the provider and whether a reference voice clone was used, but never records the token or reference-audio contents.
 
 The adapter sends narration text and the reference audio to the public ResembleAI Hugging Face Space for synthesis. Only use a recording of your own voice or a recording you have explicit permission to use. Chatterbox output contains an imperceptible Perth watermark and is MIT-licensed; the model's free Space remains subject to service availability and its usage limits.
 
@@ -215,7 +187,7 @@ The daily workflow runs `scripts/prepublish_audit.py` on the generated Short. It
 
 The audit is not a copyright certificate. It cannot query Content ID, establish third-party licensing, or guarantee that YouTube will not issue a claim. Check YouTube Studio's copyright checks and retain licences/permissions for any external asset. The current Short renderer creates its own typography slides and uses narration only; no external stock clips, music or movie footage are included.
 
-**Public scheduling is disabled by default.** The Metricool publisher requires the repository Actions secret `PUBLIC_PUBLISHING_ENABLED=true` in addition to the existing Metricool credentials. Leave it unset/false for draft-only operation. Only enable it after confirming the Metricool account is connected to the correct DigvijayEconLab YouTube channel and reviewing the workflow output. When enabled, eligible videos may be scheduled publicly without another confirmation prompt.
+**Public publishing is not implemented in this project.** The optional YouTube uploader can only create a PRIVATE video for review. It cannot switch a video to Unlisted or Public. The owner must inspect the private video and publish it manually in YouTube Studio after checking academic accuracy, copyright status, subtitles and AI disclosure.
 
 The audit report records `publish_authorized: false` and `human_review_required: true`; the workflow's publication switch is a separate account-owner authorization. Review educational accuracy, pronunciation, subtitles, originality, thumbnail/title accuracy, advertiser suitability, asset rights, and whether altered/synthetic-content disclosure applies before enabling public scheduling.
 

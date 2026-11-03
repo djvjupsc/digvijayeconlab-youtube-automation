@@ -11,6 +11,11 @@ on:
         required: false
         type: boolean
         default: false
+      create_public_playlists:
+        description: "One-time opt-in: create the ten public YouTube playlists"
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: digvijayeconlab-daily-ten-unit-pack
@@ -76,7 +81,7 @@ jobs:
           fi
 
       - name: Create or verify ten public YouTube playlists
-        if: steps.prepare.outputs.claimed == 'true'
+        if: steps.prepare.outputs.claimed == 'true' && inputs.create_public_playlists == true
         continue-on-error: true
         env:
           YOUTUBE_OAUTH_CLIENT_ID: ${{ secrets.YOUTUBE_OAUTH_CLIENT_ID }}
@@ -90,8 +95,6 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: gemini-3.5-flash-lite
-          HEYGEN_API_KEY: ${{ secrets.HEYGEN_API_KEY }}
-          HEYGEN_VOICE_ID: ${{ secrets.HEYGEN_VOICE_ID }}
           CHATTERBOX_ENABLED: ${{ vars.CHATTERBOX_ENABLED }}
           CHATTERBOX_SPACE: ${{ vars.CHATTERBOX_SPACE }}
           CHATTERBOX_REFERENCE_REPO: ${{ vars.CHATTERBOX_REFERENCE_REPO }}
@@ -110,15 +113,15 @@ jobs:
             "output/shorts/$DATE-digvijayeconlab-short.mp4" \\
             "output/shorts/$DATE-prepublish-audit.json"
 
-      - name: Schedule quality-gated videos through Metricool
+      - name: Upload audited Short to YouTube as PRIVATE for human review
         if: steps.prepare.outputs.claimed == 'true'
         env:
-          PUBLIC_PUBLISHING_ENABLED: ${{ secrets.PUBLIC_PUBLISHING_ENABLED }}
-          METRICOOL_API_TOKEN: ${{ secrets.METRICOOL_API_TOKEN }}
-          METRICOOL_USER_ID: ${{ secrets.METRICOOL_USER_ID }}
-          METRICOOL_BLOG_ID: ${{ secrets.METRICOOL_BLOG_ID }}
+          YOUTUBE_PRIVATE_UPLOAD_ENABLED: ${{ vars.YOUTUBE_PRIVATE_UPLOAD_ENABLED }}
+          YOUTUBE_OAUTH_CLIENT_ID: ${{ secrets.YOUTUBE_OAUTH_CLIENT_ID }}
+          YOUTUBE_OAUTH_CLIENT_SECRET: ${{ secrets.YOUTUBE_OAUTH_CLIENT_SECRET }}
+          YOUTUBE_OAUTH_REFRESH_TOKEN: ${{ secrets.YOUTUBE_OAUTH_REFRESH_TOKEN }}
         run: |
-          python scripts/metricool_publish.py output/daily_manifest.json
+          python scripts/youtube_private_upload.py "${{ steps.prepare.outputs.publication_date }}"
 
       - name: Upload complete daily production package
         if: always() && steps.prepare.outputs.claimed == 'true'
@@ -135,7 +138,7 @@ jobs:
             output/shorts/*
             output/community/*
             output/seo/*
-            output/metricool/*
+            output/youtube/*
             output/youtube-playlists.json
           if-no-files-found: warn
           retention-days: 14
