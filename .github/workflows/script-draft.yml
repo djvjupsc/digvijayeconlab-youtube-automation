@@ -1,60 +1,74 @@
-name: DigvijayEconLab script draft
+name: DigvijayEconLab automatic script drafts
 
 on:
+  # GitHub cron is UTC: 02:30 UTC = 08:00 Asia/Kolkata (UTC+05:30).
+  schedule:
+    - cron: "30 2 * * *"
+  # Adding or editing the controlled queue on main starts an automatic run.
+  push:
+    branches:
+      - main
+    paths:
+      - "config/topic_queue.json"
+  # Manual fallback processes the next queued topic; no form inputs are required.
   workflow_dispatch:
-    inputs:
-      topic:
-        description: "Economics topic for the educational script"
-        required: true
-        type: string
-      language:
-        description: "Output language"
-        required: true
-        type: choice
-        options:
-          - Bilingual
-          - Hindi
-          - English
-      content_format:
-        description: "Content format"
-        required: true
-        type: choice
-        options:
-          - Concept Explainer
-          - MCQ Set
-          - Previous-Year-Question Analysis
-      source_notes:
-        description: "Optional source notes; include authoritative material for factual claims"
-        required: false
-        type: string
+
+concurrency:
+  group: digvijayeconlab-script-topic-queue
+  cancel-in-progress: false
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   generate-draft:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
-      - name: Check out repository
+      - name: Check out the latest main branch
         uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Test correction validation and deterministic quality gates
-        run: python -m unittest discover -s tests -v
+      - name: Run offline tests and validate topic queue
+        run: |
+          python -m unittest discover -s tests -v
+          python scripts/topic_queue.py validate --queue config/topic_queue.json
+
+      - name: Claim the next pending topic
+        id: claim
+        run: |
+          python scripts/topic_queue.py claim \
+            --queue config/topic_queue.json \
+            --run-id "$GITHUB_RUN_ID" \
+            --github-output "$GITHUB_OUTPUT"
+
+      - name: Persist topic claim before calling Gemini
+        if: steps.claim.outputs.claimed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add config/topic_queue.json
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(queue): claim ${{ steps.claim.outputs.queue_id }}"
+            git push origin HEAD:main
+          fi
 
       - name: Generate educational script draft
+        if: steps.claim.outputs.claimed == 'true'
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: gemini-3.5-flash-lite
-          SCRIPT_TOPIC: ${{ inputs.topic }}
-          SCRIPT_LANGUAGE: ${{ inputs.language }}
-          SCRIPT_FORMAT: ${{ inputs.content_format }}
-          SCRIPT_SOURCE_NOTES: ${{ inputs.source_notes }}
+          SCRIPT_TOPIC: ${{ steps.claim.outputs.topic }}
+          SCRIPT_LANGUAGE: ${{ steps.claim.outputs.language }}
+          SCRIPT_FORMAT: ${{ steps.claim.outputs.content_format }}
+          SCRIPT_SOURCE_NOTES: ${{ steps.claim.outputs.source_notes }}
         run: |
           python scripts/generate_script.py \
             "$SCRIPT_TOPIC" \
@@ -63,51 +77,73 @@ jobs:
             "$SCRIPT_SOURCE_NOTES"
 
       - name: Review original script
+        if: steps.claim.outputs.claimed == 'true'
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: gemini-3.5-flash-lite
-          SCRIPT_SOURCE_NOTES: ${{ inputs.source_notes }}
-          SCRIPT_FORMAT: ${{ inputs.content_format }}
-          SCRIPT_LANGUAGE: ${{ inputs.language }}
+          SCRIPT_SOURCE_NOTES: ${{ steps.claim.outputs.source_notes }}
+          SCRIPT_FORMAT: ${{ steps.claim.outputs.content_format }}
+          SCRIPT_LANGUAGE: ${{ steps.claim.outputs.language }}
           REVIEW_STAGE: original
         run: |
           python scripts/review_script.py output/scripts/*.md "$SCRIPT_SOURCE_NOTES"
 
       - name: Correct script using structured review findings
+        if: steps.claim.outputs.claimed == 'true'
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: gemini-3.5-flash-lite
-          SCRIPT_SOURCE_NOTES: ${{ inputs.source_notes }}
+          SCRIPT_SOURCE_NOTES: ${{ steps.claim.outputs.source_notes }}
         run: |
           python scripts/correct_script.py \
             output/scripts/*.md \
-            output/reviews/*.md \
+            output/reviews/*-quality-review.md \
             "$SCRIPT_SOURCE_NOTES"
 
       - name: Preserve original academic review
+        if: steps.claim.outputs.claimed == 'true'
         run: |
           cp output/reviews/*-quality-review.md output/reviews/original-quality-review.md
 
       - name: Review corrected script
+        if: steps.claim.outputs.claimed == 'true'
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: gemini-3.5-flash-lite
-          SCRIPT_SOURCE_NOTES: ${{ inputs.source_notes }}
-          SCRIPT_FORMAT: ${{ inputs.content_format }}
-          SCRIPT_LANGUAGE: ${{ inputs.language }}
+          SCRIPT_SOURCE_NOTES: ${{ steps.claim.outputs.source_notes }}
+          SCRIPT_FORMAT: ${{ steps.claim.outputs.content_format }}
+          SCRIPT_LANGUAGE: ${{ steps.claim.outputs.language }}
           REVIEW_STAGE: corrected
         run: |
           python scripts/review_script.py output/corrected_scripts/*.md "$SCRIPT_SOURCE_NOTES"
 
       - name: Save complete script package as workflow artifact
+        if: always() && steps.claim.outputs.claimed == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: digvijayeconlab-corrected-script-package
+          name: digvijayeconlab-corrected-script-package-${{ steps.claim.outputs.queue_id }}
           path: |
             output/scripts/*.md
             output/reviews/*.md
             output/corrected_scripts/*.md
             output/corrections/*.md
             output/quality_checks/*.md
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 14
+
+      - name: Finalize topic queue status
+        if: always() && steps.claim.outputs.claimed == 'true'
+        env:
+          QUEUE_JOB_STATUS: ${{ job.status }}
+        run: |
+          python scripts/topic_queue.py finish \
+            --queue config/topic_queue.json \
+            --run-id "$GITHUB_RUN_ID" \
+            --job-status "$QUEUE_JOB_STATUS"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add config/topic_queue.json
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(queue): finalize run $GITHUB_RUN_ID ($QUEUE_JOB_STATUS)"
+            git push origin HEAD:main
+          fi
