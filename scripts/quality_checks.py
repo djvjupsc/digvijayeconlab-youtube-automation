@@ -227,7 +227,17 @@ def analyze_script(text, content_format="Concept Explainer", language="Bilingual
                 continue
             example_heading_found = True
             body_start = match.end()
-            body_end = headings[index + 1].start() if index + 1 < len(headings) else len(text)
+            # Include nested subsections (for example, ### English / ### Hindi)
+            # until the next heading at the same or a higher level.
+            current_level = len(match.group(0).split(heading_text, 1)[0].strip())
+            next_peer = next(
+                (
+                    candidate for candidate in headings[index + 1:]
+                    if len(candidate.group(0).split(candidate.group(1), 1)[0].strip()) <= current_level
+                ),
+                None,
+            )
+            body_end = next_peer.start() if next_peer else len(text)
             body_lines = [
                 line.strip() for line in text[body_start:body_end].splitlines()
                 if line.strip() and line.strip() not in {"---", "***", "___"}
