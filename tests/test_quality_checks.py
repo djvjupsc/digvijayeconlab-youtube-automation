@@ -49,5 +49,20 @@ Recap
         self.assertIn("CONTROL_CHARACTER", {item["code"] for item in findings})
 
 
+    def test_accepts_bold_markdown_answer_and_explanation_labels(self):
+        source = "Learning Objectives\nDefinition and Concept\nExamples\nRecap\n"
+        for number in range(1, 6):
+            source += (
+                f"\n**Q{number}. Question?**\n"
+                "* **Correct Answer:** A\n"
+                "* **Explanation:** This is the rationale.\n"
+            )
+        findings = analyze_script(source, "Concept Explainer", "English")
+        codes = {item["code"] for item in findings}
+        self.assertNotIn("MCQ_ANSWER_GAP", codes)
+        self.assertNotIn("MCQ_EXPLANATION_GAP", codes)
+        self.assertNotIn("MCQ_COUNT_BELOW_MINIMUM", codes)
+
+
 if __name__ == "__main__":
     unittest.main()
