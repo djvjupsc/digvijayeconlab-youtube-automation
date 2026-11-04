@@ -179,6 +179,7 @@ def process_unit(item, base_env):
     corrected_path = ROOT / "output/corrected_scripts" / script_path.name
     deterministic_path = ROOT / "output/quality_checks" / f"{script_path.stem}-corrected-deterministic-check.md"
     gate_path = ROOT / "output/reviews" / f"{script_path.stem}-academic-gate-decision.md"
+    correction_log_path = ROOT / "output/corrections" / f"{script_path.stem}-correction-log.md"
 
     _run(
         [sys.executable, "scripts/generate_script.py", item["topic"], item["language"], item["content_format"], item.get("source_notes", "")],
@@ -211,6 +212,7 @@ def process_unit(item, base_env):
         [
             sys.executable, "scripts/academic_gate.py",
             str(review_path), str(deterministic_path), str(corrected_path),
+            "--correction-log", str(correction_log_path),
             "--output", str(gate_path),
         ],
         env, f"Enforce academic gate Unit {item['unit']}",
