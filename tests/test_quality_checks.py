@@ -253,5 +253,11 @@ Price and quantity demanded move in opposite directions, other things equal.
         self.assertNotIn("MCQ_ANSWER_GAP", codes)
         self.assertNotIn("MCQ_EXPLANATION_GAP", codes)
 
+
+    def test_devanagari_danda_after_latin_answer_label_is_not_a_mixed_script_word(self):
+        source = "सही उत्तर: B। स्पष्टीकरण: यह हिंदी में वैध विराम चिह्न है।"
+        findings = analyze_script(source, "MCQ Set", "Bilingual")
+        self.assertNotIn("MIXED_SCRIPT_TOKEN", {item["code"] for item in findings})
+
 if __name__ == "__main__":
     unittest.main()
