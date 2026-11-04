@@ -37,6 +37,15 @@ class SeverityBasedAcademicGateTests(unittest.TestCase):
         self.assertTrue(ok)
         self.assertEqual(blockers, [])
 
+    def test_generic_lesson_gate_does_not_require_a_separate_source_report(self):
+        ok, blockers = evaluate(
+            self.report("**READY FOR HUMAN REVIEW**"),
+            self.det,
+            self.script,
+        )
+        self.assertTrue(ok)
+        self.assertEqual(blockers, [])
+
     def test_missing_overall_verdict_fails_closed(self):
         report = (
             "### Critical Issues\n*None.*\n"
