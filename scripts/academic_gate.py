@@ -62,7 +62,7 @@ def extract_blocking_count(deterministic):
 
 def verdict_is_approved(verdict):
     approved = re.search(r"\b(READY|APPROVED|PASS(?:ED)?)\b", verdict, re.I)
-    rejected = re.search(r"\b(HOLD|CORRECTION|NOT READY|REJECT(?:ED)?)\b", verdict, re.I)
+    rejected = re.search(r"\b(HOLD|CORRECTION|NOT\s+(?:READY|APPROVED)|REJECT(?:ED)?)\b", verdict, re.I)
     return bool(approved and not rejected)
 
 
