@@ -1,13 +1,11 @@
 name: DigvijayEconLab daily ten-unit production pack
 
 on:
-  # 02:30 UTC = 08:00 Asia/Kolkata.
-  schedule:
-    - cron: "30 2 * * *"
+  # Manual runs only until the live production reliability test is complete.
   workflow_dispatch:
     inputs:
       retry_failed:
-        description: "Retry today's failed pack only after inspecting its partial artifact"
+        description: "Retry today's failed pack after inspecting its partial artifact"
         required: false
         type: boolean
         default: false
