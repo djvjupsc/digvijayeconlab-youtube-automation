@@ -32,14 +32,12 @@ class StructuredCorrectionTests(unittest.TestCase):
         self.assertTrue({429, 500, 502, 503, 504}.issubset(RETRYABLE_HTTP_STATUS))
         self.assertNotIn(400, RETRYABLE_HTTP_STATUS)
 
-    def test_review_and_correction_load_source_notes_from_file(self):
-        # File-reading is covered by the CLI scripts; this regression protects
-        # the intended path contract in their usage documentation/prompt.
+    def test_review_and_correction_use_shared_optional_source_notes_loader(self):
         from pathlib import Path
         review_source = Path("scripts/review_script.py").read_text(encoding="utf-8")
         correction_source = Path("scripts/correct_script.py").read_text(encoding="utf-8")
-        self.assertIn("source_notes_path.read_text(encoding=\"utf-8\")", review_source)
-        self.assertIn("source_notes_path.read_text(encoding=\"utf-8\")", correction_source)
+        self.assertIn("load_optional_source_notes", review_source)
+        self.assertIn("load_optional_source_notes", correction_source)
 
     def test_missing_or_wrong_fields_preserve_original(self):
         original = "# Keep exactly"
