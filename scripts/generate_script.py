@@ -11,6 +11,11 @@ try:
 except ImportError:
     from gemini_client import generate_content
 
+try:
+    from .source_notes import resolve_source_notes_argument
+except ImportError:
+    from source_notes import resolve_source_notes_argument
+
 MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
 API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
 
@@ -25,7 +30,7 @@ def main():
         raise SystemExit("Usage: generate_script.py TOPIC LANGUAGE FORMAT [SOURCE_NOTES]")
 
     topic, language, content_format = sys.argv[1:4]
-    source_notes = sys.argv[4] if len(sys.argv) > 4 else ""
+    source_notes = resolve_source_notes_argument(sys.argv[4] if len(sys.argv) > 4 else None)
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         raise SystemExit("GEMINI_API_KEY is not configured. Add it as a GitHub Actions secret.")
