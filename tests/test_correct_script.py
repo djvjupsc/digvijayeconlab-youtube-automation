@@ -121,5 +121,34 @@ class StructuredCorrectionTests(unittest.TestCase):
                 self.assertTrue(result[3])
 
 
+    def test_repairs_unit_2_answer_label_and_income_method_hindi_grammar(self):
+        source = "सही उत्तर: B। स्पष्टीकरण: कारण।\\nकर्मचारियों की पारिश्रमिक"
+        repaired, changes = apply_known_editorial_repairs(source)
+        self.assertIn("सही उत्तर: B) स्पष्टीकरण:", repaired)
+        self.assertIn("कर्मचारियों का पारिश्रमिक", repaired)
+        self.assertNotIn("सही उत्तर: B।", repaired)
+        self.assertEqual(len(changes), 2)
+
+    def test_repairs_unit_10_unsupported_sector_share_and_bilingual_headings(self):
+        source = (
+            "## Learning Objectives / अधि-अगम्य उद्देश्य\\n"
+            "The secondary sector, though its share in total GDP has hovered around 25-30% [VERIFY].\\n"
+            "हालांकि कुल GDP में इसका हिस्सा लगभग 25-30% के आसपास रहा है [VERIFY]।\\n"
+            "## Worked Example / Application (Hypothetical Sectoral Contribution Analysis)\\n"
+            "## कार्यशील उदाहरण / अनुप्रयोग (काल्पनिक क्षेत्रीय योगदान विश्लेषण)"
+        )
+        repaired, changes = apply_known_editorial_repairs(source)
+        self.assertNotIn("25-30%", repaired)
+        self.assertIn("assessed separately for manufacturing, construction and utilities", repaired)
+        self.assertIn("विनिर्माण, निर्माण और उपयोगिताओं के योगदान का अलग-अलग अध्ययन", repaired)
+        self.assertIn("Learning Objectives / अधिगम उद्देश्य", repaired)
+        self.assertIn(
+            "## Worked Example / Application: Hypothetical Sectoral Contribution Analysis / कार्यशील उदाहरण:",
+            repaired,
+        )
+        self.assertNotIn("अधि-अगम्य", repaired)
+        self.assertEqual(len(changes), 5)
+
+
 if __name__ == "__main__":
     unittest.main()
