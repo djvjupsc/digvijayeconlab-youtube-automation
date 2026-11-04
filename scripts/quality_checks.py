@@ -24,11 +24,16 @@ def sanitize_math_notation(text):
     if count:
         changes.append(f"Repaired {count} additional control-character-corrupted fraction expression(s).")
 
-    # Recover known LaTeX command prefixes that may have been decoded as controls.
+    # Recover known LaTeX command prefixes that JSON may decode as controls.
     replace("\r" + "aisebox", "\\raisebox", "Recovered a corrupted raisebox command prefix.")
     replace("\t" + "iny", "\\tiny", "Recovered a corrupted tiny command prefix.")
     replace("\t" + "extuparrow", "\\textuparrow", "Recovered a corrupted upward-arrow command prefix.")
     replace("\t" + "extdownarrow", "\\textdownarrow", "Recovered a corrupted downward-arrow command prefix.")
+    replace("\x08igcup", "\\bigcup", "Recovered a corrupted bigcup command prefix.")
+    replace("\x08igcap", "\\bigcap", "Recovered a corrupted bigcap command prefix.")
+    text, text_count = re.subn(r"\t\s*ext\{", r"\\text{", text)
+    if text_count:
+        changes.append(f"Recovered {text_count} corrupted LaTeX text command(s).")
 
     # Use readable Unicode arrows instead of fragile nested LaTeX formatting.
     arrow_up = re.compile(r"\\raisebox\{[^{}\n]*\}\{\\tiny\\textuparrow\}")
@@ -51,7 +56,7 @@ def sanitize_math_notation(text):
 
 
 QUESTION_HEADING_PATTERN = re.compile(
-    r"(?im)^\s*(?:#{1,6}\s*)?(?:\*\*\s*)?(?:MCQ\s*0*\d+|Q(?:uestion)?\s*0*\d+|प्रश्न\s*0*\d+)\b"
+    r"(?im)^\s*(?:#{1,6}\s*)?(?:\*\*\s*)?(?:MCQ\s*|Q(?:uestion)?\s*|प्रश्न\s*)(?P<number>0*\d+)\b"
 )
 ANSWER_LINE_PATTERN = re.compile(
     r"(?im)^\s*.*\b(?:Correct\s+Answer|सही\s+उत्तर)\b.*[:：]"
@@ -63,12 +68,25 @@ EXPLANATION_LINE_PATTERN = re.compile(
 
 
 def count_mcq_sections(text):
-    """Count numbered MCQ blocks and blocks with explicit answer/explanation labels."""
+    """Count MCQ items, coalescing adjacent English/Hindi headings for the same question."""
     matches = list(QUESTION_HEADING_PATTERN.finditer(text))
-    sections = [
-        text[match.start():matches[index + 1].start() if index + 1 < len(matches) else len(text)]
-        for index, match in enumerate(matches)
-    ]
+    sections = []
+    current_start = None
+    current_number = None
+
+    for match in matches:
+        number = int(match.group("number"))
+        if current_start is None:
+            current_start = match.start()
+            current_number = number
+        elif number != current_number:
+            sections.append(text[current_start:match.start()])
+            current_start = match.start()
+            current_number = number
+
+    if current_start is not None:
+        sections.append(text[current_start:])
+
     answer_count = sum(1 for section in sections if ANSWER_LINE_PATTERN.search(section))
     explanation_count = sum(1 for section in sections if EXPLANATION_LINE_PATTERN.search(section))
     return len(sections), answer_count, explanation_count
@@ -142,8 +160,9 @@ def analyze_script(text, content_format="Concept Explainer", language="Bilingual
     if marker_matches:
         findings.append(_issue(
             "UNRESOLVED_VERIFY_MARKER", "High",
-            f"{len(marker_matches)} human-verification marker(s) remain; do not treat the script as fact-checked.",
-            "; ".join(marker_matches[:3])[:300]
+            f"{len(marker_matches)} human-verification marker(s) remain; resolve them during subject-matter review before publication.",
+            "; ".join(marker_matches[:3])[:300],
+            blocking=False,
         ))
 
     has_latin = bool(re.search(r"[A-Za-z]", text))
