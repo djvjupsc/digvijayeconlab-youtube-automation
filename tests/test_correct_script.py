@@ -1,7 +1,7 @@
 import json
 import unittest
 
-from scripts.correct_script import parse_structured_response
+from scripts.correct_script import (\n    apply_known_editorial_repairs,\n    parse_structured_response,\n    preserve_original_verification_markers,\n)
 
 
 class StructuredCorrectionTests(unittest.TestCase):
@@ -25,6 +25,43 @@ class StructuredCorrectionTests(unittest.TestCase):
         self.assertTrue(result[3])
         self.assertTrue(result[1])
         self.assertTrue(result[2])
+
+    def test_repairs_known_regional_placeholder_and_bengali_script_contamination(self):
+        source = (
+            "in MPPSC region X. "
+            "MPPSC क्षेत्र X में प्रदूषण है। "
+            "(বাজার असफलता की परिभाषा) "
+            "negative consumption/production externality"
+        )
+        repaired, changes = apply_known_editorial_repairs(source)
+        self.assertIn("a hypothetical industrial region", repaired)
+        self.assertIn("एक काल्पनिक औद्योगिक क्षेत्र में", repaired)
+        self.assertIn("(बाजार असफलता की परिभाषा)", repaired)
+        self.assertIn("negative production externality", repaired)
+        self.assertNotIn("MPPSC region X", repaired)
+        self.assertNotIn("বাজার", repaired)
+        self.assertEqual(len(changes), 4)
+
+    def test_source_notes_can_resolve_original_markers_when_no_items_remain(self):
+        corrected, changes, unresolved = preserve_original_verification_markers(
+            "# Corrected claim.",
+            "# Claim [VERIFY].\nदावा [सत्यापन योग्य]।",
+            unresolved_items=[],
+            source_notes_supplied=True,
+        )
+        self.assertEqual(corrected, "# Corrected claim.")
+        self.assertFalse(unresolved)
+        self.assertTrue(any("Cleared original verification markers" in item for item in changes))
+
+    def test_markers_are_preserved_when_no_source_notes_were_supplied(self):
+        corrected, changes, unresolved = preserve_original_verification_markers(
+            "# Edited claim.",
+            "# Claim [VERIFY].",
+            unresolved_items=[],
+            source_notes_supplied=False,
+        )
+        self.assertIn("[VERIFY]", corrected)
+        self.assertTrue(unresolved)
 
     def test_gemini_retry_policy_covers_temporary_server_and_rate_limit_errors(self):
         from scripts.correct_script import MAX_GEMINI_ATTEMPTS, RETRYABLE_HTTP_STATUS
