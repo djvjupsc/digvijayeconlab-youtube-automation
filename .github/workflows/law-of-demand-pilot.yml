@@ -210,11 +210,22 @@ jobs:
           verdict = ""
           lines = report.splitlines()
           for i, line in enumerate(lines):
-              if "overall verdict" in line.casefold():
-                  verdict = next((x.strip() for x in lines[i + 1:] if x.strip()), "")
+              if re.search(r"overall verdict", line, flags=re.I):
+                  inline = re.sub(r"^.*?overall verdict\\s*[:：]?\\s*", "", line, flags=re.I).strip()
+                  if inline:
+                      verdict = inline
+                  else:
+                      verdict = next((x.strip() for x in lines[i + 1:] if x.strip()), "")
                   break
-          if not any(word in verdict.casefold() for word in ("ready", "approved", "pass")):
-              raise SystemExit("Pilot blocked: corrected academic review did not return an explicit READY/APPROVED/PASS verdict.")
+          normalized_verdict = verdict.replace("**", "").strip()
+          print(f"Academic reviewer verdict: {normalized_verdict or '[not detected]'}")
+          approval = re.search(r"\\b(READY|APPROVED|PASS(?:ED)?)\\b", normalized_verdict, flags=re.I)
+          rejection = re.search(r"\\b(HOLD|CORRECTION|NOT READY|REJECT(?:ED)?)\\b", normalized_verdict, flags=re.I)
+          if not approval or rejection:
+              raise SystemExit(
+                  "Pilot blocked: academic reviewer did not approve the corrected lesson. "
+                  f"Detected verdict: {normalized_verdict or '[missing]'}"
+              )
           script = Path("output/corrected_scripts/unit-01-law-of-demand.md").read_text(encoding="utf-8")
           if re.search(r"\[(?:HUMAN\s+)?VERIFY\b[^]]*\]", script, re.I):
               raise SystemExit("Pilot blocked: unresolved human verification markers remain in the corrected script.")
