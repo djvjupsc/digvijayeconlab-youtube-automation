@@ -159,6 +159,95 @@ def _run(command, env, label):
         time.sleep(4.0)  # Keep sequential Gemini calls near 15 requests/minute or slower.
 
 
+def process_unit(item, base_env):
+    """Generate, correct, re-review and gate one lesson independently."""
+    unit_prefix = f"unit-{item['unit']:02d}"
+    env = base_env.copy()
+    env.update({
+        "SCRIPT_UNIT": f"Unit {item['unit']}: {item['unit_name']}",
+        "SCRIPT_FILENAME_PREFIX": unit_prefix,
+        "SCRIPT_TOPIC": item["topic"],
+        "SCRIPT_LANGUAGE": item["language"],
+        "SCRIPT_FORMAT": item["content_format"],
+        "SCRIPT_SOURCE_NOTES": item.get("source_notes", ""),
+    })
+    slug = re.sub(
+        r"[^a-z0-9]+", "-", f"{unit_prefix} {item['topic']}".strip().lower()
+    ).strip("-")[:60].strip("-") or "lesson"
+    script_path = ROOT / "output/scripts" / f"{slug}.md"
+    review_path = ROOT / "output/reviews" / f"{script_path.stem}-quality-review.md"
+    corrected_path = ROOT / "output/corrected_scripts" / script_path.name
+    deterministic_path = ROOT / "output/quality_checks" / f"{script_path.stem}-corrected-deterministic-check.md"
+    gate_path = ROOT / "output/reviews" / f"{script_path.stem}-academic-gate-decision.md"
+
+    _run(
+        [sys.executable, "scripts/generate_script.py", item["topic"], item["language"], item["content_format"], item.get("source_notes", "")],
+        env, f"Generate Unit {item['unit']} — {item['topic']}",
+    )
+    _run(
+        [sys.executable, "scripts/review_script.py", str(script_path), item.get("source_notes", "")],
+        {**env, "REVIEW_STAGE": "original"},
+        f"Review original Unit {item['unit']} script",
+    )
+    if not review_path.is_file():
+        raise RuntimeError(f"Original review missing for Unit {item['unit']}: {review_path}")
+    shutil.copy2(review_path, ROOT / "output/reviews" / f"{script_path.stem}-original-quality-review.md")
+
+    _run(
+        [sys.executable, "scripts/correct_script.py", str(script_path), str(review_path), item.get("source_notes", "")],
+        env, f"Correct Unit {item['unit']} script",
+    )
+    _run(
+        [sys.executable, "scripts/review_script.py", str(corrected_path), item.get("source_notes", "")],
+        {**env, "REVIEW_STAGE": "corrected"},
+        f"Review corrected Unit {item['unit']} script",
+    )
+    if not script_path.is_file() or not corrected_path.is_file():
+        raise RuntimeError(f"Original or corrected script missing for Unit {item['unit']}.")
+    if not deterministic_path.is_file():
+        raise RuntimeError(f"Corrected deterministic report missing for Unit {item['unit']}: {deterministic_path}")
+
+    _run(
+        [
+            sys.executable, "scripts/academic_gate.py",
+            str(review_path), str(deterministic_path), str(corrected_path),
+            "--output", str(gate_path),
+        ],
+        env, f"Enforce academic gate Unit {item['unit']}",
+    )
+    if not gate_path.is_file():
+        raise RuntimeError(f"Academic gate decision missing for Unit {item['unit']}: {gate_path}")
+    time.sleep(1.0)
+    return {
+        "unit": item["unit"],
+        "topic": item["topic"],
+        "status": "passed_to_human_review",
+        "gate_report": str(gate_path.relative_to(ROOT)),
+    }
+
+
+def process_units(units, base_env):
+    """Run every unit despite individual failures and return pass/fail records."""
+    successes, failures = [], []
+    for item in units:
+        try:
+            successes.append(process_unit(item, base_env))
+        except Exception as exc:
+            failure = {
+                "unit": item.get("unit"),
+                "topic": item.get("topic", item.get("name", "Unknown topic")),
+                "status": "blocked",
+                "error": f"{type(exc).__name__}: {exc}",
+            }
+            failures.append(failure)
+            print(
+                f"UNIT {item.get('unit', '?')} BLOCKED — {failure['topic']}: {failure['error']}",
+                flush=True,
+            )
+            print("Continuing with the remaining independent lesson topics.", flush=True)
+    return successes, failures
+
+
 def process(args):
     manifest = load_json(args.manifest)
     if len(manifest.get("units", [])) != 10:
@@ -181,49 +270,57 @@ def process(args):
         raise RuntimeError("GEMINI_API_KEY is missing from GitHub Actions secrets.")
     base_env.setdefault("GEMINI_MODEL", "gemini-3.5-flash-lite")
 
-    for item in manifest["units"]:
-        unit_prefix = f"unit-{item['unit']:02d}"
-        env = base_env.copy()
-        env.update({
-            "SCRIPT_UNIT": f"Unit {item['unit']}: {item['unit_name']}",
-            "SCRIPT_FILENAME_PREFIX": unit_prefix,
-            "SCRIPT_TOPIC": item["topic"],
-            "SCRIPT_LANGUAGE": item["language"],
-            "SCRIPT_FORMAT": item["content_format"],
-            "SCRIPT_SOURCE_NOTES": item.get("source_notes", ""),
-        })
-        slug = re.sub(r"[^a-z0-9]+", "-", f"{unit_prefix} {item['topic']}".strip().lower()).strip("-")[:60].strip("-") or "lesson"
-        script_path = ROOT / "output/scripts" / f"{slug}.md"
-        review_path = ROOT / "output/reviews" / f"{script_path.stem}-quality-review.md"
-        corrected_path = ROOT / "output/corrected_scripts" / script_path.name
+    successes, failures = process_units(manifest["units"], base_env)
+    manifest["lesson_quality"] = {
+        "passed_to_human_review": successes,
+        "blocked_lessons": failures,
+        "all_ten_passed_automated_gates": len(successes) == 10 and not failures,
+        "publication_approval": False,
+    }
+    save_json(args.manifest, manifest)
 
-        _run(
-            [sys.executable, "scripts/generate_script.py", item["topic"], item["language"], item["content_format"], item.get("source_notes", "")],
-            env,
-            f"Generate Unit {item['unit']} — {item['topic']}",
-        )
-        _run(
-            [sys.executable, "scripts/review_script.py", str(script_path), item.get("source_notes", "")],
-            {**env, "REVIEW_STAGE": "original"},
-            f"Review original Unit {item['unit']} script",
-        )
-        if not review_path.is_file():
-            raise RuntimeError(f"Original review missing for Unit {item['unit']}: {review_path}")
-        shutil.copy2(review_path, ROOT / "output/reviews" / f"{script_path.stem}-original-quality-review.md")
+    report_lines = [
+        "# Daily Ten-Unit Lesson Quality Gate",
+        "",
+        "> Automated workflow eligibility for human review only. A pass is not academic certification or publishing approval.",
+        "",
+        f"- Lessons passed to human review: {len(successes)} / 10",
+        f"- Lessons blocked: {len(failures)} / 10",
+        "",
+        "## Passed lessons",
+        "",
+    ]
+    report_lines.extend(
+        f"- Unit {row['unit']}: {row['topic']} — PASS (human review required)"
+        for row in successes
+    )
+    if not successes:
+        report_lines.append("- None.")
+    report_lines += ["", "## Blocked lessons", ""]
+    report_lines.extend(
+        f"- Unit {row['unit']}: {row['topic']} — BLOCKED: {row['error']}"
+        for row in failures
+    )
+    if not failures:
+        report_lines.append("- None.")
+    report_lines += [
+        "",
+        "## Decision",
+        "",
+        "**ALL TEN PASSED — READY FOR HUMAN REVIEW**" if len(successes) == 10 and not failures
+        else "**BATCH INCOMPLETE — NO FEATURED VIDEO OR SHORT RENDER WILL START**",
+        "",
+        "All passed lesson scripts and gate reports are retained in the workflow artifact. Failed lessons do not prevent other unit topics from being generated and checked. The batch remains failed until all ten required lessons pass.",
+        "",
+    ]
+    report_path = ROOT / "output/quality_checks" / "daily-batch-status.md"
+    report_path.write_text("\n".join(report_lines), encoding="utf-8")
 
-        _run(
-            [sys.executable, "scripts/correct_script.py", str(script_path), str(review_path), item.get("source_notes", "")],
-            env,
-            f"Correct Unit {item['unit']} script",
+    if failures or len(successes) != 10:
+        raise RuntimeError(
+            f"Daily lesson batch incomplete: {len(successes)}/10 passed automated gates; "
+            f"{len(failures)} lesson(s) blocked. Successful outputs and failure details were retained."
         )
-        _run(
-            [sys.executable, "scripts/review_script.py", str(corrected_path), item.get("source_notes", "")],
-            {**env, "REVIEW_STAGE": "corrected"},
-            f"Review corrected Unit {item['unit']} script",
-        )
-        if not script_path.is_file() or not corrected_path.is_file():
-            raise RuntimeError(f"Original or corrected script missing for Unit {item['unit']}.")
-        time.sleep(1.0)
 
     promo_env = base_env.copy()
     promo_env["DAILY_MANIFEST"] = str(Path(args.manifest))
@@ -237,7 +334,7 @@ def process(args):
         promo_env,
         "Render the daily vertical Short draft video",
     )
-    print("\nDaily production pack complete: 10 lesson script packages, one Short MP4 draft, and one Community post draft.")
+    print("\nDaily production pack complete: 10 individually gated lesson packages, one Short MP4 draft, and one Community post draft.")
 
 
 def finish(args):
