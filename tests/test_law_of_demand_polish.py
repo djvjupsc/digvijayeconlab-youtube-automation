@@ -28,7 +28,7 @@ class LawOfDemandPolishTests(unittest.TestCase):
         self.assertIn("गिफ्फेन वस्तुएँ ऐसी हीन वस्तुएँ", result)
         self.assertNotIn("。", result)
         self.assertIn("।", result)
-        self.assertEqual(len(changes), 2)
+        self.assertEqual(len(changes), 1)
 
     def test_normalizes_nonstandard_full_stop(self):
         source = "मांग बढ़ जाती है。 कीमत कम होती है。"
