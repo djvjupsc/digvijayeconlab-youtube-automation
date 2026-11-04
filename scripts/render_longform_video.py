@@ -515,7 +515,7 @@ def main():
 
         concat_file = temp / "segments.txt"
         concat_file.write_text(
-            "".join(f"file '{path.as_posix()}'\\n" for path in segments),
+            "".join(f"file '{path.as_posix()}'\n" for path in segments),
             encoding="utf-8",
         )
         run_ffmpeg([
