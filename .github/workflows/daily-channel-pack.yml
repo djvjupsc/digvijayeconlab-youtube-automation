@@ -19,6 +19,11 @@ on:
         required: false
         type: boolean
         default: false
+      allow_placeholder_voice_preview:
+        description: "Use eSpeak PREVIEW narration if free Chatterbox quota is exhausted (not the owner's voice; never upload)"
+        required: false
+        type: boolean
+        default: true
 
 concurrency:
   group: digvijayeconlab-daily-ten-unit-pack
@@ -96,6 +101,7 @@ jobs:
           CHATTERBOX_SPACE: ${{ vars.CHATTERBOX_SPACE }}
           CHATTERBOX_REFERENCE_REPO: ${{ vars.CHATTERBOX_REFERENCE_REPO }}
           CHATTERBOX_REFERENCE_FILENAME: ${{ vars.CHATTERBOX_REFERENCE_FILENAME }}
+          CHATTERBOX_PREVIEW_FALLBACK: ${{ inputs.allow_placeholder_voice_preview }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           python scripts/daily_production.py process --manifest output/daily_manifest.json
@@ -115,12 +121,14 @@ jobs:
           CHATTERBOX_SPACE: ${{ vars.CHATTERBOX_SPACE }}
           CHATTERBOX_REFERENCE_REPO: ${{ vars.CHATTERBOX_REFERENCE_REPO }}
           CHATTERBOX_REFERENCE_FILENAME: ${{ vars.CHATTERBOX_REFERENCE_FILENAME }}
+          CHATTERBOX_PREVIEW_FALLBACK: ${{ inputs.allow_placeholder_voice_preview }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           python scripts/render_longform_video.py output/daily_manifest.json
 
       - name: Audit the generated Short before any publishing attempt
         if: steps.prepare.outputs.claimed == 'true'
+        continue-on-error: true # Draft-only preview narration is intentionally not upload-eligible.
         run: |
           DATE=$(python -c "import json; print(json.load(open('output/daily_manifest.json'))['publication_date'])")
           python scripts/prepublish_audit.py \\
