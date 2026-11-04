@@ -166,7 +166,17 @@ jobs:
           audit_dir.mkdir(parents=True, exist_ok=True)
           if count:
               script = marker.sub("", script)
-              path.write_text(script, encoding="utf-8")
+          # The provenance appendix exists only to carry pre-attestation markers.
+          # Once the user explicitly attests, keep the audit in its own file and
+          # remove the now-empty appendix from the lesson itself.
+          script = re.sub(
+              r"\\n## Original Verification Markers Retained for Human Sign-off\\s*\\n[\\s\\S]*\\Z",
+              "",
+              script,
+              flags=re.I,
+          )
+          script = re.sub(r"(?m)^\\s*-\\s*$\\n?", "", script)
+          path.write_text(script.rstrip() + "\\n", encoding="utf-8")
           attestation = (
               "# Human Fact-check Attestation\\n\\n"
               "The workflow input records that the user explicitly confirmed personal "
@@ -176,8 +186,12 @@ jobs:
           )
           (audit_dir / "human-fact-check-attestation.md").write_text(attestation, encoding="utf-8")
           print(f"Recorded human attestation separately; cleared {count} verification marker(s).")
-          print("The academic reviewer will assess lesson text without procedural audit metadata.")
+          print("Removed the marker-provenance appendix from the approved lesson.")
           PY
+
+      - name: Apply deterministic Hindi editorial repairs
+        run: |
+          python scripts/law_of_demand_polish.py output/corrected_scripts/unit-01-law-of-demand.md
 
       - name: Review corrected lesson and enforce structural gate
         env:
