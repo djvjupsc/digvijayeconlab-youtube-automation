@@ -33,6 +33,23 @@ def apply_law_of_demand_polish(text):
             f"Standardized plural/singular agreement in {count} Hindi Giffen-goods definition(s)."
         )
 
+    # The pilot's original schedule (P=10,20,30,40; Qd=20,15,10,5)
+    # is consistent with Qd=25-0.5P, not Qd=40-2P. Keep the worked
+    # example, derivative and table heading mathematically consistent.
+    if "Q_d = 40 - 2P" in text:
+        text = text.replace("Q_d = 40 - 2P", "Q_d = 25 - 0.5P")
+        changes.append("Corrected the linear demand function to match the published schedule values.")
+    if "dQ_d / dP = -2 < 0" in text:
+        text = text.replace("dQ_d / dP = -2 < 0", "dQ_d / dP = -0.5 < 0")
+        changes.append("Corrected the derivative to match the revised linear demand function.")
+
+    text = text.replace("उपभोक्ता अब अपेक्षाकृत महंगी वस्तुओं के बजाय इस सस्ती वस्तु को चुनते हैं", "उपभोक्ता अब अपेक्षाकृत महंगी वस्तुओं के बजाय इस अपेक्षाकृत सस्ती वस्तु को चुनते हैं")
+    text = text.replace("अपेक्षित रूप से सस्ती कीमत", "अपेक्षाकृत सस्ती कीमत")
+    text = text.replace("गिफ्फेन वस्तुएं", "गिफ्फेन वस्तुएँ")
+    text = text.replace("वेब्लेन वस्तुएं", "वेब्लेन वस्तुएँ")
+    text = text.replace("घटिया वस्तुएं", "हीन वस्तुएँ")
+    text = text.replace("घटिया वस्तुएँ", "हीन वस्तुएँ")
+
     punctuation_count = text.count("。")
     if punctuation_count:
         text = text.replace("。", "।")
