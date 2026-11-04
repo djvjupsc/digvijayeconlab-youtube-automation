@@ -186,7 +186,7 @@ jobs:
           )
           (audit_dir / "human-fact-check-attestation.md").write_text(attestation, encoding="utf-8")
           print(f"Recorded human attestation separately; cleared {count} verification marker(s).")
-          print("Removed the marker-provenance appendix from the approved lesson.")
+          print("Removed the marker-provenance appendix from the fact-check-attested draft.")
           PY
 
       - name: Apply deterministic Hindi editorial repairs
