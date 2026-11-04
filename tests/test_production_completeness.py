@@ -43,7 +43,9 @@ class ProductionCompletenessTests(unittest.TestCase):
             date = self.build_package(root)
             self.assertTrue(inspect(root, date))
             report = json.loads((root / "output" / "production-completeness.json").read_text(encoding="utf-8"))
-            self.assertEqual(report["status"], "complete_draft")
+            self.assertEqual(report["status"], "draft_complete")
+            self.assertEqual(report["publication_status"], "blocked")
+            self.assertEqual(report["release_label"], "DRAFT COMPLETE — PUBLICATION BLOCKED")
             self.assertFalse(report["quality_and_release"]["publication_approved"])
             self.assertFalse(report["quality_and_release"]["owner_authorized_voice_used_for_both_videos"])
             self.assertEqual(report["quality_and_release"]["short_prepublication_audit"], "blocked")
@@ -55,7 +57,8 @@ class ProductionCompletenessTests(unittest.TestCase):
             (root / "output" / "thumbnails" / "unit-10-thumbnail.jpg").unlink()
             self.assertFalse(inspect(root, date))
             report = json.loads((root / "output" / "production-completeness.json").read_text(encoding="utf-8"))
-            self.assertEqual(report["status"], "incomplete")
+            self.assertEqual(report["status"], "production_incomplete")
+            self.assertEqual(report["release_label"], "PRODUCTION INCOMPLETE")
             self.assertTrue(report["missing_or_invalid_deliverables"])
 
 

@@ -154,8 +154,10 @@ def render_one(item, output_path, font_regular, font_bold, hindi_font):
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     image.save(output_path, format="JPEG", quality=91, optimize=True, progressive=True)
-    if Image.open(output_path).size != (WIDTH, HEIGHT):
-        raise RuntimeError(f"Thumbnail dimension validation failed: {output_path}")
+    with Image.open(output_path) as rendered:
+        if rendered.size != (WIDTH, HEIGHT):
+            raise RuntimeError(f"Thumbnail dimension validation failed: {output_path}")
+        rendered.verify()
     if output_path.stat().st_size > 2_000_000:
         raise RuntimeError(f"Thumbnail exceeds YouTube's 2 MB target: {output_path}")
     return {"unit": unit, "file": str(output_path), "width": WIDTH, "height": HEIGHT,
@@ -191,8 +193,13 @@ def main():
                    font_regular, font_bold, hindi_font)
         for unit in range(1, 11)
     ]
+    expected_paths = [output_dir / f"unit-{unit:02d}-thumbnail.jpg" for unit in range(1, 11)]
+    invalid = [str(path) for path in expected_paths if not path.is_file() or path.stat().st_size == 0]
+    if invalid or len(reports) != 10 or {item["unit"] for item in reports} != set(range(1, 11)):
+        raise RuntimeError(f"Thumbnail batch is incomplete; missing or invalid outputs: {invalid}")
+
     report_path = output_dir / "thumbnail-manifest.json"
-    report_path.write_text(json.dumps({"status": "rendered", "thumbnails": reports},
+    report_path.write_text(json.dumps({"status": "rendered", "count": 10, "thumbnails": reports},
                                       ensure_ascii=False, indent=2) + "\\n", encoding="utf-8")
     print(json.dumps({"status": "rendered", "count": len(reports), "output": str(output_dir)},
                      ensure_ascii=False, indent=2))
