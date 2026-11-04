@@ -39,8 +39,8 @@ class SeverityBasedAcademicGateTests(unittest.TestCase):
 
     def test_missing_overall_verdict_fails_closed(self):
         report = (
-            "### Critical Issues\\n*None.*\\n"
-            "### High-Priority Issues\\n*None.*\\n"
+            "### Critical Issues\n*None.*\n"
+            "### High-Priority Issues\n*None.*\n"
         )
         ok, blockers = evaluate(report, self.det, self.script, self.attestation)
         self.assertFalse(ok)
@@ -48,12 +48,12 @@ class SeverityBasedAcademicGateTests(unittest.TestCase):
 
     def test_nested_critical_high_subheading_content_is_included_and_blocks(self):
         nested = (
-            "### Overall Verdict\\n**HOLD FOR CORRECTION**\\n\\n"
-            "### Critical Issues\\nNone.\\n\\n"
-            "### High-Priority Issues\\n"
-            "#### Incorrect concept explanation\\n"
-            "The Hindi explanation reverses the income-effect direction.\\n"
-            "### Other Improvements\\nMinor punctuation.\\n"
+            "### Overall Verdict\n**HOLD FOR CORRECTION**\n\n"
+            "### Critical Issues\nNone.\n\n"
+            "### High-Priority Issues\n"
+            "#### Incorrect concept explanation\n"
+            "The Hindi explanation reverses the income-effect direction.\n"
+            "### Other Improvements\nMinor punctuation.\n"
         )
         ok, blockers = evaluate(nested, self.det, self.script, self.attestation)
         self.assertFalse(ok)
@@ -101,7 +101,7 @@ class SeverityBasedAcademicGateTests(unittest.TestCase):
         self.assertTrue(any("attestation" in x for x in blockers))
 
     def test_missing_issue_sections_fails_closed(self):
-        incomplete = "### Overall Verdict\\n**READY**\\n"
+        incomplete = "### Overall Verdict\n**READY**\n"
         ok, blockers = evaluate(incomplete, self.det, self.script, self.attestation)
         self.assertFalse(ok)
         self.assertTrue(any("missing a parseable" in x for x in blockers))
