@@ -14,6 +14,8 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
+from narration import synthesize_audio_batch
+
 WIDTH, HEIGHT = 1920, 1080
 MAX_GROUP_CHARS = 780
 PALETTES = [
@@ -445,43 +447,75 @@ def main():
     slug = re.sub(r"[^a-z0-9]+", "-", topic.casefold()).strip("-")[:48] or f"unit-{unit:02d}"
     final_path = output_dir / f"{date}-unit-{unit:02d}-{slug}.mp4"
 
+    preview_fallback = os.environ.get("CHATTERBOX_PREVIEW_FALLBACK", "").strip().lower() in {"1", "true", "yes"}
+    chatterbox_synthesize = None
+    if chatterbox_enabled:
+        from chatterbox_tts import synthesize as chatterbox_synthesize
+
     providers, segments = [], []
     with tempfile.TemporaryDirectory(prefix="digvijay-longform-") as tmp:
         temp = Path(tmp)
+        render_specs = []
+        narration_items = []
         for index, group in enumerate(groups):
             paragraph_text = " ".join(group["paragraphs"])
             language = group.get("language") or language_for(paragraph_text)
             image_path = temp / f"slide-{index:02d}.png"
             audio_path = temp / f"narration-{index:02d}.wav"
             segment_path = temp / f"segment-{index:02d}.mp4"
+            subtitle_path = temp / f"captions-{index:02d}.srt"
             draw_slide(group, index, len(groups), unit, unit_name, topic,
                        font_regular, font_bold, hindi_font, image_path)
-            provider = synthesize_audio(
-                paragraph_text, language, audio_path, 9100 + index,
-                chatterbox_enabled, espeak,
+            narration_items.append({
+                "text": paragraph_text,
+                "language": language,
+                "path": str(audio_path),
+                "seed": 9100 + index,
+                "speed": 145,
+            })
+            render_specs.append({
+                "image_path": image_path,
+                "audio_path": audio_path,
+                "segment_path": segment_path,
+                "subtitle_path": subtitle_path,
+                "paragraph_text": paragraph_text,
+                "index": index,
+            })
+
+        chatterbox_enabled, providers = synthesize_audio_batch(
+            narration_items,
+            chatterbox_enabled=chatterbox_enabled,
+            allow_preview_fallback=preview_fallback,
+            espeak_binary=espeak,
+            chatterbox_synthesize=chatterbox_synthesize,
+        )
+
+        for spec in render_specs:
+            index = spec["index"]
+            write_group_srt(
+                spec["paragraph_text"],
+                audio_duration(spec["audio_path"]),
+                spec["subtitle_path"],
             )
-            providers.append(provider.get("provider", "unknown"))
-            subtitle_path = temp / f"captions-{index:02d}.srt"
-            write_group_srt(paragraph_text, audio_duration(audio_path), subtitle_path)
             subtitle_filter = (
                 f"zoompan=z='min(zoom+0.00035,1.035)':d=1:s={WIDTH}x{HEIGHT}:fps=30,"
-                f"subtitles='{escape_filter_path(subtitle_path)}':"
+                f"subtitles='{escape_filter_path(spec['subtitle_path'])}':"
                 "force_style='FontName=Noto Sans Devanagari,FontSize=22,"
                 "PrimaryColour=&H00FFFFFF,OutlineColour=&H00102030,"
                 "BorderStyle=1,Outline=2,Shadow=1,Alignment=2,MarginV=52'"
             )
             run_ffmpeg([
-                ffmpeg, "-y", "-loop", "1", "-framerate", "30", "-i", str(image_path),
-                "-i", str(audio_path), "-vf", subtitle_filter,
+                ffmpeg, "-y", "-loop", "1", "-framerate", "30", "-i", str(spec["image_path"]),
+                "-i", str(spec["audio_path"]), "-vf", subtitle_filter,
                 "-c:v", "libx264", "-preset", "veryfast", "-tune", "stillimage",
                 "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k",
-                "-shortest", "-movflags", "+faststart", str(segment_path),
+                "-shortest", "-movflags", "+faststart", str(spec["segment_path"]),
             ], f"rendering lesson section {index + 1} with motion and captions")
-            segments.append(segment_path)
+            segments.append(spec["segment_path"])
 
         concat_file = temp / "segments.txt"
         concat_file.write_text(
-            "".join(f"file '{path.as_posix()}'\n" for path in segments),
+            "".join(f"file '{path.as_posix()}'\\n" for path in segments),
             encoding="utf-8",
         )
         run_ffmpeg([
