@@ -254,6 +254,33 @@ def run_ffmpeg(command, label):
         detail = (exc.stderr or exc.stdout or "")[-2000:]
         raise RuntimeError(f"FFmpeg failed while {label}: {detail}") from exc
 
+def render_voice_policy(chatterbox_enabled, providers, has_unresolved_markers):
+    """Return an explicit safe status for production voice or preview narration."""
+    voice_clone_used = bool(
+        chatterbox_enabled and providers and all("Chatterbox" in provider for provider in providers)
+    )
+    if has_unresolved_markers:
+        return {
+            "voice_clone_used": voice_clone_used,
+            "audit_status": "blocked",
+            "upload_eligible": False,
+            "preview_only": not voice_clone_used,
+        }
+    if voice_clone_used:
+        return {
+            "voice_clone_used": True,
+            "audit_status": "pass",
+            "upload_eligible": True,
+            "preview_only": False,
+        }
+    return {
+        "voice_clone_used": False,
+        "audit_status": "preview",
+        "upload_eligible": False,
+        "preview_only": True,
+    }
+
+
 def audio_duration(path):
     result = subprocess.run(
         ["ffprobe", "-v", "error", "-show_entries", "format=duration",
@@ -463,10 +490,13 @@ def main():
         ], "assembling the complete long-form lesson")
 
     technical = ffprobe(final_path)
-    voice_clone_used = chatterbox_enabled and all("Chatterbox" in provider for provider in providers)
+    policy = render_voice_policy(chatterbox_enabled, providers, bool(VERIFY_RE.search(markdown)))
+    voice_clone_used = policy["voice_clone_used"]
     report = {
         "status": "rendered",
-        "audit_status": "pass" if voice_clone_used else "blocked",
+        **policy,
+        "narration_mode": "production" if voice_clone_used else "preview",
+        "audit_status": policy["audit_status"],
         "publication_date": date,
         "unit": unit,
         "topic": topic,
@@ -478,7 +508,6 @@ def main():
         "voice_reference_stored_in_repository": False,
         "music": "none",
         "review_required": True,
-        "upload_eligible": bool(voice_clone_used and not VERIFY_RE.search(markdown)),
         "technical": technical,
         "limitations": [
             "Demand-focused lessons include an original downward-sloping demand-curve teaching diagram.",
