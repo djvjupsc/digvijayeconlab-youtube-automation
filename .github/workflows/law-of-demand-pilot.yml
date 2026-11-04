@@ -170,19 +170,19 @@ jobs:
           # Once the user explicitly attests, keep the audit in its own file and
           # remove the now-empty appendix from the lesson itself.
           script = re.sub(
-              r"\\n## Original Verification Markers Retained for Human Sign-off\\s*\\n[\\s\\S]*\\Z",
+              r"\n## Original Verification Markers Retained for Human Sign-off\s*\n[\s\S]*\Z",
               "",
               script,
               flags=re.I,
           )
-          script = re.sub(r"(?m)^\\s*-\\s*$\\n?", "", script)
-          path.write_text(script.rstrip() + "\\n", encoding="utf-8")
+          script = re.sub(r"(?m)^\s*-\s*$\n?", "", script)
+          path.write_text(script.rstrip() + "\n", encoding="utf-8")
           attestation = (
-              "# Human Fact-check Attestation\\n\\n"
+              "# Human Fact-check Attestation\n\n"
               "The workflow input records that the user explicitly confirmed personal "
               "review of the corrected lesson and verification of flagged factual claims "
               "against authoritative sources. This is an audit record of the user's "
-              "attestation, not an automated certification.\\n"
+              "attestation, not an automated certification.\n"
           )
           (audit_dir / "human-fact-check-attestation.md").write_text(attestation, encoding="utf-8")
           print(f"Recorded human attestation separately; cleared {count} verification marker(s).")
