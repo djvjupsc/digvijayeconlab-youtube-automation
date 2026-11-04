@@ -19,7 +19,7 @@ class SeverityBasedAcademicGateTests(unittest.TestCase):
     def tearDown(self):
         self.temp.cleanup()
 
-    def report(self, verdict, critical="*None.*", high="*None.*", other="Minor punctuation suggestion."):
+    def report(self, verdict, critical="*None.* (No theoretical contradictions or unsupported claims were identified.)", high="*None.*", other="Minor punctuation suggestion."):
         return (
             f"### Overall Verdict\n{verdict}\n\n"
             f"### Critical Issues\n{critical}\n\n"
@@ -57,6 +57,12 @@ class SeverityBasedAcademicGateTests(unittest.TestCase):
         ok, blockers = evaluate(self.report("**READY**"), self.det, self.script, missing)
         self.assertFalse(ok)
         self.assertTrue(any("attestation" in x for x in blockers))
+
+    def test_missing_issue_sections_fails_closed(self):
+        incomplete = "### Overall Verdict\\n**READY**\\n"
+        ok, blockers = evaluate(incomplete, self.det, self.script, self.attestation)
+        self.assertFalse(ok)
+        self.assertTrue(any("missing a parseable" in x for x in blockers))
 
     def test_structural_blocker_blocks(self):
         ok, blockers = evaluate(self.report("**READY**"), "- Blocking findings: 2\n", self.script, self.attestation)
