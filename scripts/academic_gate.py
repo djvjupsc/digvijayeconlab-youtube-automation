@@ -85,7 +85,7 @@ def section_has_findings(body):
     return bool(meaningful)
 
 
-def evaluate(review, deterministic, script, source_verification=None):
+def evaluate(review, deterministic, script, source_verification=None, correction_log=None):
     review_sections = sections(review)
     critical_key = next((k for k in review_sections if k == "critical issues"), None)
     high_key = next(
@@ -137,6 +137,17 @@ def evaluate(review, deterministic, script, source_verification=None):
         ):
             blockers.append("A separate source-verification evidence report is missing or invalid.")
 
+    if correction_log is not None:
+        if not correction_log.is_file():
+            blockers.append("The lesson correction log is missing.")
+        else:
+            correction_sections = sections(correction_log.read_text(encoding="utf-8"))
+            unresolved_section = correction_sections.get("unresolved human-verification items")
+            if unresolved_section is None:
+                blockers.append("The correction log is missing its Unresolved human-verification items section.")
+            elif section_has_findings(unresolved_section):
+                blockers.append("The correction log lists one or more unresolved human-verification items.")
+
     return not blockers, blockers
 
 
@@ -150,6 +161,7 @@ def main():
         nargs="?",
         help="Optional dedicated evidence report for a topic-specific source-verification gate.",
     )
+    parser.add_argument("--correction-log", help="Optional lesson correction log; unresolved items block the gate.")
     parser.add_argument("--output", default="output/reviews/academic-gate-decision.md")
     args = parser.parse_args()
 
@@ -166,7 +178,8 @@ def main():
     deterministic = paths[1].read_text(encoding="utf-8")
     script = paths[2].read_text(encoding="utf-8")
     source_verification = Path(args.source_verification) if args.source_verification else None
-    passed, blockers = evaluate(review, deterministic, script, source_verification)
+    correction_log = Path(args.correction_log) if args.correction_log else None
+    passed, blockers = evaluate(review, deterministic, script, source_verification, correction_log)
 
     reviewer_verdict = extract_reviewer_verdict(review) or "Not parsed"
     structural_count = extract_blocking_count(deterministic)
