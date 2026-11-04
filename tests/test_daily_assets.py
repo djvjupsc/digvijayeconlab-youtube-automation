@@ -1,5 +1,10 @@
+import io
+import json
 import unittest
-from scripts.generate_daily_assets import validate
+import urllib.error
+from unittest.mock import patch
+
+from scripts.generate_daily_assets import call_gemini, validate
 
 
 class DailyAssetsValidationTests(unittest.TestCase):
@@ -42,6 +47,53 @@ class DailyAssetsValidationTests(unittest.TestCase):
                 for i in range(1, 11)
             ],
         }
+
+
+    def test_call_gemini_retries_transient_503_then_succeeds(self):
+        class Response:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def read(self):
+                return b'{"candidates": []}'
+
+        temporary = urllib.error.HTTPError(
+            "https://example.invalid", 503, "Unavailable", {}, io.BytesIO(b"busy")
+        )
+        with patch("scripts.generate_daily_assets.urllib.request.urlopen",
+                   side_effect=[temporary, Response()]) as urlopen, \
+             patch("scripts.generate_daily_assets.time.sleep") as sleep:
+            result = call_gemini("test-key", {"contents": []})
+        self.assertEqual(result, {"candidates": []})
+        self.assertEqual(urlopen.call_count, 2)
+        sleep.assert_called_once_with(3)
+
+    def test_call_gemini_does_not_retry_non_transient_http_error(self):
+        bad_request = urllib.error.HTTPError(
+            "https://example.invalid", 400, "Bad Request", {}, io.BytesIO(b"invalid")
+        )
+        with patch("scripts.generate_daily_assets.urllib.request.urlopen",
+                   side_effect=bad_request) as urlopen, \
+             patch("scripts.generate_daily_assets.time.sleep") as sleep:
+            with self.assertRaisesRegex(SystemExit, "HTTP 400"):
+                call_gemini("test-key", {"contents": []})
+        self.assertEqual(urlopen.call_count, 1)
+        sleep.assert_not_called()
+
+    def test_call_gemini_stops_after_maximum_transient_attempts(self):
+        unavailable = urllib.error.HTTPError(
+            "https://example.invalid", 503, "Unavailable", {}, io.BytesIO(b"busy")
+        )
+        with patch("scripts.generate_daily_assets.urllib.request.urlopen",
+                   side_effect=unavailable) as urlopen, \
+             patch("scripts.generate_daily_assets.time.sleep") as sleep:
+            with self.assertRaisesRegex(SystemExit, "after 5/5 attempt"):
+                call_gemini("test-key", {"contents": []})
+        self.assertEqual(urlopen.call_count, 5)
+        self.assertEqual([call.args[0] for call in sleep.call_args_list], [3, 6, 12, 24])
 
     def test_accepts_valid_bilingual_short_and_community_post(self):
         self.assertTrue(validate(self.valid_payload()))

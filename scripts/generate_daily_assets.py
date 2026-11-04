@@ -4,6 +4,7 @@ import json
 import os
 import re
 import sys
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -81,21 +82,44 @@ SCHEMA = {
 }
 
 
-def call_gemini(api_key, payload):
+def call_gemini(api_key, payload, max_attempts=5, backoff_seconds=3):
+    """Call Gemini with bounded exponential retries for transient service failures."""
     request = urllib.request.Request(
         API_URL,
         data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
         headers={"x-goog-api-key": api_key, "Content-Type": "application/json"},
         method="POST",
     )
-    try:
-        with urllib.request.urlopen(request, timeout=150) as response:
-            return json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")[:1200]
-        raise SystemExit(f"Gemini daily-asset generation failed (HTTP {exc.code}): {detail}") from exc
-    except (urllib.error.URLError, TimeoutError) as exc:
-        raise SystemExit(f"Gemini daily-asset connection failed: {exc}") from exc
+    transient_http_codes = {408, 429, 500, 502, 503, 504}
+    for attempt in range(1, max_attempts + 1):
+        try:
+            with urllib.request.urlopen(request, timeout=150) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="replace")[:1200]
+            if exc.code not in transient_http_codes or attempt >= max_attempts:
+                raise SystemExit(
+                    f"Gemini daily-asset generation failed (HTTP {exc.code}) "
+                    f"after {attempt}/{max_attempts} attempt(s): {detail}"
+                ) from exc
+            delay = backoff_seconds * (2 ** (attempt - 1))
+            print(
+                f"Gemini daily-asset generation: temporary HTTP {exc.code}; "
+                f"retry {attempt + 1}/{max_attempts} in {delay}s.",
+                flush=True,
+            )
+            time.sleep(delay)
+        except (urllib.error.URLError, TimeoutError) as exc:
+            if attempt >= max_attempts:
+                raise SystemExit(
+                    f"Gemini daily-asset connection failed after {attempt}/{max_attempts} attempts: {exc}"
+                ) from exc
+            delay = backoff_seconds * (2 ** (attempt - 1))
+            print(
+                f"Gemini daily-asset connection error; retry {attempt + 1}/{max_attempts} in {delay}s: {exc}",
+                flush=True,
+            )
+            time.sleep(delay)
 
 
 def validate(data, expected_playlist_titles=None):
