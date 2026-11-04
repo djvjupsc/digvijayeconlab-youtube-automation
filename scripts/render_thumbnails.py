@@ -154,8 +154,10 @@ def render_one(item, output_path, font_regular, font_bold, hindi_font):
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     image.save(output_path, format="JPEG", quality=91, optimize=True, progressive=True)
-    if Image.open(output_path).size != (WIDTH, HEIGHT):
-        raise RuntimeError(f"Thumbnail dimension validation failed: {output_path}")
+    with Image.open(output_path) as rendered:
+        if rendered.size != (WIDTH, HEIGHT):
+            raise RuntimeError(f"Thumbnail dimension validation failed: {output_path}")
+        rendered.verify()
     if output_path.stat().st_size > 2_000_000:
         raise RuntimeError(f"Thumbnail exceeds YouTube's 2 MB target: {output_path}")
     return {"unit": unit, "file": str(output_path), "width": WIDTH, "height": HEIGHT,
