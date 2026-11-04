@@ -162,19 +162,21 @@ jobs:
           script = path.read_text(encoding="utf-8")
           marker = re.compile(r"\[(?:HUMAN\s+)?VERIFY\b[^\]]*\]", re.I)
           count = len(marker.findall(script))
-          if count == 0:
-              print("No verification markers were present; human attestation recorded.")
-          else:
+          audit_dir = Path("output/reviews")
+          audit_dir.mkdir(parents=True, exist_ok=True)
+          if count:
               script = marker.sub("", script)
-              script += (
-                  "\n\n## Human Fact-check Attestation\n\n"
-                  "The workflow was continued only after the user explicitly confirmed "
-                  "that they personally reviewed the corrected lesson and verified flagged "
-                  "factual claims against authoritative sources. This records the user's "
-                  "attestation; it is not an automated certification.\n"
-              )
               path.write_text(script, encoding="utf-8")
-              print(f"Cleared {count} verification marker(s) after explicit human attestation.")
+          attestation = (
+              "# Human Fact-check Attestation\\n\\n"
+              "The workflow input records that the user explicitly confirmed personal "
+              "review of the corrected lesson and verification of flagged factual claims "
+              "against authoritative sources. This is an audit record of the user's "
+              "attestation, not an automated certification.\\n"
+          )
+          (audit_dir / "human-fact-check-attestation.md").write_text(attestation, encoding="utf-8")
+          print(f"Recorded human attestation separately; cleared {count} verification marker(s).")
+          print("The academic reviewer will assess lesson text without procedural audit metadata.")
           PY
 
       - name: Review corrected lesson and enforce structural gate
