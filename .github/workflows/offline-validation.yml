@@ -1,0 +1,33 @@
+name: DigvijayEconLab offline validation
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main, "fix/**"]
+
+permissions:
+  contents: read
+
+jobs:
+  offline-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Compile scripts and tests
+        run: python -m compileall -q scripts tests
+
+      - name: Run offline unit tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Validate production plan and topic queue
+        run: |
+          python scripts/daily_production.py validate
+          python scripts/topic_queue.py validate --queue config/topic_queue.json
