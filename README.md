@@ -101,7 +101,7 @@ These are catalogue entries, not live playlists. YouTube's playlist creation and
 
 ## Shorts and Community posts
 
-- The daily Short is rendered as a 1080 × 1920 MP4 with bilingual on-screen text and narration. When `CHATTERBOX_ENABLED=true` and the private Hugging Face reference-audio settings are configured, Chatterbox Multilingual V3 is used. Otherwise, eSpeak is used as a generic placeholder clearly marked as not the owner’s voice. No paid TTS provider, background music or third-party visuals are used.
+- The daily Short is rendered as a 1080 × 1920 MP4 with bilingual on-screen text and narration. When `CHATTERBOX_ENABLED=true` and the private Hugging Face reference-audio settings are configured, Chatterbox Multilingual V3 is attempted. The manual workflow input `allow_placeholder_voice_preview` defaults to true: when Chatterbox hits a quota or service error, the renderer discards any partial Chatterbox audio and regenerates the entire narration with eSpeak. That output is marked PREVIEW ONLY, is not the owner's voice, and cannot pass the upload audit. No paid TTS provider, background music or third-party visuals are used.
 - The Community post is generated as text plus a poll draft and a suggested pinned comment. YouTube's documented Community post scheduling process is through YouTube Studio. The public YouTube Data API v3 reference does not offer a Community-post creation endpoint, so the automation does not attempt to publish it.
 - YouTube currently categorizes eligible square or vertical videos up to three minutes as Shorts for standard channels, subject to the platform's conditions. Keep every rendered Short within that limit and check copyright before publishing.
 
@@ -122,8 +122,8 @@ Resolve all verification markers and Critical/High issues against authoritative 
 
 The isolated Law of Demand workflow offers two explicit narration modes:
 
-- **Production (default):** requires `CHATTERBOX_ENABLED=true`, the private owner voice reference and successful Chatterbox synthesis. If the free Hugging Face ZeroGPU quota is exhausted or the Space is unavailable, production stops safely. It never substitutes another voice.
-- **Preview:** uses eSpeak NG to render the complete 1920 × 1080 visual lesson while Chatterbox is unavailable. The render report records `narration_mode: preview`, `preview_only: true`, `voice_clone_used: false` and `upload_eligible: false`. The workflow's YouTube upload step is skipped in preview mode even if the private-upload input is set to yes.
+- **Production voice:** uses `CHATTERBOX_ENABLED=true`, the private owner voice reference and successful Chatterbox synthesis.
+- **Preview fallback:** the manual workflow input `allow_placeholder_voice_preview` defaults to true. If free Hugging Face ZeroGPU quota is exhausted or the Space is unavailable, eSpeak NG is used for the complete narration batch, not just the remaining sections. The render report records `narration_mode: preview`, `preview_only: true`, `voice_clone_used: false` and `upload_eligible: false`. The upload audit blocks preview audio even if the private-upload input is separately enabled.
 
 Preview output is for layout, slide pacing and caption inspection only. It is not an owner-voice production master and must not be uploaded. Return to Production mode after Chatterbox quota is available. Human academic review remains mandatory in both modes.
 
@@ -178,7 +178,7 @@ https://huggingface.co/spaces/ResembleAI/Chatterbox-Multilingual-TTS-V3
 
 The Space supports Hindi and English reference-audio voice generation. Its current UI/API limit is 300 characters per request; the adapter splits longer narration at sentence/word boundaries and joins the returned WAV segments. It uses the documented Generate endpoint and the neutral settings (exaggeration 0.5, temperature 0.8, CFG/pace 0.5).
 
-**Free-service limitation:** the Space runs on shared Hugging Face ZeroGPU infrastructure. It may queue, sleep, rate-limit or be temporarily unavailable. This is a best-effort free integration, not a production SLA. If the Space is unavailable, the Chatterbox step fails visibly rather than silently substituting a different voice. The workflow will not schedule the Short unless its render report confirms that an owner reference voice clone was used.
+**Free-service limitation:** the Space runs on shared Hugging Face ZeroGPU infrastructure. It may queue, sleep, rate-limit or be temporarily unavailable. This is a best-effort free integration, not a production SLA. With `allow_placeholder_voice_preview=true`, the workflow visibly falls back to a complete eSpeak preview when Chatterbox fails; the report remains `preview_only` and upload-ineligible. Set the input false to require Chatterbox and fail rather than use placeholder narration.
 
 ### Keep the voice recording private
 
