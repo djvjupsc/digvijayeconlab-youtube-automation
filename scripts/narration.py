@@ -1,7 +1,18 @@
 """Safe, explicit whole-video fallback from Chatterbox to eSpeak preview narration."""
 
+import re
 import subprocess
 from pathlib import Path
+
+
+def preview_speech_text(value):
+    """Remove LaTeX control syntax before passing bilingual text to eSpeak."""
+    text = str(value or "")
+    text = re.sub(r"\\text\s*\{([^{}]*)\}", r"\1", text)
+    text = re.sub(r"\\[A-Za-z]+", " ", text)
+    text = re.sub(r"[$^{}_]", " ", text)
+    text = re.sub(r"\\", " ", text)
+    return re.sub(r"\s+", " ", text).strip()
 
 
 def synthesize_audio_batch(
@@ -80,9 +91,14 @@ def synthesize_audio_batch(
                 "-v", voice,
                 "-s", str(int(item.get("speed", 145))),
                 "-w", str(target),
-                str(item["text"]),
+                "--stdin",
             ]
-            subprocess.run(command, check=True, capture_output=True, text=True)
+            speech_text = preview_speech_text(item["text"])
+            if not speech_text:
+                raise ValueError("Narration text is empty after preview-text cleanup.")
+            # --stdin avoids platform argument-length limits and keeps Unicode text
+            # out of the process argument vector. LaTeX syntax is stripped above.
+            subprocess.run(command, input=speech_text, check=True, capture_output=True, text=True)
             providers.append(f"eSpeak NG ({voice})")
 
     return use_chatterbox, providers
