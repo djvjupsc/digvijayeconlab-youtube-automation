@@ -3,7 +3,6 @@ import argparse
 import re
 from pathlib import Path
 
-
 HEADING = re.compile(r"(?m)^#{1,6}\s+(.+?)\s*$")
 VERIFY = re.compile(r"\[(?:HUMAN\s+)?VERIFY\b[^\]]*\]", re.I)
 
@@ -18,6 +17,46 @@ def sections(markdown):
     return found
 
 
+def extract_reviewer_verdict(review):
+    """Read the explicit value immediately below or beside Overall Verdict."""
+    lines = review.splitlines()
+    for index, line in enumerate(lines):
+        if not re.search(r"\boverall verdict\b", line, flags=re.I):
+            continue
+        inline = re.sub(
+            r"^.*?\boverall verdict\b\s*[:：]?\s*",
+            "",
+            line,
+            flags=re.I,
+        ).strip()
+        if inline:
+            return inline.replace("*", "").replace("_", "").strip()
+        for candidate in lines[index + 1:]:
+            value = candidate.strip()
+            if not value:
+                continue
+            if value.startswith("#"):
+                break
+            return value.replace("*", "").replace("_", "").strip()
+        return ""
+    return ""
+
+
+def extract_blocking_count(deterministic):
+    """Parse the exact counter emitted by scripts.quality_checks.render_report."""
+    match = re.search(
+        r"(?im)^\s*-\s*Blocking findings:\s*(\d+)\s*$",
+        deterministic,
+    )
+    return int(match.group(1)) if match else None
+
+
+def verdict_is_approved(verdict):
+    approved = re.search(r"\b(READY|APPROVED|PASS(?:ED)?)\b", verdict, re.I)
+    rejected = re.search(r"\b(HOLD|CORRECTION|NOT READY|REJECT(?:ED)?)\b", verdict, re.I)
+    return bool(approved and not rejected)
+
+
 def section_has_findings(body):
     if not body:
         return False
@@ -27,7 +66,7 @@ def section_has_findings(body):
         if not line or line.startswith(">") or line in {"---", "***"}:
             continue
         line = re.sub(r"^\s*(?:[-*+]\s+|\d+[.)]\s+)", "", line)
-        line = re.sub(r"[*_`]", "", line).strip()
+        line = line.replace("*", "").replace("_", "").strip()
         if not line:
             continue
         if re.match(r"^(?:none\b|no\s+(?:critical|high[- ]priority)\s+issues?\b)", line, re.I):
@@ -38,26 +77,46 @@ def section_has_findings(body):
 
 def evaluate(review, deterministic, script, attestation):
     review_sections = sections(review)
-    critical_key = next((k for k in review_sections if k in {"critical issues", "critical issues:"}), None)
-    high_key = next((k for k in review_sections if k in {"high-priority issues", "high priority issues", "high-priority issues:"}), None)
-    if critical_key is None or high_key is None:
-        return False, ["Academic review is missing a parseable Critical Issues or High-Priority Issues section."]
+    critical_key = next((k for k in review_sections if k == "critical issues"), None)
+    high_key = next(
+        (k for k in review_sections if k in {"high-priority issues", "high priority issues"}),
+        None,
+    )
 
     blockers = []
-    if section_has_findings(review_sections[critical_key]):
-        blockers.append("The reviewer listed one or more unresolved critical issues.")
-    if section_has_findings(review_sections[high_key]):
-        blockers.append("The reviewer listed one or more unresolved high-priority issues.")
+    if critical_key is None or high_key is None:
+        blockers.append(
+            "Academic review is missing a parseable Critical Issues or High-Priority Issues section."
+        )
+    else:
+        if section_has_findings(review_sections[critical_key]):
+            blockers.append("The reviewer listed one or more unresolved critical issues.")
+        if section_has_findings(review_sections[high_key]):
+            blockers.append("The reviewer listed one or more unresolved high-priority issues.")
 
-    match = re.search(r"Blocking findings:\s*(\d+)", deterministic, re.I)
-    if not match:
-        blockers.append("Could not determine the deterministic structural-check result.")
-    elif int(match.group(1)) != 0:
-        blockers.append(f"Deterministic structural checks report {match.group(1)} blocking finding(s).")
+    reviewer_verdict = extract_reviewer_verdict(review)
+    if not verdict_is_approved(reviewer_verdict):
+        blockers.append(
+            "The reviewer did not issue an explicit READY/APPROVED/PASS verdict "
+            f"(detected: {reviewer_verdict or 'missing'})."
+        )
+
+    structural_count = extract_blocking_count(deterministic)
+    if structural_count is None:
+        blockers.append(
+            "Could not parse the deterministic structural-check count; expected '- Blocking findings: N'."
+        )
+    elif structural_count != 0:
+        blockers.append(
+            f"Deterministic structural checks report {structural_count} blocking finding(s)."
+        )
 
     if VERIFY.search(script):
         blockers.append("Human verification markers remain in the corrected lesson.")
-    if not attestation.is_file() or "user explicitly confirmed" not in attestation.read_text(encoding="utf-8").casefold():
+    if (
+        not attestation.is_file()
+        or "user explicitly confirmed" not in attestation.read_text(encoding="utf-8").casefold()
+    ):
         blockers.append("A separate human fact-check attestation record is missing.")
 
     return not blockers, blockers
@@ -72,8 +131,12 @@ def main():
     parser.add_argument("--output", default="output/reviews/academic-gate-decision.md")
     args = parser.parse_args()
 
-    paths = [Path(args.review_report), Path(args.deterministic_report), Path(args.corrected_script)]
-    missing = [str(p) for p in paths if not p.is_file()]
+    paths = [
+        Path(args.review_report),
+        Path(args.deterministic_report),
+        Path(args.corrected_script),
+    ]
+    missing = [str(path) for path in paths if not path.is_file()]
     if missing:
         raise SystemExit("Required gate input(s) missing: " + ", ".join(missing))
 
@@ -83,17 +146,15 @@ def main():
     attestation = Path(args.attestation)
     passed, blockers = evaluate(review, deterministic, script, attestation)
 
-    verdict_match = re.search(r"Overall Verdict\\s*\\n+([^\\n]+)", review, re.I)
-    reviewer_verdict = verdict_match.group(1).strip() if verdict_match else "Not parsed"
-    structural_match = re.search(r"Blocking findings:\\s*(\\d+)", deterministic, re.I)
-    structural_count = structural_match.group(1) if structural_match else "Unknown"
+    reviewer_verdict = extract_reviewer_verdict(review) or "Not parsed"
+    structural_count = extract_blocking_count(deterministic)
     lines = [
         "# Academic Gate Decision",
         "",
         "> Workflow eligibility for human review only. This is not academic certification or permission to publish.",
         "",
         f"- AI reviewer verdict: {reviewer_verdict}",
-        f"- Deterministic structural blockers: {structural_count}",
+        f"- Deterministic structural blockers: {structural_count if structural_count is not None else 'Unknown'}",
         f"- Separate human attestation present: {'Yes' if attestation.is_file() else 'No'}",
         f"- Remaining verification markers: {len(VERIFY.findall(script))}",
         "",
@@ -104,17 +165,21 @@ def main():
         "## Blocking reasons",
         "",
     ]
-    lines.extend(f"- {item}" for item in blockers) if blockers else lines.append("- None detected in the critical/high-priority and deterministic gates.")
+    lines.extend(f"- {item}" for item in blockers) if blockers else lines.append(
+        "- None detected in the critical/high-priority and deterministic gates."
+    )
     lines += [
         "",
         "Medium/low-priority editorial recommendations and verification reminders remain visible in the AI review and must be considered during the final human review. A passing gate does not approve public release.",
         "",
     ]
-    out = Path(args.output)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text("\n".join(lines), encoding="utf-8")
+    output_path = Path(args.output)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text("\n".join(lines), encoding="utf-8")
+    print(f"Academic reviewer verdict: {reviewer_verdict}")
+    print(f"Deterministic structural blockers: {structural_count if structural_count is not None else 'Unknown'}")
     print(f"Academic gate decision: {'PASS — HUMAN REVIEW REQUIRED' if passed else 'HOLD'}")
-    print(f"Decision report: {out}")
+    print(f"Decision report: {output_path}")
     if not passed:
         raise SystemExit("Academic gate blocked: " + " ".join(blockers))
 
