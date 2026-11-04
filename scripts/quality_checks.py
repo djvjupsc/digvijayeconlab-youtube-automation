@@ -59,7 +59,7 @@ QUESTION_HEADING_PATTERN = re.compile(
     r"(?im)^\s*(?:#{1,6}\s*)?(?:\*\*\s*)?(?:MCQ\s*|Q(?:uestion)?\s*|प्रश्न\s*)(?P<number>0*\d+)\b"
 )
 ANSWER_LINE_PATTERN = re.compile(
-    r"(?im)^\s*.*\b(?:Correct\s+Answer|सही\s+उत्तर)\b.*[:：]"
+    r"(?im)^\s*.*\b(?:Correct\s+Answer|Answer|सही\s+उत्तर|उत्तर)\b.*[:：]"
 )
 EXPLANATION_LINE_PATTERN = re.compile(
     r"^\s*.*(?:\bExplanation\b|व्याख्या).*[:：]",
