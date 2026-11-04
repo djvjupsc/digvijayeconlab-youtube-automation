@@ -20,3 +20,21 @@ def load_optional_source_notes(path_value):
     if not path.is_file():
         raise SystemExit(f"Source notes file not found: {path}")
     return path.read_text(encoding="utf-8")
+
+
+
+def resolve_source_notes_argument(value):
+    """Resolve a source-notes argument as a file path or preserve legacy inline text."""
+    if value is None:
+        return ""
+    raw = str(value)
+    if not raw.strip():
+        return ""
+    path = Path(raw.strip())
+    try:
+        if path.is_file():
+            return path.read_text(encoding="utf-8")
+    except OSError:
+        # Long inline source notes may not be valid filesystem paths.
+        pass
+    return raw
