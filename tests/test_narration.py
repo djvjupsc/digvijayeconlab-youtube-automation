@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from scripts.narration import synthesize_audio_batch
+from scripts.narration import preview_speech_text, synthesize_audio_batch
 
 
 class NarrationFallbackTests(unittest.TestCase):
@@ -12,6 +12,15 @@ class NarrationFallbackTests(unittest.TestCase):
             {"text": "पहला हिंदी वाक्य।", "language": "hi", "path": str(Path(root) / "hi.wav"), "seed": 1, "speed": 142},
             {"text": "An English sentence.", "language": "en", "path": str(Path(root) / "en.wav"), "seed": 2, "speed": 152},
         ]
+
+    def test_preview_text_removes_latex_control_syntax(self):
+        cleaned = preview_speech_text(
+            r"Correct Answer: B) $M3$ Explanation: $M3 = M1 + \\text{time deposits}$।"
+        )
+        self.assertIn("M3", cleaned)
+        self.assertIn("time deposits", cleaned)
+        self.assertNotIn("\\text", cleaned)
+        self.assertNotIn("$", cleaned)
 
     def test_successful_chatterbox_batch_keeps_owner_voice(self):
         with tempfile.TemporaryDirectory() as root:
@@ -51,6 +60,8 @@ class NarrationFallbackTests(unittest.TestCase):
                 raise RuntimeError("free ZeroGPU quota exhausted")
 
             def fake_run(command, **kwargs):
+                self.assertEqual(command[-1], "--stdin")
+                self.assertTrue(kwargs.get("input"))
                 Path(command[-2]).write_bytes(b"espeak-preview")
 
             with patch("scripts.narration.subprocess.run", side_effect=fake_run) as espeak:
@@ -91,6 +102,8 @@ class NarrationFallbackTests(unittest.TestCase):
             items = self.make_items(root)
 
             def fake_run(command, **kwargs):
+                self.assertEqual(command[-1], "--stdin")
+                self.assertTrue(kwargs.get("input"))
                 Path(command[-2]).write_bytes(b"preview")
 
             with patch("scripts.narration.subprocess.run", side_effect=fake_run):
