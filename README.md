@@ -110,6 +110,15 @@ A successful workflow run only means the pipeline executed. It does **not** cert
 
 Resolve all verification markers and Critical/High issues against authoritative textbooks or sources before production use. Human approval is mandatory.
 
+## Law of Demand pilot narration modes
+
+The isolated Law of Demand workflow offers two explicit narration modes:
+
+- **Production (default):** requires `CHATTERBOX_ENABLED=true`, the private owner voice reference and successful Chatterbox synthesis. If the free Hugging Face ZeroGPU quota is exhausted or the Space is unavailable, production stops safely. It never substitutes another voice.
+- **Preview:** uses eSpeak NG to render the complete 1920 × 1080 visual lesson while Chatterbox is unavailable. The render report records `narration_mode: preview`, `preview_only: true`, `voice_clone_used: false` and `upload_eligible: false`. The workflow's YouTube upload step is skipped in preview mode even if the private-upload input is set to yes.
+
+Preview output is for layout, slide pacing and caption inspection only. It is not an owner-voice production master and must not be uploaded. Return to Production mode after Chatterbox quota is available. Human academic review remains mandatory in both modes.
+
 ## Free narration setup
 
 The automated narration path uses Chatterbox Multilingual V3 through the public Hugging Face Space and the user's own private reference recording. The project does not use a paid voice-generation API. Use only your own voice or a recording you have explicit permission to use. Review voice likeness, Hindi/English pronunciation and pacing before publication.
