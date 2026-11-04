@@ -14,7 +14,10 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
-from narration import synthesize_audio_batch
+try:
+    from .narration import synthesize_audio_batch
+except ImportError:
+    from narration import synthesize_audio_batch
 
 WIDTH, HEIGHT = 1920, 1080
 MAX_GROUP_CHARS = 780
