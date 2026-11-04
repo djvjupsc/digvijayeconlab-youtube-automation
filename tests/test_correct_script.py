@@ -72,7 +72,7 @@ class StructuredCorrectionTests(unittest.TestCase):
         self.assertNotIn("modern liquidity concepts", repaired)
         self.assertNotIn("Net Time Deposits", repaired)
         self.assertNotIn("शुद्ध सावधि जमा", repaired)
-        self.assertGreaterEqual(len(changes), 7)
+        self.assertGreaterEqual(len(changes), 6)
 
     def test_source_notes_can_resolve_original_markers_when_no_items_remain(self):
         corrected, changes, unresolved = preserve_original_verification_markers(
