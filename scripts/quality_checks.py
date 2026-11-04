@@ -147,7 +147,7 @@ def analyze_script(text, content_format="Concept Explainer", language="Bilingual
             f"{dollar_count} dollar-sign character(s)"
         ))
 
-    mixed_tokens = re.findall(r"[A-Za-z]+[\u0900-\u097F]+|[\u0900-\u097F]+[A-Za-z]+", text)
+    mixed_tokens = re.findall(r"[A-Za-z]+[\u0900-\u0963\u0966-\u097F]+|[\u0900-\u0963\u0966-\u097F]+[A-Za-z]+", text)
     if mixed_tokens:
         sample = ", ".join(dict.fromkeys(mixed_tokens))
         findings.append(_issue(
