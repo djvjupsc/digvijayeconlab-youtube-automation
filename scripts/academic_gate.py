@@ -85,7 +85,7 @@ def section_has_findings(body):
     return bool(meaningful)
 
 
-def evaluate(review, deterministic, script, attestation):
+def evaluate(review, deterministic, script, source_verification):
     review_sections = sections(review)
     critical_key = next((k for k in review_sections if k == "critical issues"), None)
     high_key = next(
@@ -130,10 +130,11 @@ def evaluate(review, deterministic, script, attestation):
     if VERIFY.search(script):
         blockers.append("Human verification markers remain in the corrected lesson.")
     if (
-        not attestation.is_file()
-        or "user explicitly confirmed" not in attestation.read_text(encoding="utf-8").casefold()
+        not source_verification.is_file()
+        or "ai-assisted source review" not in source_verification.read_text(encoding="utf-8").casefold()
+        or "not a human sign-off" not in source_verification.read_text(encoding="utf-8").casefold()
     ):
-        blockers.append("A separate human fact-check attestation record is missing.")
+        blockers.append("A separate source-verification evidence report is missing or invalid.")
 
     return not blockers, blockers
 
@@ -143,7 +144,7 @@ def main():
     parser.add_argument("review_report")
     parser.add_argument("deterministic_report")
     parser.add_argument("corrected_script")
-    parser.add_argument("attestation")
+    parser.add_argument("source_verification")
     parser.add_argument("--output", default="output/reviews/academic-gate-decision.md")
     args = parser.parse_args()
 
@@ -159,15 +160,15 @@ def main():
     review = paths[0].read_text(encoding="utf-8")
     deterministic = paths[1].read_text(encoding="utf-8")
     script = paths[2].read_text(encoding="utf-8")
-    attestation = Path(args.attestation)
-    passed, blockers = evaluate(review, deterministic, script, attestation)
+    source_verification = Path(args.source_verification)
+    passed, blockers = evaluate(review, deterministic, script, source_verification)
 
     reviewer_verdict = extract_reviewer_verdict(review) or "Not parsed"
     structural_count = extract_blocking_count(deterministic)
     lines = [
         "# Academic Gate Decision",
         "",
-        "> Workflow eligibility for human review only. This is not academic certification or permission to publish.",
+        "> Workflow eligibility for mandatory human review only. AI source review is not human sign-off, academic certification, or permission to publish.",
         "",
         f"- AI reviewer verdict: {reviewer_verdict}",
         f"- Deterministic structural blockers: {structural_count if structural_count is not None else 'Unknown'}",
