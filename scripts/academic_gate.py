@@ -83,15 +83,17 @@ def main():
     attestation = Path(args.attestation)
     passed, blockers = evaluate(review, deterministic, script, attestation)
 
-    verdict_match = re.search(r"Overall Verdict\s*\n+([^\n]+)", review, re.I)
+    verdict_match = re.search(r"Overall Verdict\\s*\\n+([^\\n]+)", review, re.I)
     reviewer_verdict = verdict_match.group(1).strip() if verdict_match else "Not parsed"
+    structural_match = re.search(r"Blocking findings:\\s*(\\d+)", deterministic, re.I)
+    structural_count = structural_match.group(1) if structural_match else "Unknown"
     lines = [
         "# Academic Gate Decision",
         "",
         "> Workflow eligibility for human review only. This is not academic certification or permission to publish.",
         "",
         f"- AI reviewer verdict: {reviewer_verdict}",
-        f"- Deterministic structural blockers: {re.search(r'Blocking findings:\\s*(\\d+)', deterministic, re.I).group(1) if re.search(r'Blocking findings:\\s*(\\d+)', deterministic, re.I) else 'Unknown'}",
+        f"- Deterministic structural blockers: {structural_count}",
         f"- Separate human attestation present: {'Yes' if attestation.is_file() else 'No'}",
         f"- Remaining verification markers: {len(VERIFY.findall(script))}",
         "",
