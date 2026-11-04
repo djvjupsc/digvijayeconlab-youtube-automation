@@ -10,12 +10,16 @@ class LawOfDemandPolishTests(unittest.TestCase):
             "**गिफ्फेन वस्तुएं (Giffen Goods):** "
             "गिफ्फेन वस्तु एक ऐसी हीन वस्तु (inferior good) है जिसके लिए "
             "नकारात्मक आय प्रभाव, प्रतिस्थापन प्रभाव से अधिक मजबूत होता है, "
-            "जिससे कीमत बढ़ने पर मांग भी बढ़ सकती है।"
+            "जिससे कीमत बढ़ने पर मांग भी बढ़ सकती है। "
+            "अल्फ्रेड मार्शल ने Principles of Economics (1895) में इससे जुड़े उदाहरण की चर्चा की थी, "
+            "लेकिन ऐतिहासिक श्रेय और अनुभवजन्य पुष्टि विवादित हैं।"
         )
         result, changes = apply_law_of_demand_polish(source)
         self.assertIn("मांग के नियम की मान्यताएँ", result)
         self.assertIn("गिफ्फेन वस्तुएँ ऐसी हीन वस्तुएँ (inferior goods) हैं", result)
         self.assertNotIn("गिफ्फेन वस्तु एक ऐसी हीन वस्तु", result)
+        self.assertIn("अल्फ्रेड मार्शल ने Principles of Economics (1895)", result)
+        self.assertIn("ऐतिहासिक श्रेय और अनुभवजन्य पुष्टि विवादित हैं", result)
         self.assertEqual(len(changes), 2)
 
     def test_giffen_sentence_with_nonstandard_full_stop_is_repaired(self):
