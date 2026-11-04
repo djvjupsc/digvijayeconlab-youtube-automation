@@ -172,7 +172,7 @@ def main():
         "",
         f"- AI reviewer verdict: {reviewer_verdict}",
         f"- Deterministic structural blockers: {structural_count if structural_count is not None else 'Unknown'}",
-        f"- Separate human attestation present: {'Yes' if attestation.is_file() else 'No'}",
+        f"- AI source-verification evidence present: {'Yes' if source_verification.is_file() else 'No'}",
         f"- Remaining verification markers: {len(VERIFY.findall(script))}",
         "",
         "## Decision",
