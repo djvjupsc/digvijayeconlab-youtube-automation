@@ -160,7 +160,7 @@ jobs:
             "output/reviews/unit-01-law-of-demand-quality-review.md" \
             "output/source_notes/law-of-demand-source-notes.md"
 
-      - name: Verify qualified Giffen history against cited academic sources
+      - name: Check qualified Giffen-history wording and record source references
         run: |
           python scripts/verify_giffen_sources.py output/corrected_scripts/unit-01-law-of-demand.md output/reviews/giffen-source-verification.md
 
