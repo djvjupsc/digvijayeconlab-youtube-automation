@@ -59,7 +59,7 @@ These are recommended release slots, not active publishing automations. The dail
 
 ## Per-lesson quality gates and failure isolation
 
-Every daily unit lesson now has its own generation → original review → correction → corrected review → academic gate sequence. The gate checks the review's explicit verdict, Critical/High issue sections, the deterministic structural report, and unresolved `[VERIFY]` markers. A passing result means **ready for human review only**; it does not certify factual accuracy or authorize publishing.
+Every daily unit lesson now has its own generation → original review → correction → corrected review → academic gate sequence. The gate checks the review's explicit verdict, Critical/High issue sections, the deterministic structural report, unresolved `[VERIFY]` markers, and any unresolved items listed in the correction log. A passing result means **ready for human review only**; it does not certify factual accuracy or authorize publishing.
 
 A failed topic is recorded as BLOCKED, but the orchestration continues through the remaining independent unit topics so one malformed script or review does not discard the other nine attempts. The batch is marked failed unless all ten lessons pass their automated gates. A failed batch does not advance the rotation and does not start the Short/Community asset stage. The workflow artifact retains successful lesson drafts, gate reports and a batch-status report for diagnosis. Review the artifact before using the same-day manual retry.
 
