@@ -46,6 +46,19 @@ class SeverityBasedAcademicGateTests(unittest.TestCase):
         self.assertFalse(ok)
         self.assertTrue(any("Overall Verdict" in item for item in blockers))
 
+    def test_nested_critical_high_subheading_content_is_included_and_blocks(self):
+        nested = (
+            "### Overall Verdict\\n**HOLD FOR CORRECTION**\\n\\n"
+            "### Critical Issues\\nNone.\\n\\n"
+            "### High-Priority Issues\\n"
+            "#### Incorrect concept explanation\\n"
+            "The Hindi explanation reverses the income-effect direction.\\n"
+            "### Other Improvements\\nMinor punctuation.\\n"
+        )
+        ok, blockers = evaluate(nested, self.det, self.script, self.attestation)
+        self.assertFalse(ok)
+        self.assertTrue(any("high-priority" in x for x in blockers))
+
     def test_explicit_not_ready_verdict_blocks_even_when_issue_sections_are_empty(self):
         ok, blockers = evaluate(
             self.report("**NOT READY**"),
