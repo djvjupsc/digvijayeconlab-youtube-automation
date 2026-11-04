@@ -97,8 +97,12 @@ def evaluate(review, deterministic, script, attestation):
     reviewer_verdict = extract_reviewer_verdict(review)
     if not reviewer_verdict:
         blockers.append("The academic reviewer did not provide an explicit Overall Verdict.")
-    elif re.search(r"\b(NOT READY|REJECT(?:ED)?|FAIL(?:ED)?)\b", reviewer_verdict, re.I):
+    elif any(
+        phrase in reviewer_verdict.casefold()
+        for phrase in ("not ready", "reject", "fail")
+    ):
         blockers.append(f"The academic reviewer explicitly rejected the lesson (detected: {reviewer_verdict}).")
+
     # A HOLD caused only by medium/low editorial recommendations may proceed
     # to mandatory human review. Critical/high findings above still block.
     # This stage never approves publication or public upload.
