@@ -22,7 +22,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   daily-production:
@@ -69,17 +69,11 @@ jobs:
             --github-output "$GITHUB_OUTPUT" \
             "${RETRY_ARGS[@]}"
 
-      - name: Persist daily claim before API requests
+      - name: Record the production claim in the workflow run only
         if: steps.prepare.outputs.claimed == 'true'
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add config/daily_production_state.json
-          if ! git diff --cached --quiet; then
-            git commit -m "chore(daily): claim production pack ${{ steps.prepare.outputs.run_date }}"
-            git push origin HEAD:main
-          fi
-
+          echo "Claimed run $GITHUB_RUN_ID for publication date ${{ steps.prepare.outputs.publication_date }}."
+          echo "Production state is finalized from workflow outcome; no branch push is required."
       - name: Create or verify ten public YouTube playlists
         if: steps.prepare.outputs.claimed == 'true' && inputs.create_public_playlists == true
         continue-on-error: true
@@ -175,7 +169,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-      - name: Finalize daily production state
+      - name: Finalize daily production report without pushing to main
         if: always() && steps.prepare.outputs.claimed == 'true'
         env:
           PACK_JOB_STATUS: ${{ job.status }}
@@ -183,10 +177,4 @@ jobs:
           python scripts/daily_production.py finish \
             --run-id "$GITHUB_RUN_ID" \
             --job-status "$PACK_JOB_STATUS"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add config/daily_production_state.json
-          if ! git diff --cached --quiet; then
-            git commit -m "chore(daily): finalize production pack $GITHUB_RUN_ID ($PACK_JOB_STATUS)"
-            git push origin HEAD:main
-          fi
+          echo "Daily state is run-local; no commit or push is attempted."
