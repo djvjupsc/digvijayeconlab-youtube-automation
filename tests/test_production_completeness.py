@@ -14,6 +14,11 @@ class ProductionCompletenessTests(unittest.TestCase):
         output = root / "output"
         for folder in ("community", "seo", "shorts", "thumbnails", "longform"):
             (output / folder).mkdir(parents=True, exist_ok=True)
+        (output / "quality_checks").mkdir(parents=True, exist_ok=True)
+        (output / "quality_checks" / "daily-batch-status.md").write_text(
+            "- Lessons passed to human review: 10 / 10\\n- Lessons blocked: 0 / 10\\n",
+            encoding="utf-8",
+        )
         (output / "community" / f"{date}-community-post.md").write_text("Community draft", encoding="utf-8")
         (output / "seo" / f"{date}-seo-metadata.json").write_text(json.dumps([{"unit": i} for i in range(1, 11)]), encoding="utf-8")
         (output / "seo" / f"{date}-seo-metadata.md").write_text("SEO draft", encoding="utf-8")
