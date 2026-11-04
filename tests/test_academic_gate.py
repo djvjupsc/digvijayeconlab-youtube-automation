@@ -37,6 +37,15 @@ class SeverityBasedAcademicGateTests(unittest.TestCase):
         self.assertTrue(ok)
         self.assertEqual(blockers, [])
 
+    def test_missing_overall_verdict_fails_closed(self):
+        report = (
+            "### Critical Issues\\n*None.*\\n"
+            "### High-Priority Issues\\n*None.*\\n"
+        )
+        ok, blockers = evaluate(report, self.det, self.script, self.attestation)
+        self.assertFalse(ok)
+        self.assertTrue(any("Overall Verdict" in item for item in blockers))
+
     def test_any_high_priority_finding_blocks(self):
         ok, blockers = evaluate(self.report("**READY**", high="- Fix incorrect explanation."), self.det, self.script, self.attestation)
         self.assertFalse(ok)
