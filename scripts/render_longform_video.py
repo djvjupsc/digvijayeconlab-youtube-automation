@@ -14,6 +14,8 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
+from scripts.hindi_typography import find_hindi_font, load_hindi_font
+
 try:
     from .narration import synthesize_audio_batch
 except ImportError:
@@ -49,26 +51,6 @@ def find_font(family, candidates):
         if Path(candidate).is_file():
             return candidate
     raise RuntimeError(f"Required font is not installed: {family}")
-
-
-def find_hindi_font():
-    """Require a real Devanagari-capable Noto font; never accept silent tofu fallback."""
-    try:
-        result = subprocess.run(
-            ["fc-match", "-f", "%{family}\\n%{file}", "Noto Sans Devanagari:lang=hi"],
-            check=True, capture_output=True, text=True,
-        ).stdout.strip().splitlines()
-    except (FileNotFoundError, subprocess.CalledProcessError) as exc:
-        raise RuntimeError("Fontconfig is required to locate a Hindi-capable Devanagari font.") from exc
-    if len(result) < 2 or "Noto Sans Devanagari" not in result[0]:
-        raise RuntimeError(
-            "Noto Sans Devanagari is not installed or Fontconfig selected a fallback. "
-            "Install fonts-noto-core before rendering Hindi slides."
-        )
-    font_path = Path(result[1])
-    if not font_path.is_file():
-        raise RuntimeError(f"Resolved Devanagari font file does not exist: {font_path}")
-    return str(font_path)
 
 
 def plain_text(value):
@@ -210,8 +192,8 @@ def draw_slide(group, index, total, unit, unit_name, topic, font_regular, font_b
                            outline=(87, 145, 190), width=3)
     brand = ImageFont.truetype(font_bold, 30)
     eyebrow = ImageFont.truetype(font_regular, 25)
-    title_font = ImageFont.truetype(hindi_font, 54)
-    body_font = ImageFont.truetype(hindi_font, 42)
+    title_font = load_hindi_font(hindi_font, 54)
+    body_font = load_hindi_font(hindi_font, 42)
     footer = ImageFont.truetype(font_regular, 24)
 
     draw.text((104, 94), "DIGVIJAYECONLAB", font=brand, fill=(120, 215, 255))
@@ -249,7 +231,7 @@ def draw_slide(group, index, total, unit, unit_name, topic, font_regular, font_b
             break
 
     if y < 840:
-        sub = ImageFont.truetype(hindi_font, 30)
+        sub = load_hindi_font(hindi_font, 30)
         draw.text((104, 875), f"{unit_name}  |  {topic}", font=sub, fill=accent)
     if show_demand_graph:
         draw_demand_curve(draw, accent)
