@@ -189,6 +189,10 @@ class SeverityBasedAcademicGateTests(unittest.TestCase):
         self.assertIn("- Remaining verification markers: 1", decision)
         self.assertIn("PASS — READY FOR HUMAN REVIEW", decision)
 
+    def test_hindi_verification_marker_is_counted_for_human_review(self):
+        from scripts.academic_gate import VERIFY
+        self.assertEqual(len(VERIFY.findall("दावा [सत्यापन योग्य]")), 1)
+
     def test_missing_source_verification_blocks(self):
         missing = Path(self.temp.name) / "missing.md"
         ok, blockers = evaluate(self.report("**READY**"), self.det, self.script, missing)
