@@ -8,9 +8,9 @@ from scripts.academic_gate import evaluate
 class SeverityBasedAcademicGateTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
-        self.attestation = Path(self.temp.name) / "attestation.md"
+        self.source_verification = Path(self.temp.name) / "source-verification.md"
         self.attestation.write_text(
-            "The workflow input records that the user explicitly confirmed personal review.",
+            "AI-assisted source review completed. This is not a human sign-off.",
             encoding="utf-8",
         )
         self.det = "- Blocking findings: 0\n"
@@ -94,11 +94,11 @@ class SeverityBasedAcademicGateTests(unittest.TestCase):
         self.assertFalse(ok)
         self.assertTrue(any("verification markers" in x for x in blockers))
 
-    def test_missing_attestation_blocks(self):
+    def test_missing_source_verification_blocks(self):
         missing = Path(self.temp.name) / "missing.md"
         ok, blockers = evaluate(self.report("**READY**"), self.det, self.script, missing)
         self.assertFalse(ok)
-        self.assertTrue(any("attestation" in x for x in blockers))
+        self.assertTrue(any("source-verification" in x for x in blockers))
 
     def test_missing_issue_sections_fails_closed(self):
         incomplete = "### Overall Verdict\n**READY**\n"
