@@ -60,11 +60,17 @@ def apply_law_of_demand_polish(text):
     remaining = []
     if heading_old in text:
         remaining.append("incorrect Hindi assumptions heading")
-    if (
-        "**गिफ्फेन वस्तुएं (Giffen Goods):**" in text
-        and "गिफ्फेन वस्तु एक ऐसी हीन वस्तु" in text
-    ):
-        remaining.append("singular Giffen definition under a plural heading")
+    giffen_heading = re.search(
+        r"\*\*गिफ्फेन वस्तुएँ?\s*\(Giffen Goods\):\*\*",
+        text,
+    )
+    if giffen_heading:
+        section = text[giffen_heading.end():]
+        next_heading = re.search(r"\n\s*#{1,6}\s|\n\s*\*\*Q\d+\.", section)
+        if next_heading:
+            section = section[:next_heading.start()]
+        if "गिफ्फेन वस्तु एक ऐसी हीन वस्तु" in section:
+            remaining.append("singular Giffen definition under a plural heading")
     if "。" in text:
         remaining.append("non-standard full-stop punctuation")
     if remaining:
