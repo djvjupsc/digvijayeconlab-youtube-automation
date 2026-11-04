@@ -12,7 +12,7 @@ class HindiFontResolutionTests(unittest.TestCase):
     def test_rejects_latin_only_fontconfig_fallback(self, run):
         with tempfile.NamedTemporaryFile() as font:
             run.return_value = subprocess.CompletedProcess(
-                args=[], returncode=0, stdout=f"DejaVu Sans\\n{font.name}", stderr=""
+                args=[], returncode=0, stdout=f"DejaVu Sans\n{font.name}", stderr=""
             )
             with self.assertRaisesRegex(RuntimeError, "Noto Sans Devanagari"):
                 find_hindi_font()
@@ -21,7 +21,7 @@ class HindiFontResolutionTests(unittest.TestCase):
     def test_accepts_actual_devanagari_font(self, run):
         with tempfile.NamedTemporaryFile() as font:
             run.return_value = subprocess.CompletedProcess(
-                args=[], returncode=0, stdout=f"Noto Sans Devanagari\\n{font.name}", stderr=""
+                args=[], returncode=0, stdout=f"Noto Sans Devanagari\n{font.name}", stderr=""
             )
             self.assertEqual(find_hindi_font(), font.name)
 
