@@ -59,8 +59,14 @@ correct use of economic terminology; Hindi-English equivalence and clarity;
 examples and exceptions; MCQ option quality, answer correctness and explanations;
 unsupported claims, fabricated references, and every [VERIFY] marker;
 exam-level depth, teaching sequence, and narration readiness.
+Severity calibration is mandatory: Critical/High are reserved for substantive economic errors,
+incorrect answers, unsupported material factual assertions, or translation failures that
+change or materially obscure economic meaning. Grammar, headings, stylistic consistency,
+and punctuation are normally Medium/Low unless they create material ambiguity.
 For each issue give severity (Critical/High/Medium/Low), exact quoted phrase or section,
 why it needs attention, and a concrete correction direction without inventing facts.
+If no Critical or High issue remains, state READY FOR HUMAN REVIEW even when Medium/Low
+editorial recommendations remain. This verdict is never publication approval.
 Separate source-supported observations from general academic concerns.
 The user-selected content format and language are supplied with the script. Apply the
 format-specific content requirements and explicitly audit bilingual translation parity.
