@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 
 HEADING = re.compile(r"(?m)^(#{1,6})\s+(.+?)\s*$")
-VERIFY = re.compile(r"\[(?:HUMAN\s+)?VERIFY\b[^\]]*\]", re.I)
+VERIFY = re.compile(r"\[(?:HUMAN\s+)?VERIFY\b[^\]]*\]|\[सत्यापन योग्य\]", re.I)
 
 
 def sections(markdown):
