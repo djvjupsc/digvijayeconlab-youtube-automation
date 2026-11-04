@@ -61,7 +61,7 @@ def apply_law_of_demand_polish(text):
     if heading_old in text:
         remaining.append("incorrect Hindi assumptions heading")
     if re.search(
-        r"\*\*गिफ्फेन वस्तुएं\s*\(Giffen Goods\):\*\*\s*"
+        r"\*\*गिफ्फेन वस्तुएं?\s*\(Giffen Goods\):\*\*\s*"
         r"गिफ्फेन वस्तु एक ऐसी हीन वस्तु",
         text,
     ):
