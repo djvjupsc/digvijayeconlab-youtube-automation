@@ -64,8 +64,8 @@ class StructuredCorrectionTests(unittest.TestCase):
             "M3 में शुद्ध सावधि जमा शामिल है।"
         )
         repaired, changes = apply_known_editorial_repairs(source)
-        self.assertIn("Second Working Group on Money Supply (SWG; Chairman M. L. Ghosh, 1977)", repaired)
-        self.assertIn("Second Working Group, SWG; अध्यक्ष एम. एल. घोष, 1977", repaired)
+        self.assertIn("Second Working Group on Money Supply (SWG), chaired by M. L. Ghosh, in 1977", repaired)
+        self.assertIn("द्वितीय कार्य समूह (Second Working Group, SWG; अध्यक्ष एम. एल. घोष) की 1977", repaired)
         self.assertIn("WGMS), chaired by Dr. Y. V. Reddy, in June 1998", repaired)
         self.assertNotIn("[VERIFY]", repaired)
         self.assertNotIn("[सत्यापन योग्य]", repaired)
