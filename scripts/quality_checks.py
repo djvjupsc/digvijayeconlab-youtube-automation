@@ -156,7 +156,7 @@ def analyze_script(text, content_format="Concept Explainer", language="Bilingual
             sample[:240]
         ))
 
-    marker_matches = re.findall(r"\[(?:HUMAN\s+)?VERIFY\b[^\]]*\]", text, flags=re.IGNORECASE)
+    marker_matches = re.findall(r"\[(?:HUMAN\s+)?VERIFY\b[^\]]*\]|\[सत्यापन योग्य\]", text, flags=re.IGNORECASE)
     if marker_matches:
         findings.append(_issue(
             "UNRESOLVED_VERIFY_MARKER", "High",
