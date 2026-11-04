@@ -69,6 +69,16 @@ class SeverityBasedAcademicGateTests(unittest.TestCase):
         self.assertFalse(ok)
         self.assertTrue(any("explicitly rejected" in x for x in blockers))
 
+    def test_explicit_not_approved_verdict_blocks_even_without_findings(self):
+        ok, blockers = evaluate(
+            self.report("**NOT APPROVED**"),
+            self.det,
+            self.script,
+            self.attestation,
+        )
+        self.assertFalse(ok)
+        self.assertTrue(any("explicitly rejected" in x for x in blockers))
+
     def test_any_high_priority_finding_blocks(self):
         ok, blockers = evaluate(self.report("**READY**", high="- Fix incorrect explanation."), self.det, self.script, self.attestation)
         self.assertFalse(ok)
