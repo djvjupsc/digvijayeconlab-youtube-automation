@@ -131,8 +131,9 @@ def preserve_original_verification_markers(
 
 
 def apply_known_editorial_repairs(text):
-    """Repair deterministic placeholders and clear script contamination without changing economics."""
+    """Apply narrowly scoped, source-grounded repairs to recurring generated defects."""
     repairs = [
+        # Unit 6: remove invented placeholder geography and non-Devanagari script contamination.
         ("(বাজার असफलता की परिभाषा)", "(बाजार असफलता की परिभाषा)",
          "Replaced Bengali-script contamination with the correct Devanagari Hindi heading."),
         ("MPPSC region X", "a hypothetical industrial region",
@@ -141,6 +142,24 @@ def apply_known_editorial_repairs(text):
          "Replaced the invented regional placeholder in Hindi with an explicitly hypothetical industrial region."),
         ("negative consumption/production externality", "negative production externality",
          "Clarified that factory pollution is a negative production externality."),
+
+        # Unit 7: apply the exact historical attributions and formulas in the supplied RBI notes.
+        ("Working Group on Money Supply (1977)", "Second Working Group on Money Supply (SWG; Chairman M. L. Ghosh, 1977)",
+         "Corrected the traditional M1–M4 committee attribution to the Second Working Group (1977), as supported by the RBI source notes."),
+        ("मुद्रा आपूर्ति पर कार्य समूह (1977)", "मुद्रा आपूर्ति पर द्वितीय कार्य समूह (Second Working Group, SWG; अध्यक्ष एम. एल. घोष, 1977)",
+         "Corrected the Hindi traditional-aggregates committee attribution using the supplied RBI source notes."),
+        ("Net Time Deposits with commercial and cooperative banks", "Time Deposits with the banking system",
+         "Aligned the traditional M3 description with the RBI definition: M1 plus time deposits with the banking system."),
+        ("Net Time Deposits with the banking system", "Time Deposits with the banking system",
+         "Aligned the traditional M3 description with the RBI definition: M1 plus time deposits with the banking system."),
+        ("Net Time Deposits", "Time Deposits",
+         "Removed the unsupported 'net' qualifier from the traditional time-deposit description."),
+        ("नए मौद्रिक समुच्चय ($NM_1, NM_2, NM_3$) based on modern liquidity concepts [VERIFY]",
+         "नए मौद्रिक समुच्चय ($NM_1, NM_2, NM_3$), जिन्हें डॉ. वाई. वी. रेड्डी की अध्यक्षता वाले Working Group on Money Supply: Analytics and Methodology of Compilation (WGMS) ने जून 1998 में प्रस्तावित किया था।",
+         "Replaced the vague NM1–NM3 recap claim with the RBI-supported WGMS (June 1998) attribution."),
+        ("आरबीआई के मौद्रिक सर्वेक्षणों में आधुनिक तरलता अवधारणाओं के आधार पर नए मौद्रिक समुच्चय ($NM_1, NM_2, NM_3$) भी शामिल हैं [सत्यापन योग्य]।",
+         "आरबीआई के नए मौद्रिक समुच्चय ($NM_1, NM_2, NM_3$) जून 1998 में डॉ. वाई. वी. रेड्डी की अध्यक्षता वाले WGMS द्वारा प्रस्तावित किए गए थे।",
+         "Corrected the Hindi NM1–NM3 attribution and date using the supplied RBI source notes."),
     ]
     changes = []
     for old, new, description in repairs:
