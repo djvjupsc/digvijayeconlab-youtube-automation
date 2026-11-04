@@ -81,6 +81,26 @@ def draw_economics_motif(draw, unit, accent):
         draw.ellipse((px - 7, py - 7, px + 7, py + 7), fill=accent)
 
 
+def find_hindi_font():
+    """Require a real Devanagari-capable Noto font; never accept silent tofu fallback."""
+    try:
+        result = subprocess.run(
+            ["fc-match", "-f", "%{family}\\n%{file}", "Noto Sans Devanagari:lang=hi"],
+            check=True, capture_output=True, text=True,
+        ).stdout.strip().splitlines()
+    except (FileNotFoundError, subprocess.CalledProcessError) as exc:
+        raise RuntimeError("Fontconfig is required to locate a Hindi-capable Devanagari font.") from exc
+    if len(result) < 2 or "Noto Sans Devanagari" not in result[0]:
+        raise RuntimeError(
+            "Noto Sans Devanagari is not installed or Fontconfig selected a fallback. "
+            "Install fonts-noto-core before rendering Hindi thumbnails."
+        )
+    font_path = Path(result[1])
+    if not font_path.is_file():
+        raise RuntimeError(f"Resolved Devanagari font file does not exist: {font_path}")
+    return str(font_path)
+
+
 def render_one(item, output_path, font_regular, font_bold, hindi_font):
     unit = int(item["unit"])
     if not 1 <= unit <= 10:
@@ -164,7 +184,7 @@ def main():
 
     font_regular = find_font("DejaVu Sans", ["/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"])
     font_bold = find_font("DejaVu Sans:style=Bold", ["/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"])
-    hindi_font = find_font("Noto Sans Devanagari", ["/usr/share/fonts/truetype/noto/NotoSansDevanagari-Regular.ttf"])
+    hindi_font = find_hindi_font()
     output_dir = Path(args.output)
     reports = [
         render_one(by_unit[unit], output_dir / f"unit-{unit:02d}-thumbnail.jpg",
