@@ -150,11 +150,16 @@ jobs:
         continue-on-error: true # Draft-only preview narration is intentionally not upload-eligible.
         run: |
           DATE=$(python -c "import json; print(json.load(open('output/daily_manifest.json'))['publication_date'])")
-          python scripts/prepublish_audit.py \\
-            "output/shorts/$DATE-short.json" \\
-            "output/shorts/$DATE-short-render.json" \\
-            "output/shorts/$DATE-digvijayeconlab-short.mp4" \\
+          python scripts/prepublish_audit.py \
+            "output/shorts/$DATE-short.json" \
+            "output/shorts/$DATE-short-render.json" \
+            "output/shorts/$DATE-digvijayeconlab-short.mp4" \
             "output/shorts/$DATE-prepublish-audit.json"
+
+      - name: Verify complete draft deliverables and publication eligibility
+        if: always() && steps.prepare.outputs.claimed == 'true'
+        run: |
+          python scripts/production_completeness.py output/daily_manifest.json
 
       - name: Upload audited Short to YouTube as PRIVATE for human review
         if: steps.prepare.outputs.claimed == 'true' && inputs.authorize_private_staging_uploads == true
@@ -194,6 +199,7 @@ jobs:
             output/seo/*
             output/thumbnails/*
             output/longform/*
+            output/production-completeness.json
             output/youtube/*
             output/youtube-playlists.json
           if-no-files-found: warn

@@ -51,6 +51,26 @@ def find_font(family, candidates):
     raise RuntimeError(f"Required font is not installed: {family}")
 
 
+def find_hindi_font():
+    """Require a real Devanagari-capable Noto font; never accept silent tofu fallback."""
+    try:
+        result = subprocess.run(
+            ["fc-match", "-f", "%{family}\\n%{file}", "Noto Sans Devanagari:lang=hi"],
+            check=True, capture_output=True, text=True,
+        ).stdout.strip().splitlines()
+    except (FileNotFoundError, subprocess.CalledProcessError) as exc:
+        raise RuntimeError("Fontconfig is required to locate a Hindi-capable Devanagari font.") from exc
+    if len(result) < 2 or "Noto Sans Devanagari" not in result[0]:
+        raise RuntimeError(
+            "Noto Sans Devanagari is not installed or Fontconfig selected a fallback. "
+            "Install fonts-noto-core before rendering Hindi slides."
+        )
+    font_path = Path(result[1])
+    if not font_path.is_file():
+        raise RuntimeError(f"Resolved Devanagari font file does not exist: {font_path}")
+    return str(font_path)
+
+
 def plain_text(value):
     value = re.sub(r"!\[([^]]*)\]\([^)]*\)", r"\1", value)
     value = re.sub(r"\[([^]]+)\]\([^)]*\)", r"\1", value)
@@ -397,29 +417,47 @@ def main():
     root = Path(args.root)
     manifest = json.loads((root / args.manifest).read_text(encoding="utf-8"))
     date = manifest["publication_date"]
-    focus = manifest["short_focus"]
+    # Select the first complete lesson that has passed the human-review eligibility
+    # gate and contains no unresolved verification markers. Never strip or bypass markers.
+    selected = None
+    for candidate in manifest.get("units", []):
+        candidate_unit = int(candidate.get("unit", 0))
+        if not 1 <= candidate_unit <= 10:
+            continue
+        matches = sorted((root / "output/corrected_scripts").glob(f"unit-{candidate_unit:02d}-*.md"))
+        if len(matches) != 1:
+            continue
+        candidate_path = matches[0]
+        candidate_markdown = candidate_path.read_text(encoding="utf-8")
+        if VERIFY_RE.search(candidate_markdown):
+            continue
+        candidate_review = root / "output/reviews" / f"{candidate_path.stem}-quality-review.md"
+        candidate_gate = root / "output/reviews" / f"{candidate_path.stem}-academic-gate-decision.md"
+        if not candidate_review.is_file() or not candidate_gate.is_file():
+            continue
+        review_lines = candidate_review.read_text(encoding="utf-8").splitlines()
+        verdict = ""
+        for line_index, line in enumerate(review_lines):
+            if "overall verdict" in line.casefold():
+                verdict = next((entry.strip() for entry in review_lines[line_index + 1:] if entry.strip()), "")
+                break
+        gate_text = candidate_gate.read_text(encoding="utf-8")
+        if not any(word in verdict.casefold() for word in ("ready", "approved", "pass")):
+            continue
+        if "**PASS — READY FOR HUMAN REVIEW**" not in gate_text or "**HOLD — BLOCKED**" in gate_text:
+            continue
+        selected = (candidate, candidate_path, candidate_markdown)
+        break
+    if selected is None:
+        raise SystemExit(
+            "Long-form render blocked: no corrected lesson has both a passing human-review "
+            "eligibility gate and zero unresolved [VERIFY] markers. Resolve markers with evidence; "
+            "the renderer will not remove them automatically."
+        )
+    focus, script_path, markdown = selected
     unit = int(focus["unit"])
     topic = str(focus["topic"])
     unit_name = str(focus["unit_name"])
-    script_matches = sorted((root / "output/corrected_scripts").glob(f"unit-{unit:02d}-*.md"))
-    if len(script_matches) != 1:
-        raise SystemExit(f"Expected one corrected script for featured Unit {unit}; found {len(script_matches)}.")
-    script_path = script_matches[0]
-    markdown = script_path.read_text(encoding="utf-8")
-    review_path = root / "output/reviews" / f"{script_path.stem}-quality-review.md"
-    if not review_path.is_file():
-        raise SystemExit("Long-form render blocked: corrected academic review report is missing.")
-    review_text = review_path.read_text(encoding="utf-8")
-    verdict = ""
-    review_lines = review_text.splitlines()
-    for line_index, line in enumerate(review_lines):
-        if "overall verdict" in line.casefold():
-            verdict = next((entry.strip() for entry in review_lines[line_index + 1:] if entry.strip()), "")
-            break
-    if not any(word in verdict.casefold() for word in ("ready", "approved", "pass")):
-        raise SystemExit("Long-form render blocked: corrected academic review has no explicit READY/APPROVED verdict.")
-    if VERIFY_RE.search(markdown):
-        raise SystemExit("Long-form render blocked: unresolved [VERIFY] marker exists in corrected lesson.")
     if len(markdown) < 1200:
         raise SystemExit("Long-form render blocked: corrected lesson is unexpectedly short.")
     sections = parse_lesson(markdown)
@@ -443,7 +481,7 @@ def main():
 
     font_regular = find_font("DejaVu Sans", ["/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"])
     font_bold = find_font("DejaVu Sans:style=Bold", ["/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"])
-    hindi_font = find_font("Noto Sans Devanagari", ["/usr/share/fonts/truetype/noto/NotoSansDevanagari-Regular.ttf"])
+    hindi_font = find_hindi_font()
 
     output_dir = root / "output/longform"
     output_dir.mkdir(parents=True, exist_ok=True)
