@@ -14,6 +14,8 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
+from narration import synthesize_audio_batch
+
 WIDTH, HEIGHT = 1080, 1920
 
 
@@ -130,17 +132,20 @@ def main():
     tts = shutil.which("espeak-ng") or shutil.which("espeak")
     ffmpeg = shutil.which("ffmpeg")
     chatterbox_enabled = os.environ.get("CHATTERBOX_ENABLED", "").strip().lower() in {"1", "true", "yes"}
+    preview_fallback = os.environ.get("CHATTERBOX_PREVIEW_FALLBACK", "").strip().lower() in {"1", "true", "yes"}
     if not ffmpeg:
         raise SystemExit("This renderer requires ffmpeg.")
+    if not chatterbox_enabled and not tts:
+        raise SystemExit("Enable free Chatterbox or install eSpeak NG for preview narration.")
     if chatterbox_enabled:
-        from chatterbox_tts import synthesize
-        voice_provider = "Chatterbox Multilingual V3 (private reference voice)"
+        from chatterbox_tts import synthesize as chatterbox_synthesize
         print("Narration provider: free Chatterbox Multilingual V3.")
-    elif tts:
-        voice_provider = "eSpeak generic placeholder (not the owner's voice)"
-        print("WARNING: No owner voice provider is configured; using generic eSpeak placeholder narration.")
+        if preview_fallback:
+            print("Chatterbox fallback is enabled: quota/service failure will restart the complete Short using eSpeak preview audio.")
     else:
-        raise SystemExit("Enable free Chatterbox or install eSpeak NG for placeholder narration.")
+        chatterbox_synthesize = None
+        print("WARNING: Using generic eSpeak placeholder narration; this is preview-only and not the owner's voice.")
+
     eng_font = find_font("DejaVu Sans", [
         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
     ])
@@ -154,7 +159,8 @@ def main():
     focus_unit = int(data["focus_unit"]["unit"])
     with tempfile.TemporaryDirectory(prefix="digvijay-short-") as tmp:
         temp = Path(tmp)
-        segments = []
+        scene_specs = []
+        narration_items = []
         for i, scene in enumerate(scenes):
             image_path = temp / f"scene-{i:02d}.png"
             hindi_path = temp / f"scene-{i:02d}-hi.wav"
@@ -168,19 +174,42 @@ def main():
             if i == len(scenes) - 1:
                 voice_hi += " " + data.get("outro_hi", "")
                 voice_en += " " + data.get("outro_en", "")
-            if chatterbox_enabled:
-                synthesize(voice_hi, "hi", hindi_path, seed=7100 + i)
-                synthesize(voice_en, "en", english_path, seed=7200 + i)
-            else:
-                run([tts, "-v", "hi", "-s", "142", "-w", str(hindi_path), voice_hi], "creating Hindi placeholder narration")
-                run([tts, "-v", "en-us", "-s", "152", "-w", str(english_path), voice_en], "creating English placeholder narration")
+            narration_items.extend([
+                {"text": voice_hi, "language": "hi", "path": str(hindi_path), "seed": 7100 + i, "speed": 142},
+                {"text": voice_en, "language": "en", "path": str(english_path), "seed": 7200 + i, "speed": 152},
+            ])
+            scene_specs.append({
+                "image_path": image_path,
+                "hindi_path": hindi_path,
+                "english_path": english_path,
+                "audio_path": audio_path,
+                "video_path": video_path,
+            })
+
+        voice_clone_used, voice_providers = synthesize_audio_batch(
+            narration_items,
+            chatterbox_enabled=chatterbox_enabled,
+            allow_preview_fallback=preview_fallback,
+            espeak_binary=tts,
+            chatterbox_synthesize=chatterbox_synthesize,
+        )
+        voice_provider = (
+            "Chatterbox Multilingual V3 (private reference voice)"
+            if voice_clone_used
+            else "eSpeak generic placeholder (PREVIEW ONLY; not the owner's voice)"
+        )
+
+        segments = []
+        for spec in scene_specs:
+            audio_path = spec["audio_path"]
+            video_path = spec["video_path"]
             run([
-                ffmpeg, "-y", "-i", str(hindi_path), "-i", str(english_path),
+                ffmpeg, "-y", "-i", str(spec["hindi_path"]), "-i", str(spec["english_path"]),
                 "-filter_complex", "[0:a][1:a]concat=n=2:v=0:a=1[out]",
                 "-map", "[out]", str(audio_path),
             ], "joining bilingual narration")
             run([
-                ffmpeg, "-y", "-loop", "1", "-framerate", "30", "-i", str(image_path),
+                ffmpeg, "-y", "-loop", "1", "-framerate", "30", "-i", str(spec["image_path"]),
                 "-i", str(audio_path), "-c:v", "libx264", "-preset", "veryfast",
                 "-tune", "stillimage", "-vf", "format=yuv420p", "-c:a", "aac",
                 "-b:a", "128k", "-shortest", str(video_path),
@@ -198,15 +227,19 @@ def main():
             "-c:a", "aac", "-movflags", "+faststart", str(final_path),
         ], "assembling the final Short MP4")
 
-    voice_clone_used = chatterbox_enabled
     report = {
         "video": str(final_path),
         "format": "1080x1920 vertical",
         "voice_provider": voice_provider,
+        "voice_providers": sorted(set(voice_providers)),
         "voice_clone_used": voice_clone_used,
+        "narration_mode": "production" if voice_clone_used else "preview",
+        "preview_only": not voice_clone_used,
+        "upload_eligible": voice_clone_used,
         "voice_reference_stored_in_repository": False,
         "music": "none",
         "review_required": True,
+        "upload_block_reason": None if voice_clone_used else "Generic eSpeak narration is preview-only and is not the owner's voice.",
     }
     (output_dir / f"{date}-short-render.json").write_text(
         json.dumps(report, ensure_ascii=False, indent=2) + "\n",
@@ -214,6 +247,8 @@ def main():
     )
     print(f"Rendered Shorts draft: {final_path}")
     print(f"Voice provider: {voice_provider}")
+    if not voice_clone_used:
+        print("PREVIEW ONLY: this MP4 is not the owner's voice and is not upload-eligible.")
     print("Review voice likeness, Hindi/English pronunciation, factual claims, and pacing before publishing.")
 
 
