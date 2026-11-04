@@ -11,8 +11,8 @@ on:
           - "no"
           - "yes"
         default: "no"
-      confirm_human_fact_check:
-        description: "I personally reviewed the corrected lesson and verified all flagged factual claims against authoritative sources"
+      confirm_human_review:
+        description: "I personally reviewed the final rendered lesson and approve staging it as PRIVATE on YouTube"
         required: true
         type: choice
         options:
@@ -160,42 +160,9 @@ jobs:
             "output/reviews/unit-01-law-of-demand-quality-review.md" \
             "output/source_notes/law-of-demand-source-notes.md"
 
-      - name: Apply explicit human fact-check attestation
-        if: inputs.confirm_human_fact_check == 'yes'
+      - name: Verify qualified Giffen history against cited academic sources
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          import re
-          path = Path("output/corrected_scripts/unit-01-law-of-demand.md")
-          script = path.read_text(encoding="utf-8")
-          marker = re.compile(r"\[(?:HUMAN\s+)?VERIFY\b[^\]]*\]", re.I)
-          count = len(marker.findall(script))
-          audit_dir = Path("output/reviews")
-          audit_dir.mkdir(parents=True, exist_ok=True)
-          if count:
-              script = marker.sub("", script)
-          # The provenance appendix exists only to carry pre-attestation markers.
-          # Once the user explicitly attests, keep the audit in its own file and
-          # remove the now-empty appendix from the lesson itself.
-          script = re.sub(
-              r"\n## Original Verification Markers Retained for Human Sign-off\s*\n[\s\S]*\Z",
-              "",
-              script,
-              flags=re.I,
-          )
-          script = re.sub(r"(?m)^\s*-\s*$\n?", "", script)
-          path.write_text(script.rstrip() + "\n", encoding="utf-8")
-          attestation = (
-              "# Human Fact-check Attestation\n\n"
-              "The workflow input records that the user explicitly confirmed personal "
-              "review of the corrected lesson and verification of flagged factual claims "
-              "against authoritative sources. This is an audit record of the user's "
-              "attestation, not an automated certification.\n"
-          )
-          (audit_dir / "human-fact-check-attestation.md").write_text(attestation, encoding="utf-8")
-          print(f"Recorded human attestation separately; cleared {count} verification marker(s).")
-          print("Removed the marker-provenance appendix from the fact-check-attested draft.")
-          PY
+          python scripts/verify_giffen_sources.py output/corrected_scripts/unit-01-law-of-demand.md output/reviews/giffen-source-verification.md
 
       - name: Apply deterministic Hindi editorial repairs
         run: |
@@ -215,7 +182,7 @@ jobs:
             "output/reviews/unit-01-law-of-demand-quality-review.md" \
             "output/quality_checks/unit-01-law-of-demand-corrected-deterministic-check.md" \
             "output/corrected_scripts/unit-01-law-of-demand.md" \
-            "output/reviews/human-fact-check-attestation.md"
+            "output/reviews/giffen-source-verification.md"
 
       - name: Render lesson using selected narration mode
         env:
@@ -274,7 +241,7 @@ jobs:
           PY
 
       - name: Upload the lesson to YouTube as PRIVATE only
-        if: inputs.narration_mode == 'production' && inputs.confirm_private_upload == 'yes'
+        if: inputs.narration_mode == 'production' && inputs.confirm_private_upload == 'yes' && inputs.confirm_human_review == 'yes'
         env:
           YOUTUBE_PRIVATE_UPLOAD_ENABLED: ${{ vars.YOUTUBE_PRIVATE_UPLOAD_ENABLED }}
           YOUTUBE_OAUTH_CLIENT_ID: ${{ secrets.YOUTUBE_OAUTH_CLIENT_ID }}
@@ -285,12 +252,12 @@ jobs:
           python scripts/youtube_private_upload.py "$DATE" --kind longform
 
       - name: Record that private upload was not requested or preview mode was selected
-        if: inputs.narration_mode == 'preview' || inputs.confirm_private_upload != 'yes'
+        if: inputs.narration_mode == 'preview' || inputs.confirm_private_upload != 'yes' || inputs.confirm_human_review != 'yes'
         run: |
           if [[ "${{ inputs.narration_mode }}" == "preview" ]]; then
             echo "Preview rendered with generic eSpeak narration. Upload is disabled regardless of the private-upload input."
           else
-            echo "Production render completed. YouTube upload was skipped because PRIVATE upload confirmation was not set to yes."
+            echo "Production render completed. YouTube upload was skipped because both PRIVATE upload and final human-review confirmations were not set to yes."
           fi
 
       - name: Preserve pilot outputs for review
