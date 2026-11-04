@@ -17,6 +17,7 @@ def load_json(path):
 def inspect(root, publication_date):
     root = Path(root)
     required = [
+        root / "output" / "quality_checks" / "daily-batch-status.md",
         root / "output" / "community" / f"{publication_date}-community-post.md",
         root / "output" / "seo" / f"{publication_date}-seo-metadata.json",
         root / "output" / "seo" / f"{publication_date}-seo-metadata.md",
@@ -27,6 +28,11 @@ def inspect(root, publication_date):
         root / "output" / "shorts" / f"{publication_date}-prepublish-audit.json",
     ]
     missing = [str(path.relative_to(root)) for path in required if not path.is_file() or path.stat().st_size == 0]
+
+    lesson_status_path = root / "output" / "quality_checks" / "daily-batch-status.md"
+    lesson_status = lesson_status_path.read_text(encoding="utf-8") if lesson_status_path.is_file() else ""
+    if "- Lessons passed to human review: 10 / 10" not in lesson_status or "- Lessons blocked: 0 / 10" not in lesson_status:
+        missing.append("daily-batch-status.md (must confirm 10/10 lesson gates passed and zero blocked)")
 
     thumbnail_dir = root / "output" / "thumbnails"
     thumbnail_files = [thumbnail_dir / f"unit-{unit:02d}-thumbnail.jpg" for unit in range(1, 11)]
@@ -75,7 +81,7 @@ def inspect(root, publication_date):
         "status": "incomplete" if missing else "complete_draft",
         "publication_date": publication_date,
         "deliverables": {
-            "lesson_packages": "see daily-batch-status.md; all ten must be PASS — READY FOR HUMAN REVIEW",
+            "lesson_packages": "10/10 PASS — READY FOR HUMAN REVIEW" if "- Lessons passed to human review: 10 / 10" in lesson_status and "- Lessons blocked: 0 / 10" in lesson_status else "incomplete or blocked",
             "thumbnails": {"count": len(thumbnail_dimensions), "dimensions": thumbnail_dimensions},
             "seo_records": len(seo),
             "community_post": "present" if required[0].is_file() else "missing",
