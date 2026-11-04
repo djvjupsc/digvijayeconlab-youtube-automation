@@ -1,5 +1,6 @@
 import unittest
-from scripts.daily_production import build_manifest, validate_plan
+from unittest.mock import patch
+from scripts.daily_production import build_manifest, process_units, validate_plan
 
 
 class DailyProductionPlanTests(unittest.TestCase):
@@ -41,6 +42,29 @@ class DailyProductionPlanTests(unittest.TestCase):
         self.assertEqual(day_one["units"][0]["topic"], "Topic 1 B")
         self.assertEqual(day_zero["units"][9]["topic"], "Topic 10 A")
         self.assertEqual(day_one["units"][9]["topic"], "Topic 10 B")
+
+    def test_process_units_continues_after_one_lesson_fails(self):
+        units = [
+            {"unit": i, "name": f"Unit {i}", "topic": f"Topic {i}"}
+            for i in range(1, 11)
+        ]
+
+        def fake_process_unit(item, base_env):
+            if item["unit"] == 3:
+                raise RuntimeError("simulated topic-specific QA failure")
+            return {
+                "unit": item["unit"],
+                "topic": item["topic"],
+                "status": "passed_to_human_review",
+            }
+
+        with patch("scripts.daily_production.process_unit", side_effect=fake_process_unit):
+            successes, failures = process_units(units, {})
+
+        self.assertEqual(len(successes), 9)
+        self.assertEqual([row["unit"] for row in failures], [3])
+        self.assertIn("simulated topic-specific QA failure", failures[0]["error"])
+        self.assertEqual(successes[-1]["unit"], 10)
 
     def test_publication_date_is_one_day_after_generation(self):
         from datetime import date
