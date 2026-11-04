@@ -144,6 +144,13 @@ For Giffen-goods bilingual parity, ensure the Hindi version includes the same hi
 details as the English version, including Alfred Marshall's Principles of Economics (1895)
 and the fact that attribution and the traditional Irish potato example are debated.
 Use this natural Hindi wording where suitable: "हालांकि, इस उदाहरण के ऐतिहासिक श्रेय और इसकी अनुभवजन्य पुष्टि को लेकर विद्वानों में बहस है।"
+Correct the exact recurring Hindi editorial defects from the Law of Demand review:
+- Change "मांग का नियम की मान्यताएं" to "मांग के नियम की मान्यताएँ".
+- When the Giffen-goods heading is plural, make the definition plural too: use
+  "गिफ्फेन वस्तुएँ ऐसी हीन वस्तुएँ (inferior goods) हैं जिनमें..." rather than
+  "गिफ्फेन वस्तु एक ऐसी हीन वस्तु (inferior good) है...".
+- Replace non-standard Japanese full-stop characters (。) in Hindi paragraphs with Devanagari danda (।).
+Do not change the economics meaning or remove historical caveats when making these language fixes.
 For the reported heading hierarchy issue, use ### for a subsection under a numbered ## section.
 Remove empty placeholder bullets left after a human verification marker is explicitly attested and cleared; do not delete any unresolved factual caveat.
 Use supplied source notes when correcting historical statements; do not invent citations.
