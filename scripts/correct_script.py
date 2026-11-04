@@ -179,6 +179,24 @@ def apply_known_editorial_repairs(text):
         ("आरबीआई के मौद्रिक सर्वेक्षणों में आधुनिक तरलता अवधारणाओं के आधार पर नए मौद्रिक समुच्चय ($NM_1, NM_2, NM_3$) भी शामिल हैं [सत्यापन योग्य]।",
          "आरबीआई के नए मौद्रिक समुच्चय ($NM_1, NM_2, NM_3$) जून 1998 में डॉ. वाई. वी. रेड्डी की अध्यक्षता वाले WGMS द्वारा प्रस्तावित किए गए थे।",
          "Corrected the Hindi NM1–NM3 attribution and date using the supplied RBI source notes."),
+        # Unit 2: use an unambiguous Latin option label and correct Hindi grammatical agreement.
+        ("सही उत्तर: B। स्पष्टीकरण:", "सही उत्तर: B) स्पष्टीकरण:",
+         "Standardized the Latin MCQ answer label so Hindi punctuation cannot be misread as a mixed-script token."),
+        ("कर्मचारियों की पारिश्रमिक", "कर्मचारियों का पारिश्रमिक",
+         "Corrected Hindi grammatical gender agreement in the income-method formula."),
+        # Unit 10: remove the unsupported single-range sector-share assertion without inventing a replacement statistic.
+        ("though its share in total GDP has hovered around 25-30% [VERIFY]",
+         "and its contribution should be assessed separately for manufacturing, construction and utilities rather than expressed as a single fixed percentage [HUMAN VERIFY: consult the relevant national-accounts series]",
+         "Removed the unsupported 25–30% secondary-sector share and retained a specific human source-verification instruction."),
+        ("हालांकि कुल GDP में इसका हिस्सा लगभग 25-30% के आसपास रहा है [VERIFY]।",
+         "हालांकि विनिर्माण, निर्माण और उपयोगिताओं के योगदान का अलग-अलग अध्ययन करना चाहिए; इन्हें एक संयुक्त स्थिर प्रतिशत के रूप में प्रस्तुत नहीं करना चाहिए [सत्यापन योग्य]।",
+         "Removed the unsupported 25–30% secondary-sector share from the Hindi explanation without adding a replacement statistic."),
+        ("Learning Objectives / अधि-अगम्य उद्देश्य",
+         "Learning Objectives / अधिगम उद्देश्य",
+         "Corrected the Hindi translation of the Learning Objectives heading."),
+        ("## Worked Example / Application (Hypothetical Sectoral Contribution Analysis)\n## कार्यशील उदाहरण / अनुप्रयोग (काल्पनिक क्षेत्रीय योगदान विश्लेषण)",
+         "## Worked Example / Application: Hypothetical Sectoral Contribution Analysis / कार्यशील उदाहरण: काल्पनिक क्षेत्रीय योगदान विश्लेषण",
+         "Consolidated the duplicated bilingual Worked Example headings into one section heading."),
     ]
     changes = []
     for old, new, description in repairs:
