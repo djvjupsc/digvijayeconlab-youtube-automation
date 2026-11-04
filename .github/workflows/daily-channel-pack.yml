@@ -65,6 +65,7 @@ jobs:
       - name: Run offline tests and validate the ten-unit plan
         run: |
           python -m compileall -q scripts tests
+          python -c "from PIL import features; assert features.check_feature('raqm'), 'Pillow libraqm support is required for Hindi shaping'"
           python -m unittest discover -s tests -v
           python scripts/daily_production.py validate
           python scripts/topic_queue.py validate --queue config/topic_queue.json
