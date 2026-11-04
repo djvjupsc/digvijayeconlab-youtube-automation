@@ -46,6 +46,38 @@ class SeverityBasedAcademicGateTests(unittest.TestCase):
         self.assertTrue(ok)
         self.assertEqual(blockers, [])
 
+    def test_generic_gate_blocks_unresolved_items_in_correction_log(self):
+        correction_log = Path(self.temp.name) / "correction-log.md"
+        correction_log.write_text(
+            "## Unresolved human-verification items\n"
+            "- Verify the historical date against an authoritative source.\n",
+            encoding="utf-8",
+        )
+        ok, blockers = evaluate(
+            self.report("**READY FOR HUMAN REVIEW**"),
+            self.det,
+            self.script,
+            correction_log=correction_log,
+        )
+        self.assertFalse(ok)
+        self.assertTrue(any("correction log lists" in item for item in blockers))
+
+    def test_generic_gate_accepts_correction_log_with_no_unresolved_items(self):
+        correction_log = Path(self.temp.name) / "correction-log.md"
+        correction_log.write_text(
+            "## Unresolved human-verification items\n"
+            "- None reported; human review is still required.\n",
+            encoding="utf-8",
+        )
+        ok, blockers = evaluate(
+            self.report("**READY FOR HUMAN REVIEW**"),
+            self.det,
+            self.script,
+            correction_log=correction_log,
+        )
+        self.assertTrue(ok)
+        self.assertEqual(blockers, [])
+
     def test_missing_overall_verdict_fails_closed(self):
         report = (
             "### Critical Issues\n*None.*\n"
