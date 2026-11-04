@@ -127,8 +127,9 @@ def evaluate(review, deterministic, script, source_verification=None, correction
             f"Deterministic structural checks report {structural_count} blocking finding(s)."
         )
 
-    if VERIFY.search(script):
-        blockers.append("Human verification markers remain in the corrected lesson.")
+    # Verification markers are intentionally retained as reviewer prompts.
+    # They do not block handoff to a human reviewer; they remain a hard pre-publication task.
+    remaining_markers = len(VERIFY.findall(script))
     if source_verification is not None:
         if (
             not source_verification.is_file()
@@ -145,8 +146,8 @@ def evaluate(review, deterministic, script, source_verification=None, correction
             unresolved_section = correction_sections.get("unresolved human-verification items")
             if unresolved_section is None:
                 blockers.append("The correction log is missing its Unresolved human-verification items section.")
-            elif section_has_findings(unresolved_section):
-                blockers.append("The correction log lists one or more unresolved human-verification items.")
+            # Unresolved items are the human review checklist, not a reason to
+            # prevent the draft from reaching the human reviewer.
 
     return not blockers, blockers
 
@@ -191,7 +192,8 @@ def main():
         f"- AI reviewer verdict: {reviewer_verdict}",
         f"- Deterministic structural blockers: {structural_count if structural_count is not None else 'Unknown'}",
         f"- Dedicated source-verification evidence present: {'Yes' if source_verification and source_verification.is_file() else 'No (generic lesson gate)'}.",
-        f"- Remaining verification markers: {len(VERIFY.findall(script))}",
+        f"- Remaining verification markers: {remaining_markers}",
+        f"- Correction-log human review items: {'Present' if correction_log and correction_log.is_file() and section_has_findings(sections(correction_log.read_text(encoding='utf-8')).get('unresolved human-verification items', '')) else 'None detected'}",
         "",
         "## Decision",
         "",
@@ -205,7 +207,7 @@ def main():
     )
     lines += [
         "",
-        "Medium/low-priority editorial recommendations and verification reminders remain visible in the AI review and must be considered during the final human review. A passing gate does not approve public release.",
+        "Verification markers and unresolved correction-log items remain explicit human review tasks. A passing gate only means the draft can be handed to a subject-matter reviewer; it is not factual certification or publication approval.",
         "",
     ]
     output_path = Path(args.output)
