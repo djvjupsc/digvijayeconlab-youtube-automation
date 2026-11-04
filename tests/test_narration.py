@@ -15,7 +15,7 @@ class NarrationFallbackTests(unittest.TestCase):
 
     def test_preview_text_removes_latex_control_syntax(self):
         cleaned = preview_speech_text(
-            r"Correct Answer: B) $M3$ Explanation: $M3 = M1 + \\text{time deposits}$।"
+            r"Correct Answer: B) $M3$ Explanation: $M3 = M1 + \text{time deposits}$।"
         )
         self.assertIn("M3", cleaned)
         self.assertIn("time deposits", cleaned)
