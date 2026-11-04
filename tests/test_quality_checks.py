@@ -23,6 +23,18 @@ class MathSanitizationTests(unittest.TestCase):
         self.assertIn("↑", cleaned)
         self.assertNotIn("\t" + "iny", cleaned)
 
+    def test_repairs_backspace_and_tab_corrupted_latex_commands(self):
+        source = (
+            "Union $A \x08igcup B$, intersection $A \x08igcap B$, "
+            "and label $\\t ext{Savings deposits}$."
+        )
+        cleaned, changes = sanitize_math_notation(source)
+        self.assertIn(r"$A \bigcup B$", cleaned)
+        self.assertIn(r"$A \bigcap B$", cleaned)
+        self.assertIn(r"$\text{Savings deposits}$", cleaned)
+        self.assertFalse(any(ord(ch) < 32 and ch not in "\n\r\t" for ch in cleaned))
+        self.assertGreaterEqual(len(changes), 3)
+
 
 class DeterministicGateTests(unittest.TestCase):
     def test_detects_mixed_devanagari_latin_typo(self):
@@ -165,6 +177,33 @@ Price and quantity demanded are inversely related, other things equal.
         self.assertNotIn("MCQ_ANSWER_GAP", codes)
         self.assertNotIn("MCQ_EXPLANATION_GAP", codes)
 
+
+    def test_bilingual_english_hindi_headings_for_same_question_count_once(self):
+        from scripts.quality_checks import count_mcq_sections
+        source = """### Q1. English question
+### Q1. हिंदी प्रश्न
+A) Option A
+B) Option B
+* **Correct Answer / सही उत्तर:** A
+* **Explanation / व्याख्या:** Both versions refer to one MCQ.
+### Q2. English question
+### Q2. हिंदी प्रश्न
+A) Option A
+B) Option B
+* **Correct Answer / सही उत्तर:** B
+* **Explanation / व्याख्या:** Both versions refer to one MCQ.
+"""
+        self.assertEqual(count_mcq_sections(source), (2, 2, 2))
+
+    def test_verification_markers_are_reported_but_do_not_block_human_review(self):
+        findings = analyze_script(
+            "A historical claim [VERIFY: check source].",
+            "MCQ Set",
+            "English",
+        )
+        marker = next(item for item in findings if item["code"] == "UNRESOLVED_VERIFY_MARKER")
+        self.assertEqual(marker["severity"], "High")
+        self.assertFalse(marker["blocking"])
 
     def test_counts_actual_generated_mcq_heading_and_bilingual_labels(self):
         source = """## Learning Objectives
