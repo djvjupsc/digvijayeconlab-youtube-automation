@@ -24,6 +24,12 @@ class LawOfDemandPolishTests(unittest.TestCase):
         self.assertEqual(result, "मांग बढ़ जाती है। कीमत कम होती है।")
         self.assertEqual(len(changes), 1)
 
+    def test_fails_closed_if_a_known_defect_remains(self):
+        # A deliberately different singular phrasing is not silently certified.
+        source = "गिफ्फेन वस्तु एक ऐसी हीन वस्तु का उदाहरण।"
+        with self.assertRaisesRegex(ValueError, "singular Giffen definition"):
+            apply_law_of_demand_polish(source)
+
     def test_is_idempotent(self):
         source = (
             "मांग का नियम की मान्यताएं。 "
