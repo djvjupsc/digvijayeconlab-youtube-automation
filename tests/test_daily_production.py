@@ -88,6 +88,48 @@ class DailyProductionPlanTests(unittest.TestCase):
         manifest = build_manifest(self.plan, {"completed_days": 3}, date(2026, 11, 7), "run")
         self.assertEqual(manifest["short_focus"]["unit"], 4)
 
+    def test_resume_reuses_only_matching_complete_pass_package(self):
+        import tempfile
+        from pathlib import Path
+        from scripts.daily_production import can_reuse_unit, _unit_artifact_paths
+        item = {
+            "unit": 1, "unit_id": "unit-1", "unit_name": "Unit 1",
+            "topic": "Topic 1 A", "language": "Bilingual",
+            "content_format": "Concept Explainer", "source_notes": "",
+        }
+        previous_manifest = {"units": [dict(item)]}
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            paths = _unit_artifact_paths(item, root)
+            for path in paths.values():
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("artifact", encoding="utf-8")
+            paths["gate"].write_text("**PASS — READY FOR HUMAN REVIEW**\n", encoding="utf-8")
+            self.assertTrue(can_reuse_unit(item, root, previous_manifest))
+            changed_topic = {**item, "topic": "Different topic"}
+            self.assertFalse(can_reuse_unit(changed_topic, root, previous_manifest))
+            paths["gate"].write_text("**HOLD — BLOCKED**\n", encoding="utf-8")
+            self.assertFalse(can_reuse_unit(item, root, previous_manifest))
+
+    def test_resume_rejects_incomplete_pass_package(self):
+        import tempfile
+        from pathlib import Path
+        from scripts.daily_production import can_reuse_unit, _unit_artifact_paths
+        item = {
+            "unit": 6, "unit_id": "unit-6", "unit_name": "Unit 6",
+            "topic": "Topic 6 A", "language": "Bilingual",
+            "content_format": "Concept Explainer", "source_notes": "",
+        }
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            paths = _unit_artifact_paths(item, root)
+            for key, path in paths.items():
+                if key != "correction_log":
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_text("artifact", encoding="utf-8")
+            paths["gate"].write_text("**PASS — READY FOR HUMAN REVIEW**\n", encoding="utf-8")
+            self.assertFalse(can_reuse_unit(item, root, {"units": [dict(item)]}))
+
 
 if __name__ == "__main__":
     unittest.main()

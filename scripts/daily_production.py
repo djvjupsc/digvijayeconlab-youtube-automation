@@ -228,11 +228,67 @@ def process_unit(item, base_env):
     }
 
 
-def process_units(units, base_env):
-    """Run every unit despite individual failures and return pass/fail records."""
+def _unit_artifact_paths(item, output_root):
+    """Return the required files for safely reusing one previously gated lesson."""
+    unit_prefix = f"unit-{item['unit']:02d}"
+    slug = re.sub(
+        r"[^a-z0-9]+", "-", f"{unit_prefix} {item['topic']}".strip().lower()
+    ).strip("-")[:60].strip("-") or "lesson"
+    return {
+        "script": output_root / "scripts" / f"{slug}.md",
+        "original_review": output_root / "reviews" / f"{slug}-original-quality-review.md",
+        "review": output_root / "reviews" / f"{slug}-quality-review.md",
+        "corrected": output_root / "corrected_scripts" / f"{slug}.md",
+        "deterministic": output_root / "quality_checks" / f"{slug}-corrected-deterministic-check.md",
+        "gate": output_root / "reviews" / f"{slug}-academic-gate-decision.md",
+        "correction_log": output_root / "corrections" / f"{slug}-correction-log.md",
+    }
+
+
+def can_reuse_unit(item, output_root, previous_manifest):
+    """Reuse only a matching topic with a complete, explicitly passing gate record."""
+    previous = next((
+        row for row in previous_manifest.get("units", [])
+        if row.get("unit") == item.get("unit")
+    ), None)
+    if not previous:
+        return False
+    for key in ("unit_id", "unit_name", "topic", "language", "content_format", "source_notes"):
+        if previous.get(key, "") != item.get(key, ""):
+            return False
+    paths = _unit_artifact_paths(item, output_root)
+    if not all(path.is_file() for path in paths.values()):
+        return False
+    gate_text = paths["gate"].read_text(encoding="utf-8")
+    return "**PASS — READY FOR HUMAN REVIEW**" in gate_text and "**HOLD — BLOCKED**" not in gate_text
+
+
+def _resolve_resume_artifact(resume_dir):
+    """Find the single downloaded Actions artifact containing daily_manifest.json."""
+    root = Path(resume_dir)
+    candidates = [root] + [path for path in root.iterdir() if path.is_dir()] if root.is_dir() else []
+    matches = [path for path in candidates if (path / "daily_manifest.json").is_file()]
+    if len(matches) != 1:
+        raise ValueError(f"Expected exactly one previous daily artifact with daily_manifest.json under {root}; found {len(matches)}.")
+    return matches[0]
+
+
+def process_units(units, base_env, previous_manifest=None, output_root=None):
+    """Run every unit; reuse only complete matching PASS packages from a prior artifact."""
+    output_root = Path(output_root or (ROOT / "output"))
     successes, failures = [], []
     for item in units:
         try:
+            if previous_manifest and can_reuse_unit(item, output_root, previous_manifest):
+                gate_path = _unit_artifact_paths(item, output_root)["gate"]
+                successes.append({
+                    "unit": item["unit"],
+                    "topic": item["topic"],
+                    "status": "reused_passed_to_human_review",
+                    "gate_report": str(gate_path.relative_to(ROOT)),
+                })
+                print(f"Unit {item['unit']:02d}: reusing previous PASS package — human review still required.")
+                continue
             successes.append(process_unit(item, base_env))
         except Exception as exc:
             failure = {
@@ -262,17 +318,32 @@ def process(args):
         ROOT / "output/quality_checks",
         ROOT / "output/seo",
     ]
-    for directory in output_dirs:
-        if directory.exists():
-            shutil.rmtree(directory)
-        directory.mkdir(parents=True, exist_ok=True)
+    previous_manifest = None
+    if args.resume_from_dir:
+        artifact_root = _resolve_resume_artifact(args.resume_from_dir)
+        previous_manifest = load_json(artifact_root / "daily_manifest.json")
+        if previous_manifest.get("day_index") != manifest.get("day_index"):
+            raise ValueError("Resume artifact belongs to a different rotation day; refusing to reuse its lesson outputs.")
+        for name in ("scripts", "reviews", "corrected_scripts", "corrections", "quality_checks", "seo"):
+            source_dir = artifact_root / name
+            target_dir = ROOT / "output" / name
+            if source_dir.is_dir():
+                shutil.copytree(source_dir, target_dir, dirs_exist_ok=True)
+            else:
+                target_dir.mkdir(parents=True, exist_ok=True)
+        print(f"Restored previous artifact from {artifact_root}; only complete matching PASS lesson packages will be reused.", flush=True)
+    else:
+        for directory in output_dirs:
+            if directory.exists():
+                shutil.rmtree(directory)
+            directory.mkdir(parents=True, exist_ok=True)
 
     base_env = os.environ.copy()
     if not base_env.get("GEMINI_API_KEY"):
         raise RuntimeError("GEMINI_API_KEY is missing from GitHub Actions secrets.")
     base_env.setdefault("GEMINI_MODEL", "gemini-3.5-flash-lite")
 
-    successes, failures = process_units(manifest["units"], base_env)
+    successes, failures = process_units(manifest["units"], base_env, previous_manifest=previous_manifest)
     manifest["lesson_quality"] = {
         "passed_to_human_review": successes,
         "blocked_lessons": failures,
@@ -376,6 +447,8 @@ def main():
 
     process_parser = sub.add_parser("process")
     process_parser.add_argument("--manifest", default=str(MANIFEST_PATH))
+    process_parser.add_argument("--resume-from-dir", default="",
+                                help="Extracted artifact from a prior failed run; reuse only matching complete PASS packages.")
 
     finish_parser = sub.add_parser("finish")
     finish_parser.add_argument("--state", default=str(STATE_PATH))
