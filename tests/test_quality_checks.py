@@ -178,6 +178,16 @@ Price and quantity demanded are inversely related, other things equal.
         self.assertNotIn("MCQ_EXPLANATION_GAP", codes)
 
 
+    def test_counts_answer_label_without_correct_prefix(self):
+        from scripts.quality_checks import count_mcq_sections
+        source = """### Q1. Question
+A) Option A
+B) Option B
+*Answer:* **B**
+*Explanation:* This is the rationale.
+"""
+        self.assertEqual(count_mcq_sections(source), (1, 1, 1))
+
     def test_bilingual_english_hindi_headings_for_same_question_count_once(self):
         from scripts.quality_checks import count_mcq_sections
         source = """### Q1. English question
