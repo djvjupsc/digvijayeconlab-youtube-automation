@@ -72,6 +72,17 @@ class DailyProductionPlanTests(unittest.TestCase):
         self.assertEqual(manifest["publication_date"], "2026-11-05")
         self.assertFalse(manifest["publishing_enabled"])
 
+    def test_manifest_carries_unit_specific_source_notes_path(self):
+        from datetime import date
+        plan = {**self.plan, "units": [dict(item) for item in self.plan["units"]]}
+        plan["units"][6]["source_notes"] = "config/source_notes/unit-07-components-of-money-supply.md"
+        manifest = build_manifest(plan, {"completed_days": 0}, date(2026, 11, 4), "run")
+        self.assertEqual(
+            manifest["units"][6]["source_notes"],
+            "config/source_notes/unit-07-components-of-money-supply.md",
+        )
+        self.assertEqual(manifest["units"][0]["source_notes"], "")
+
     def test_short_focus_rotates_across_units(self):
         from datetime import date
         manifest = build_manifest(self.plan, {"completed_days": 3}, date(2026, 11, 7), "run")
