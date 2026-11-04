@@ -57,6 +57,14 @@ The detailed schedule is in `docs/daily-production-calendar.md`.
 
 These are recommended release slots, not active publishing automations. The daily workflow generates tomorrow's package at 08:00 today.
 
+## Per-lesson quality gates and failure isolation
+
+Every daily unit lesson now has its own generation → original review → correction → corrected review → academic gate sequence. The gate checks the review's explicit verdict, Critical/High issue sections, the deterministic structural report, and unresolved `[VERIFY]` markers. A passing result means **ready for human review only**; it does not certify factual accuracy or authorize publishing.
+
+A failed topic is recorded as BLOCKED, but the orchestration continues through the remaining independent unit topics so one malformed script or review does not discard the other nine attempts. The batch is marked failed unless all ten lessons pass their automated gates. A failed batch does not advance the rotation and does not start the Short/Community asset stage. The workflow artifact retains successful lesson drafts, gate reports and a batch-status report for diagnosis. Review the artifact before using the same-day manual retry.
+
+The Law of Demand Giffen-history verifier accepts common Markdown heading and bold-list labels, and accepts a corrected lesson with no remaining inherited markers even when no provenance appendix is present. It still fails closed when a marker remains in lesson content or when the required English/Hindi historical caveats are absent. This is a wording/structure check only; the cited academic sources are not fetched or independently validated by that script.
+
 ## Topic rotation and duplicate protection
 
 1. The workflow validates the ten-unit plan and runs the complete offline regression suite.
