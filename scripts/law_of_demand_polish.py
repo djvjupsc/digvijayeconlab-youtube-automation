@@ -40,6 +40,19 @@ def apply_law_of_demand_polish(text):
             f"Replaced {punctuation_count} non-standard full-stop punctuation mark(s) with Devanagari danda."
         )
 
+    remaining = []
+    if heading_old in text:
+        remaining.append("incorrect Hindi assumptions heading")
+    if "गिफ्फेन वस्तु एक ऐसी हीन वस्तु" in text:
+        remaining.append("singular Giffen definition under a plural heading")
+    if "。" in text:
+        remaining.append("non-standard full-stop punctuation")
+    if remaining:
+        raise ValueError(
+            "Known Hindi editorial defects remain after deterministic polish: "
+            + ", ".join(remaining)
+        )
+
     return text, changes
 
 
