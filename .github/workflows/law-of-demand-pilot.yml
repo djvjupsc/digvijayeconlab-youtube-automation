@@ -19,6 +19,14 @@ on:
           - "no"
           - "yes"
         default: "no"
+      narration_mode:
+        description: "Production requires your Chatterbox voice; Preview uses eSpeak and can never upload"
+        required: true
+        type: choice
+        options:
+          - "production"
+          - "preview"
+        default: "production"
 
 permissions:
   contents: read
@@ -209,47 +217,64 @@ jobs:
             "output/corrected_scripts/unit-01-law-of-demand.md" \
             "output/reviews/human-fact-check-attestation.md"
 
-      - name: Synthesize owner-authorized Chatterbox narration and render 1080p lesson
+      - name: Render lesson using selected narration mode
         env:
-          CHATTERBOX_ENABLED: ${{ vars.CHATTERBOX_ENABLED }}
+          CHATTERBOX_ENABLED: ${{ inputs.narration_mode == 'production' && vars.CHATTERBOX_ENABLED || 'false' }}
           CHATTERBOX_SPACE: ${{ vars.CHATTERBOX_SPACE }}
           CHATTERBOX_REFERENCE_REPO: ${{ vars.CHATTERBOX_REFERENCE_REPO }}
           CHATTERBOX_REFERENCE_FILENAME: ${{ vars.CHATTERBOX_REFERENCE_FILENAME }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
+          if [[ "${{ inputs.narration_mode }}" == "production" && "${CHATTERBOX_ENABLED,,}" != "true" ]]; then
+            echo "::error::Production mode requires CHATTERBOX_ENABLED=true. Choose Preview only for a non-uploadable draft."
+            exit 1
+          fi
           python scripts/render_longform_video.py output/law_of_demand_pilot_manifest.json
 
       - name: Enforce render and voice-clone eligibility
+        env:
+          NARRATION_MODE: ${{ inputs.narration_mode }}
         run: |
           python - <<'PY'
           import json
+          import os
           from pathlib import Path
           from datetime import datetime
           from zoneinfo import ZoneInfo
           date = datetime.now(ZoneInfo("Asia/Kolkata")).date().isoformat()
           report = json.loads(Path(f"output/longform/{date}-longform-render.json").read_text(encoding="utf-8"))
-          assert report.get("audit_status") == "pass", "Voice-clone or render audit did not pass."
-          assert report.get("upload_eligible") is True, "Render is not eligible for private staging."
-          assert report.get("voice_clone_used") is True, "Chatterbox owner voice was not used."
+          tech = report.get("technical", {})
           assert report.get("music") == "none", "Unexpected music track."
           assert report.get("review_required") is True, "Human review gate missing."
-          tech = report.get("technical", {})
           assert (tech.get("width"), tech.get("height")) == (1920, 1080), "Expected 1920x1080."
           assert tech.get("video_codec") == "h264", "Expected H.264."
           assert int(tech.get("audio_streams", 0)) > 0, "Narration audio missing."
           assert float(tech.get("duration_seconds", 0)) > 0, "Invalid video duration."
+          if os.environ["NARRATION_MODE"] == "production":
+              assert report.get("audit_status") == "pass", "Production voice-clone audit did not pass."
+              assert report.get("voice_clone_used") is True, "Chatterbox owner voice was not used."
+              assert report.get("upload_eligible") is True, "Production render is not eligible for private staging."
+              print("PRODUCTION RENDER PASS — owner voice confirmed; private staging may be separately authorized.")
+          else:
+              assert report.get("audit_status") == "preview", "Preview must be explicitly marked preview."
+              assert report.get("preview_only") is True, "Preview-only safeguard missing."
+              assert report.get("voice_clone_used") is False, "Preview unexpectedly claims owner voice."
+              assert report.get("upload_eligible") is False, "Preview must never be upload eligible."
+              print("PREVIEW RENDER PASS — generic narration; upload is disabled regardless of the private-upload input.")
           print(json.dumps({
               "status": "PASS",
+              "mode": os.environ["NARRATION_MODE"],
               "duration_seconds": tech["duration_seconds"],
               "resolution": "1920x1080",
-              "voice_clone_used": True,
+              "voice_clone_used": report.get("voice_clone_used"),
+              "upload_eligible": report.get("upload_eligible"),
               "music": "none",
               "human_review_required": True
           }, indent=2))
           PY
 
       - name: Upload the lesson to YouTube as PRIVATE only
-        if: inputs.confirm_private_upload == 'yes'
+        if: inputs.narration_mode == 'production' && inputs.confirm_private_upload == 'yes'
         env:
           YOUTUBE_PRIVATE_UPLOAD_ENABLED: ${{ vars.YOUTUBE_PRIVATE_UPLOAD_ENABLED }}
           YOUTUBE_OAUTH_CLIENT_ID: ${{ secrets.YOUTUBE_OAUTH_CLIENT_ID }}
@@ -259,9 +284,14 @@ jobs:
           DATE=$(python -c "from datetime import datetime; from zoneinfo import ZoneInfo; print(datetime.now(ZoneInfo('Asia/Kolkata')).date().isoformat())")
           python scripts/youtube_private_upload.py "$DATE" --kind longform
 
-      - name: Record that private upload was not requested
-        if: inputs.confirm_private_upload != 'yes'
-        run: echo "Render completed. YouTube upload was skipped because PRIVATE upload confirmation was not set to yes."
+      - name: Record that private upload was not requested or preview mode was selected
+        if: inputs.narration_mode == 'preview' || inputs.confirm_private_upload != 'yes'
+        run: |
+          if [[ "${{ inputs.narration_mode }}" == "preview" ]]; then
+            echo "Preview rendered with generic eSpeak narration. Upload is disabled regardless of the private-upload input."
+          else
+            echo "Production render completed. YouTube upload was skipped because PRIVATE upload confirmation was not set to yes."
+          fi
 
       - name: Preserve pilot outputs for review
         if: always()
