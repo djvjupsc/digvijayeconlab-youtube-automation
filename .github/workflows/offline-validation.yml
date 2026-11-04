@@ -21,6 +21,9 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install test dependencies
+        run: python -m pip install numpy Pillow gradio_client huggingface_hub
+
       - name: Compile scripts and tests
         run: python -m compileall -q scripts tests
 
