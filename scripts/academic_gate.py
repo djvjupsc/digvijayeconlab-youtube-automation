@@ -178,6 +178,7 @@ def main():
     review = paths[0].read_text(encoding="utf-8")
     deterministic = paths[1].read_text(encoding="utf-8")
     script = paths[2].read_text(encoding="utf-8")
+    remaining_markers = len(VERIFY.findall(script))
     source_verification = Path(args.source_verification) if args.source_verification else None
     correction_log = Path(args.correction_log) if args.correction_log else None
     passed, blockers = evaluate(review, deterministic, script, source_verification, correction_log)
