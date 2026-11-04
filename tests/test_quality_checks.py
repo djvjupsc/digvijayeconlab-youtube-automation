@@ -205,6 +205,15 @@ B) Option B
 """
         self.assertEqual(count_mcq_sections(source), (2, 2, 2))
 
+    def test_hindi_verification_marker_is_detected(self):
+        findings = analyze_script(
+            "दावा [सत्यापन योग्य]",
+            "MCQ Set",
+            "Hindi",
+        )
+        marker = next(item for item in findings if item["code"] == "UNRESOLVED_VERIFY_MARKER")
+        self.assertFalse(marker["blocking"])
+
     def test_verification_markers_are_reported_but_do_not_block_human_review(self):
         findings = analyze_script(
             "A historical claim [VERIFY: check source].",
