@@ -79,6 +79,29 @@ class SeverityBasedAcademicGateTests(unittest.TestCase):
         self.assertTrue(ok)
         self.assertEqual(blockers, [])
 
+    def test_issue_sections_with_explicit_no_findings_language_are_empty(self):
+        review = (
+            "### Overall Verdict\n**READY FOR HUMAN REVIEW**\n\n"
+            "### Critical Issues\n"
+            "No substantive economic errors or critical flaws were found.\n\n"
+            "### High-Priority Issues\n"
+            "No high-priority economic or conceptual flaws were found.\n"
+        )
+        ok, blockers = evaluate(review, self.det, self.script)
+        self.assertTrue(ok)
+        self.assertEqual(blockers, [])
+
+    def test_gate_does_not_treat_no_structural_failures_statement_as_a_finding(self):
+        review = (
+            "### Overall Verdict\n**READY FOR HUMAN REVIEW**\n\n"
+            "### Critical Issues\n"
+            "No structural or mechanical formatting failures were detected by automated checks.\n\n"
+            "### High-Priority Issues\n*None.*\n"
+        )
+        ok, blockers = evaluate(review, self.det, self.script)
+        self.assertTrue(ok)
+        self.assertEqual(blockers, [])
+
     def test_missing_overall_verdict_fails_closed(self):
         report = (
             "### Critical Issues\n*None.*\n"
