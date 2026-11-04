@@ -78,7 +78,7 @@ def build_manifest(plan, state, run_date, run_id):
             "topic": unit["topics"][topic_index],
             "language": "Bilingual",
             "content_format": "Concept Explainer",
-            "source_notes": "",
+            "source_notes": unit.get("source_notes", ""),
         })
     focus = unit_items[day_index % len(unit_items)]
     return {
