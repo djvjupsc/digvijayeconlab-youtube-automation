@@ -12,7 +12,7 @@ on:
           - "yes"
         default: "no"
       confirm_human_review:
-        description: "I personally reviewed the final rendered lesson and approve staging it as PRIVATE on YouTube"
+        description: "I reviewed the corrected lesson script and authorize a PRIVATE-only staging upload for later review"
         required: true
         type: choice
         options:
