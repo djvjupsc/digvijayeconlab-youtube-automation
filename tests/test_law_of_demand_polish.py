@@ -42,9 +42,22 @@ class LawOfDemandPolishTests(unittest.TestCase):
 
     def test_fails_closed_if_a_known_defect_remains(self):
         # A deliberately different singular phrasing is not silently certified.
-        source = "गिफ्फेन वस्तु एक ऐसी हीन वस्तु का उदाहरण।"
+        source = "**गिफ्फेन वस्तुएं (Giffen Goods):** गिफ्फेन वस्तु एक ऐसी हीन वस्तु का उदाहरण।"
         with self.assertRaisesRegex(ValueError, "singular Giffen definition"):
             apply_law_of_demand_polish(source)
+
+    def test_preserves_singular_usage_in_mcq_explanation(self):
+        source = (
+            "**गिफ्फेन वस्तुएं (Giffen Goods):** "
+            "गिफ्फेन वस्तु एक ऐसी हीन वस्तु (inferior good) है जिसके लिए "
+            "नकारात्मक आय प्रभाव, प्रतिस्थापन प्रभाव से अधिक मजबूत होता है, "
+            "जिससे कीमत बढ़ने पर मांग भी बढ़ सकती है।\\n"
+            "**Q3.** Giffen good?\\n"
+            "*हिंदी व्याख्या:* गिफ्फेन वस्तु एक ऐसी हीन वस्तु है जिसमें "
+            "नकारात्मक आय प्रभाव प्रतिस्थापन प्रभाव पर भारी पड़ता है।"
+        )
+        result, _ = apply_law_of_demand_polish(source)
+        self.assertIn("*हिंदी व्याख्या:* गिफ्फेन वस्तु एक ऐसी हीन वस्तु है", result)
 
     def test_is_idempotent(self):
         source = (
