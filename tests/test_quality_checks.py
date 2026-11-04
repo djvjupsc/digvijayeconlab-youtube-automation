@@ -26,7 +26,7 @@ class MathSanitizationTests(unittest.TestCase):
     def test_repairs_backspace_and_tab_corrupted_latex_commands(self):
         source = (
             "Union $A \x08igcup B$, intersection $A \x08igcap B$, "
-            "and label $\\t ext{Savings deposits}$."
+            "and label $\t ext{Savings deposits}$."
         )
         cleaned, changes = sanitize_math_notation(source)
         self.assertIn(r"$A \bigcup B$", cleaned)
