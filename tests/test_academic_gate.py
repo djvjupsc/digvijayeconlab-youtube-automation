@@ -1,8 +1,9 @@
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
-from scripts.academic_gate import evaluate
+from scripts.academic_gate import evaluate, main
 
 
 class SeverityBasedAcademicGateTests(unittest.TestCase):
@@ -139,6 +140,31 @@ class SeverityBasedAcademicGateTests(unittest.TestCase):
         )
         self.assertTrue(ok)
         self.assertEqual(blockers, [])
+
+    def test_cli_writes_remaining_verification_marker_count(self):
+        review_path = Path(self.temp.name) / "review.md"
+        deterministic_path = Path(self.temp.name) / "deterministic.md"
+        script_path = Path(self.temp.name) / "corrected.md"
+        output_path = Path(self.temp.name) / "decision.md"
+
+        review_path.write_text(self.report("**READY FOR HUMAN REVIEW**"), encoding="utf-8")
+        deterministic_path.write_text(self.det, encoding="utf-8")
+        script_path.write_text("# Lesson\n[VERIFY: check this claim]\n", encoding="utf-8")
+
+        argv = [
+            "academic_gate.py",
+            str(review_path),
+            str(deterministic_path),
+            str(script_path),
+            "--output",
+            str(output_path),
+        ]
+        with patch("sys.argv", argv):
+            main()
+
+        decision = output_path.read_text(encoding="utf-8")
+        self.assertIn("- Remaining verification markers: 1", decision)
+        self.assertIn("PASS — READY FOR HUMAN REVIEW", decision)
 
     def test_missing_source_verification_blocks(self):
         missing = Path(self.temp.name) / "missing.md"
