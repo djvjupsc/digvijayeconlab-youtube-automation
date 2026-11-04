@@ -17,6 +17,11 @@ try:
 except ImportError:
     from quality_checks import sanitize_math_notation
 
+try:
+    from .source_notes import load_optional_source_notes
+except ImportError:
+    from source_notes import load_optional_source_notes
+
 MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
 API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
 
@@ -117,14 +122,7 @@ def main():
     if len(sys.argv) < 3:
         raise SystemExit("Usage: correct_script.py SCRIPT_PATH REVIEW_PATH [SOURCE_NOTES]")
     script_path, review_path = Path(sys.argv[1]), Path(sys.argv[2])
-    source_notes_path = Path(sys.argv[3]) if len(sys.argv) > 3 else None
-    source_notes = (
-        source_notes_path.read_text(encoding="utf-8")
-        if source_notes_path and source_notes_path.is_file()
-        else ""
-    )
-    if source_notes_path and not source_notes_path.is_file():
-        raise SystemExit(f"Source notes file not found: {source_notes_path}")
+    source_notes = load_optional_source_notes(sys.argv[3] if len(sys.argv) > 3 else None)
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         raise SystemExit("GEMINI_API_KEY is not configured.")
