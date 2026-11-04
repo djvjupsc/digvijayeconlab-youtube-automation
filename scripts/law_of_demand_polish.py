@@ -60,10 +60,9 @@ def apply_law_of_demand_polish(text):
     remaining = []
     if heading_old in text:
         remaining.append("incorrect Hindi assumptions heading")
-    if re.search(
-        r"\*\*गिफ्फेन वस्तुएं?\s*\(Giffen Goods\):\*\*\s*"
-        r"गिफ्फेन वस्तु एक ऐसी हीन वस्तु",
-        text,
+    if (
+        "**गिफ्फेन वस्तुएं (Giffen Goods):**" in text
+        and "गिफ्फेन वस्तु एक ऐसी हीन वस्तु" in text
     ):
         remaining.append("singular Giffen definition under a plural heading")
     if "。" in text:
