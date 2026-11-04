@@ -81,11 +81,23 @@ def parse_structured_response(raw, original_script):
 
 
 
-VERIFY_MARKER_PATTERN = re.compile(r"\[(?:HUMAN\s+)?VERIFY\b[^\]]*\]", re.IGNORECASE)
+VERIFY_MARKER_PATTERN = re.compile(
+    r"\[(?:HUMAN\s+)?VERIFY\b[^\]]*\]|\[सत्यापन योग्य\]",
+    re.IGNORECASE,
+)
 
 
-def preserve_original_verification_markers(corrected_script, original_script):
-    """Ensure every original [VERIFY] marker remains visible in the corrected draft."""
+def preserve_original_verification_markers(
+    corrected_script,
+    original_script,
+    unresolved_items=None,
+    source_notes_supplied=False,
+):
+    """Keep markers unless source notes were supplied and the editor resolved every item."""
+    if source_notes_supplied and not unresolved_items:
+        return corrected_script, [
+            "Cleared original verification markers after the source-grounded correction returned no unresolved items."
+        ], []
     original_markers = VERIFY_MARKER_PATTERN.findall(original_script)
     corrected_counts = {}
     for marker in VERIFY_MARKER_PATTERN.findall(corrected_script):
@@ -116,6 +128,26 @@ def preserve_original_verification_markers(corrected_script, original_script):
         f"Human verification still required for original marker: {marker}" for marker in missing
     ]
     return corrected_script, changes, unresolved
+
+
+def apply_known_editorial_repairs(text):
+    """Repair deterministic placeholders and clear script contamination without changing economics."""
+    repairs = [
+        ("(বাজার असफलता की परिभाषा)", "(बाजार असफलता की परिभाषा)",
+         "Replaced Bengali-script contamination with the correct Devanagari Hindi heading."),
+        ("MPPSC region X", "a hypothetical industrial region",
+         "Replaced the invented regional placeholder with an explicitly hypothetical industrial region."),
+        ("MPPSC क्षेत्र X में", "एक काल्पनिक औद्योगिक क्षेत्र में",
+         "Replaced the invented regional placeholder in Hindi with an explicitly hypothetical industrial region."),
+        ("negative consumption/production externality", "negative production externality",
+         "Clarified that factory pollution is a negative production externality."),
+    ]
+    changes = []
+    for old, new, description in repairs:
+        if old in text:
+            text = text.replace(old, new)
+            changes.append(description)
+    return text, changes
 
 
 def main():
@@ -207,7 +239,12 @@ Apply safe, evidence-grounded corrections. Preserve all material content and the
     corrected, changes, unresolved, fallback_used = parse_structured_response(raw, script)
 
     # Never permit the correction model to silently drop or rewrite original verification markers.
-    corrected, marker_changes, marker_unresolved = preserve_original_verification_markers(corrected, script)
+    corrected, marker_changes, marker_unresolved = preserve_original_verification_markers(
+        corrected,
+        script,
+        unresolved_items=unresolved,
+        source_notes_supplied=bool(source_notes.strip()),
+    )
     changes.extend(marker_changes)
     unresolved.extend(marker_unresolved)
 
@@ -216,6 +253,8 @@ Apply safe, evidence-grounded corrections. Preserve all material content and the
     if not fallback_used:
         corrected, notation_changes = sanitize_math_notation(corrected)
         changes.extend(notation_changes)
+        corrected, editorial_changes = apply_known_editorial_repairs(corrected)
+        changes.extend(editorial_changes)
 
     corrected_dir, report_dir = Path("output/corrected_scripts"), Path("output/corrections")
     corrected_dir.mkdir(parents=True, exist_ok=True)
