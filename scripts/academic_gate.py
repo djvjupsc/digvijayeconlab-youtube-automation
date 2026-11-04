@@ -79,7 +79,21 @@ def section_has_findings(body):
         line = line.replace("*", "").replace("_", "").strip()
         if not line:
             continue
-        if re.match(r"^(?:none\b|no\s+(?:critical|high[- ]priority)\s+issues?\b)", line, re.I):
+        no_issue_statement = (
+            re.match(r"^none\b", line, re.I)
+            or re.match(r"^no\s+(?:critical|high[- ]priority)\s+issues?\b", line, re.I)
+            or (
+                re.match(r"^no\b", line, re.I)
+                and re.search(
+                    r"\b(?:issues?|errors?|flaws?|failures?|findings?|problems?)\b.*"
+                    r"\b(?:found|identified|detected|present|remain|exist)\b",
+                    line,
+                    re.I,
+                )
+                and not re.search(r"\bbut\b", line, re.I)
+            )
+        )
+        if no_issue_statement:
             continue
         meaningful.append(line)
     return bool(meaningful)
