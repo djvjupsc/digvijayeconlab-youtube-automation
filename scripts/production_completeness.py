@@ -76,16 +76,29 @@ def inspect(root, publication_date):
     voice_is_owner_authorized = bool(short_render.get("voice_clone_used")) and bool(longform_report and longform_report.get("voice_clone_used"))
     short_audit_passed = audit.get("status") == "pass"
     longform_audit_status = (longform_report or {}).get("audit_status", "missing")
+    publication_blockers = []
+    if not short_audit_passed:
+        publication_blockers.append(f"Short pre-publication audit: {audit.get('status', 'missing')}")
+    if longform_audit_status != "pass":
+        publication_blockers.append(f"Long-form audit: {longform_audit_status}")
+    if not voice_is_owner_authorized:
+        publication_blockers.append("Owner-authorized voice is not confirmed for both videos")
+    publication_blockers.append("Human review, copyright clearance and AI-disclosure review remain required")
 
     report = {
-        "status": "incomplete" if missing else "complete_draft",
+        "status": "production_incomplete" if missing else "draft_complete",
+        "publication_status": "blocked" if publication_blockers else "pending_human_review",
+        "release_label": "PRODUCTION INCOMPLETE" if missing else (
+            "DRAFT COMPLETE — PUBLICATION BLOCKED" if publication_blockers
+            else "DRAFT COMPLETE — HUMAN REVIEW REQUIRED"
+        ),
         "publication_date": publication_date,
         "deliverables": {
             "lesson_packages": "10/10 PASS — READY FOR HUMAN REVIEW" if "- Lessons passed to human review: 10 / 10" in lesson_status and "- Lessons blocked: 0 / 10" in lesson_status else "incomplete or blocked",
             "thumbnails": {"count": len(thumbnail_dimensions), "dimensions": thumbnail_dimensions},
             "seo_records": len(seo),
-            "community_post": "present" if required[0].is_file() else "missing",
-            "short_video": str(required[6].relative_to(root)) if required[6].is_file() else None,
+            "community_post": "present" if (root / "output" / "community" / f"{publication_date}-community-post.md").is_file() else "missing",
+            "short_video": str(required[7].relative_to(root)) if required[7].is_file() else None,
             "longform_video": longform_video,
         },
         "quality_and_release": {
@@ -96,6 +109,7 @@ def inspect(root, publication_date):
             "youtube_uploads_authorized": False,
             "human_review_required": True,
             "copyright_and_ai_disclosure_review_required": True,
+            "publication_blockers": publication_blockers,
         },
         "missing_or_invalid_deliverables": missing,
         "warnings": [
