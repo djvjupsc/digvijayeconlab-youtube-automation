@@ -3,16 +3,25 @@ import argparse
 import re
 from pathlib import Path
 
-HEADING = re.compile(r"(?m)^#{1,6}\s+(.+?)\s*$")
+HEADING = re.compile(r"(?m)^(#{1,6})\s+(.+?)\s*$")
 VERIFY = re.compile(r"\[(?:HUMAN\s+)?VERIFY\b[^\]]*\]", re.I)
 
 
 def sections(markdown):
+    """Map headings to content, retaining nested subsections inside their parent."""
     matches = list(HEADING.finditer(markdown))
     found = {}
     for i, match in enumerate(matches):
-        name = re.sub(r"[*_]", "", match.group(1)).strip().casefold()
-        body_end = matches[i + 1].start() if i + 1 < len(matches) else len(markdown)
+        level = len(match.group(1))
+        name = re.sub(r"[*_]", "", match.group(2)).strip().casefold()
+        next_peer = next(
+            (
+                candidate for candidate in matches[i + 1:]
+                if len(candidate.group(1)) <= level
+            ),
+            None,
+        )
+        body_end = next_peer.start() if next_peer else len(markdown)
         found[name] = markdown[match.end():body_end].strip()
     return found
 
@@ -66,6 +75,7 @@ def section_has_findings(body):
         if not line or line.startswith(">") or line in {"---", "***"}:
             continue
         line = re.sub(r"^\s*(?:[-*+]\s+|\d+[.)]\s+)", "", line)
+        line = re.sub(r"^#{1,6}\s*", "", line)
         line = line.replace("*", "").replace("_", "").strip()
         if not line:
             continue
