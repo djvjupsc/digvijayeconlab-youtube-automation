@@ -46,6 +46,34 @@ class StructuredCorrectionTests(unittest.TestCase):
         self.assertNotIn("বাজার", repaired)
         self.assertEqual(len(changes), 4)
 
+    def test_rbi_source_repairs_correct_bilingual_committee_attributions_and_aggregates(self):
+        source = (
+            "The Reserve Bank of India (RBI) historically published four alternative measures "
+            "of money supply ($M_1, M_2, M_3,$ and $M_4$), based on the recommendations of the "
+            "Working Group on Money Supply (1977) [VERIFY]. These aggregates represent varying "
+            "degrees of liquidity, ranging from most liquid to least liquid.\n"
+            "भारतीय रिजर्व बैंक (RBI) ने ऐतिहासिक रूप से मुद्रा आपूर्ति के चार वैकल्पिक माप "
+            "($M_1, M_2, M_3,$ और $M_4$) प्रकाशित किए हैं, जो मुद्रा आपूर्ति पर कार्य समूह (1977) "
+            "की सिफारिशों पर आधारित हैं [सत्यापन योग्य]। ये समुच्चय तरलता के विभिन्न स्तरों को "
+            "दर्शाते हैं, जो अत्यधिक तरल से लेकर कम तरल तक होते हैं।\n"
+            "* RBI monetary surveys also include newer monetary aggregates ($NM_1, NM_2, NM_3$) "
+            "based on modern liquidity concepts [VERIFY].\n"
+            "* आरबीआई के मौद्रिक सर्वेक्षणों में आधुनिक तरलता अवधारणाओं के आधार पर नए मौद्रिक "
+            "समुच्चय ($NM_1, NM_2, NM_3$) भी शामिल हैं [सत्यापन योग्य]।\n"
+            "M3 = M1 + Net Time Deposits with commercial and cooperative banks.\n"
+            "M3 में शुद्ध सावधि जमा शामिल है।"
+        )
+        repaired, changes = apply_known_editorial_repairs(source)
+        self.assertIn("Second Working Group on Money Supply (SWG; Chairman M. L. Ghosh, 1977)", repaired)
+        self.assertIn("Second Working Group, SWG; अध्यक्ष एम. एल. घोष, 1977", repaired)
+        self.assertIn("WGMS), chaired by Dr. Y. V. Reddy, in June 1998", repaired)
+        self.assertNotIn("[VERIFY]", repaired)
+        self.assertNotIn("[सत्यापन योग्य]", repaired)
+        self.assertNotIn("modern liquidity concepts", repaired)
+        self.assertNotIn("Net Time Deposits", repaired)
+        self.assertNotIn("शुद्ध सावधि जमा", repaired)
+        self.assertGreaterEqual(len(changes), 7)
+
     def test_source_notes_can_resolve_original_markers_when_no_items_remain(self):
         corrected, changes, unresolved = preserve_original_verification_markers(
             "# Corrected claim.",
