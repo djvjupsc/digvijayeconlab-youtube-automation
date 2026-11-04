@@ -14,6 +14,11 @@ on:
         required: false
         type: boolean
         default: false
+      authorize_private_staging_uploads:
+        description: "Explicit opt-in: upload audited videos to YouTube as PRIVATE for owner review"
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: digvijayeconlab-daily-ten-unit-pack
@@ -125,7 +130,7 @@ jobs:
             "output/shorts/$DATE-prepublish-audit.json"
 
       - name: Upload audited Short to YouTube as PRIVATE for human review
-        if: steps.prepare.outputs.claimed == 'true'
+        if: steps.prepare.outputs.claimed == 'true' && inputs.authorize_private_staging_uploads == true
         env:
           YOUTUBE_PRIVATE_UPLOAD_ENABLED: ${{ vars.YOUTUBE_PRIVATE_UPLOAD_ENABLED }}
           YOUTUBE_OAUTH_CLIENT_ID: ${{ secrets.YOUTUBE_OAUTH_CLIENT_ID }}
@@ -135,7 +140,7 @@ jobs:
           python scripts/youtube_private_upload.py "${{ steps.prepare.outputs.publication_date }}"
 
       - name: Upload featured long-form lesson to YouTube as PRIVATE
-        if: steps.prepare.outputs.claimed == 'true'
+        if: steps.prepare.outputs.claimed == 'true' && inputs.authorize_private_staging_uploads == true
         continue-on-error: true
         env:
           YOUTUBE_PRIVATE_UPLOAD_ENABLED: ${{ vars.YOUTUBE_PRIVATE_UPLOAD_ENABLED }}
