@@ -13,6 +13,7 @@ from scripts.render_longform_video import (
     render_voice_policy,
 )
 from scripts.render_thumbnails import find_font, render_one
+from scripts.hindi_typography import find_hindi_font, load_hindi_font
 
 
 class VisualProductionTests(unittest.TestCase):
@@ -24,10 +25,8 @@ class VisualProductionTests(unittest.TestCase):
         cls.font_bold = find_font(
             "DejaVu Sans:style=Bold", ["/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"]
         )
-        cls.hindi_font = find_font(
-            "Noto Sans Devanagari",
-            ["/usr/share/fonts/truetype/noto/NotoSansDevanagari-Regular.ttf"],
-        )
+        cls.hindi_font = find_hindi_font()
+        load_hindi_font(cls.hindi_font, 32)
 
     def test_thumbnail_is_1280_by_720_and_under_two_mb(self):
         item = {
@@ -75,6 +74,12 @@ Do not narrate this private source-only section.
         self.assertIn("hypothetical example", all_text)
         self.assertNotIn("do not narrate", all_text)
         self.assertNotIn("private source-only", all_text)
+
+    def test_hindi_font_uses_raqm_shaping(self):
+        from PIL import features
+        self.assertTrue(features.check_feature("raqm"))
+        font = load_hindi_font(self.hindi_font, 40)
+        self.assertIsNotNone(font.getmask("हिन्दी अर्थशास्त्र").getbbox())
 
     def test_language_detection_handles_hindi_and_english(self):
         self.assertEqual(language_for("मांग का अर्थ विभिन्न कीमतों पर मात्रा है।"), "hi")

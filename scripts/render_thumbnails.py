@@ -9,6 +9,8 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
+from scripts.hindi_typography import find_hindi_font, load_hindi_font
+
 WIDTH, HEIGHT = 1280, 720
 PALETTES = [
     ((9, 24, 54), (24, 72, 126), (255, 194, 82)),
@@ -81,26 +83,6 @@ def draw_economics_motif(draw, unit, accent):
         draw.ellipse((px - 7, py - 7, px + 7, py + 7), fill=accent)
 
 
-def find_hindi_font():
-    """Require a real Devanagari-capable Noto font; never accept silent tofu fallback."""
-    try:
-        result = subprocess.run(
-            ["fc-match", "-f", "%{family}\\n%{file}", "Noto Sans Devanagari:lang=hi"],
-            check=True, capture_output=True, text=True,
-        ).stdout.strip().splitlines()
-    except (FileNotFoundError, subprocess.CalledProcessError) as exc:
-        raise RuntimeError("Fontconfig is required to locate a Hindi-capable Devanagari font.") from exc
-    if len(result) < 2 or "Noto Sans Devanagari" not in result[0]:
-        raise RuntimeError(
-            "Noto Sans Devanagari is not installed or Fontconfig selected a fallback. "
-            "Install fonts-noto-core before rendering Hindi thumbnails."
-        )
-    font_path = Path(result[1])
-    if not font_path.is_file():
-        raise RuntimeError(f"Resolved Devanagari font file does not exist: {font_path}")
-    return str(font_path)
-
-
 def render_one(item, output_path, font_regular, font_bold, hindi_font):
     unit = int(item["unit"])
     if not 1 <= unit <= 10:
@@ -119,7 +101,7 @@ def render_one(item, output_path, font_regular, font_bold, hindi_font):
     brand_font = ImageFont.truetype(font_bold, 27)
     eyebrow_font = ImageFont.truetype(font_regular, 23)
     badge_font = ImageFont.truetype(font_bold, 24)
-    main_font = ImageFont.truetype(hindi_font, 56)
+    main_font = load_hindi_font(hindi_font, 56)
     unit_font = ImageFont.truetype(font_bold, 34)
     footer_font = ImageFont.truetype(font_regular, 23)
 
@@ -142,7 +124,7 @@ def render_one(item, output_path, font_regular, font_bold, hindi_font):
         y += bbox[3] - bbox[1] + 14
 
     unit_name = str(item.get("playlist_title", "")).split("|")[1].strip() if "|" in str(item.get("playlist_title", "")) else "Economics"
-    sub_font = ImageFont.truetype(hindi_font, 28)
+    sub_font = load_hindi_font(hindi_font, 28)
     sub_lines = wrap_lines(draw, unit_name + "  |  अर्थशास्त्र", sub_font, 690, max_lines=2)
     y = max(y + 18, 500)
     for line in sub_lines:

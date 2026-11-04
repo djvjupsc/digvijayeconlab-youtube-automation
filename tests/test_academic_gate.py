@@ -33,10 +33,20 @@ class SeverityBasedAcademicGateTests(unittest.TestCase):
         self.assertTrue(ok)
         self.assertEqual(blockers, [])
 
-    def test_hold_due_only_to_medium_low_recommendations_passes_to_human_review(self):
+    def test_hold_due_to_medium_low_recommendations_is_blocked(self):
         ok, blockers = evaluate(self.report("**HOLD FOR CORRECTION**", other="Medium: punctuation and style."), self.det, self.script, self.source_verification)
-        self.assertTrue(ok)
-        self.assertEqual(blockers, [])
+        self.assertFalse(ok)
+        self.assertTrue(any("did not approve" in item for item in blockers))
+
+    def test_ambiguous_verdict_is_blocked(self):
+        ok, blockers = evaluate(
+            self.report("**REVIEWED — NEEDS MINOR CORRECTIONS**"),
+            self.det,
+            self.script,
+            self.source_verification,
+        )
+        self.assertFalse(ok)
+        self.assertTrue(any("did not approve" in item for item in blockers))
 
     def test_generic_lesson_gate_does_not_require_a_separate_source_report(self):
         ok, blockers = evaluate(
@@ -132,7 +142,7 @@ class SeverityBasedAcademicGateTests(unittest.TestCase):
             self.source_verification,
         )
         self.assertFalse(ok)
-        self.assertTrue(any("explicitly rejected" in x for x in blockers))
+        self.assertTrue(any("did not approve" in x for x in blockers))
 
     def test_explicit_not_approved_verdict_blocks_even_without_findings(self):
         ok, blockers = evaluate(
@@ -142,7 +152,7 @@ class SeverityBasedAcademicGateTests(unittest.TestCase):
             self.source_verification,
         )
         self.assertFalse(ok)
-        self.assertTrue(any("explicitly rejected" in x for x in blockers))
+        self.assertTrue(any("did not approve" in x for x in blockers))
 
     def test_any_high_priority_finding_blocks(self):
         ok, blockers = evaluate(self.report("**READY**", high="- Fix incorrect explanation."), self.det, self.script, self.source_verification)
