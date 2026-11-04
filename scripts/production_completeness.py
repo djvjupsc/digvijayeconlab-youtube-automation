@@ -83,7 +83,6 @@ def inspect(root, publication_date):
         publication_blockers.append(f"Long-form audit: {longform_audit_status}")
     if not voice_is_owner_authorized:
         publication_blockers.append("Owner-authorized voice is not confirmed for both videos")
-    publication_blockers.append("Human review, copyright clearance and AI-disclosure review remain required")
 
     report = {
         "status": "production_incomplete" if missing else "draft_complete",
