@@ -65,7 +65,7 @@ class NarrationFallbackTests(unittest.TestCase):
             self.assertFalse(used)
             self.assertEqual(attempts, ["hi", "en"])
             self.assertEqual(espeak.call_count, 2)
-            self.assertEqual(providers, ["eSpeak NG (hi)", "eSpeak NG (en)"])
+            self.assertEqual(providers, ["eSpeak NG (hi)", "eSpeak NG (en-us)"])
             self.assertEqual([Path(item["path"]).read_bytes() for item in items], [b"espeak-preview"] * 2)
 
     def test_failure_is_strict_when_preview_fallback_is_disabled(self):
@@ -102,7 +102,7 @@ class NarrationFallbackTests(unittest.TestCase):
                 )
 
             self.assertFalse(used)
-            self.assertEqual(providers, ["eSpeak NG (hi)", "eSpeak NG (en)"])
+            self.assertEqual(providers, ["eSpeak NG (hi)", "eSpeak NG (en-us)"])
 
 
 if __name__ == "__main__":
