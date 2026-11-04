@@ -34,6 +34,29 @@ class LawOfDemandPolishTests(unittest.TestCase):
         self.assertIn("।", result)
         self.assertEqual(len(changes), 1)
 
+    def test_corrects_demand_function_to_match_schedule_and_derivative(self):
+        source = (
+            "Q_d = 40 - 2P\\n"
+            "dQ_d / dP = -2 < 0\\n"
+            "| Price | Quantity |\\n| 10 | 20 |\\n| 20 | 15 |\\n"
+            "| 30 | 10 |\\n| 40 | 5 |\\n"
+        )
+        result, changes = apply_law_of_demand_polish(source)
+        self.assertEqual(result.count("Q_d = 25 - 0.5P"), 1)
+        self.assertIn("dQ_d / dP = -0.5 < 0", result)
+        self.assertEqual(len(changes), 2)
+
+    def test_corrects_common_hindi_economics_wording(self):
+        source = (
+            "उपभोक्ता अब अपेक्षित रूप से सस्ती कीमत चुनते हैं। "
+            "वेब्लेन वस्तुएं और गिफ्फेन वस्तुएं घटिया वस्तुएं हैं।"
+        )
+        result, _ = apply_law_of_demand_polish(source)
+        self.assertIn("अपेक्षाकृत सस्ती कीमत", result)
+        self.assertIn("वेब्लेन वस्तुएँ", result)
+        self.assertIn("गिफ्फेन वस्तुएँ", result)
+        self.assertIn("हीन वस्तुएँ", result)
+
     def test_normalizes_nonstandard_full_stop(self):
         source = "मांग बढ़ जाती है。 कीमत कम होती है。"
         result, changes = apply_law_of_demand_polish(source)
