@@ -121,15 +121,14 @@ def evaluate(review, deterministic, script, source_verification=None, correction
     reviewer_verdict = extract_reviewer_verdict(review)
     if not reviewer_verdict:
         blockers.append("The academic reviewer did not provide an explicit Overall Verdict.")
-    elif any(
-        phrase in reviewer_verdict.casefold()
-        for phrase in ("not ready", "not approved", "reject", "fail", "blocked")
-    ):
-        blockers.append(f"The academic reviewer explicitly rejected the lesson (detected: {reviewer_verdict}).")
+    elif not verdict_is_approved(reviewer_verdict):
+        blockers.append(
+            "The academic reviewer did not approve the lesson for human-review handoff "
+            f"(detected verdict: {reviewer_verdict})."
+        )
 
-    # A HOLD caused only by medium/low editorial recommendations may proceed
-    # to mandatory human review. Critical/high findings above still block.
-    # This stage never approves publication or public upload.
+    # Only affirmative READY/APPROVED/PASS verdicts may pass this handoff gate.
+    # HOLD, CORRECTION, NOT READY and ambiguous verdicts fail closed.
 
     structural_count = extract_blocking_count(deterministic)
     if structural_count is None:
