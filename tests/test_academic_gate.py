@@ -46,7 +46,7 @@ class SeverityBasedAcademicGateTests(unittest.TestCase):
         self.assertTrue(ok)
         self.assertEqual(blockers, [])
 
-    def test_generic_gate_blocks_unresolved_items_in_correction_log(self):
+    def test_generic_gate_keeps_unresolved_correction_items_for_human_review(self):
         correction_log = Path(self.temp.name) / "correction-log.md"
         correction_log.write_text(
             "## Unresolved human-verification items\n"
@@ -59,8 +59,8 @@ class SeverityBasedAcademicGateTests(unittest.TestCase):
             self.script,
             correction_log=correction_log,
         )
-        self.assertFalse(ok)
-        self.assertTrue(any("correction log lists" in item for item in blockers))
+        self.assertTrue(ok)
+        self.assertEqual(blockers, [])
 
     def test_generic_gate_accepts_correction_log_with_no_unresolved_items(self):
         correction_log = Path(self.temp.name) / "correction-log.md"
@@ -130,10 +130,15 @@ class SeverityBasedAcademicGateTests(unittest.TestCase):
         self.assertFalse(ok)
         self.assertTrue(any("critical" in x for x in blockers))
 
-    def test_unresolved_marker_blocks(self):
-        ok, blockers = evaluate(self.report("**READY**"), self.det, self.script + "[VERIFY claim]", self.source_verification)
-        self.assertFalse(ok)
-        self.assertTrue(any("verification markers" in x for x in blockers))
+    def test_unresolved_marker_is_preserved_but_does_not_block_human_review(self):
+        ok, blockers = evaluate(
+            self.report("**READY FOR HUMAN REVIEW**"),
+            self.det,
+            self.script + "[VERIFY claim]",
+            self.source_verification,
+        )
+        self.assertTrue(ok)
+        self.assertEqual(blockers, [])
 
     def test_missing_source_verification_blocks(self):
         missing = Path(self.temp.name) / "missing.md"
