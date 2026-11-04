@@ -9,7 +9,7 @@ class SeverityBasedAcademicGateTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.source_verification = Path(self.temp.name) / "source-verification.md"
-        self.attestation.write_text(
+        self.source_verification.write_text(
             "AI-assisted source review completed. This is not a human sign-off.",
             encoding="utf-8",
         )
@@ -28,12 +28,12 @@ class SeverityBasedAcademicGateTests(unittest.TestCase):
         )
 
     def test_ready_with_no_critical_or_high_issues_passes(self):
-        ok, blockers = evaluate(self.report("**READY FOR HUMAN REVIEW**"), self.det, self.script, self.attestation)
+        ok, blockers = evaluate(self.report("**READY FOR HUMAN REVIEW**"), self.det, self.script, self.source_verification)
         self.assertTrue(ok)
         self.assertEqual(blockers, [])
 
     def test_hold_due_only_to_medium_low_recommendations_passes_to_human_review(self):
-        ok, blockers = evaluate(self.report("**HOLD FOR CORRECTION**", other="Medium: punctuation and style."), self.det, self.script, self.attestation)
+        ok, blockers = evaluate(self.report("**HOLD FOR CORRECTION**", other="Medium: punctuation and style."), self.det, self.script, self.source_verification)
         self.assertTrue(ok)
         self.assertEqual(blockers, [])
 
@@ -42,7 +42,7 @@ class SeverityBasedAcademicGateTests(unittest.TestCase):
             "### Critical Issues\n*None.*\n"
             "### High-Priority Issues\n*None.*\n"
         )
-        ok, blockers = evaluate(report, self.det, self.script, self.attestation)
+        ok, blockers = evaluate(report, self.det, self.script, self.source_verification)
         self.assertFalse(ok)
         self.assertTrue(any("Overall Verdict" in item for item in blockers))
 
@@ -55,7 +55,7 @@ class SeverityBasedAcademicGateTests(unittest.TestCase):
             "The Hindi explanation reverses the income-effect direction.\n"
             "### Other Improvements\nMinor punctuation.\n"
         )
-        ok, blockers = evaluate(nested, self.det, self.script, self.attestation)
+        ok, blockers = evaluate(nested, self.det, self.script, self.source_verification)
         self.assertFalse(ok)
         self.assertTrue(any("high-priority" in x for x in blockers))
 
@@ -64,7 +64,7 @@ class SeverityBasedAcademicGateTests(unittest.TestCase):
             self.report("**NOT READY**"),
             self.det,
             self.script,
-            self.attestation,
+            self.source_verification,
         )
         self.assertFalse(ok)
         self.assertTrue(any("explicitly rejected" in x for x in blockers))
@@ -74,23 +74,23 @@ class SeverityBasedAcademicGateTests(unittest.TestCase):
             self.report("**NOT APPROVED**"),
             self.det,
             self.script,
-            self.attestation,
+            self.source_verification,
         )
         self.assertFalse(ok)
         self.assertTrue(any("explicitly rejected" in x for x in blockers))
 
     def test_any_high_priority_finding_blocks(self):
-        ok, blockers = evaluate(self.report("**READY**", high="- Fix incorrect explanation."), self.det, self.script, self.attestation)
+        ok, blockers = evaluate(self.report("**READY**", high="- Fix incorrect explanation."), self.det, self.script, self.source_verification)
         self.assertFalse(ok)
         self.assertTrue(any("high-priority" in x for x in blockers))
 
     def test_any_critical_finding_blocks(self):
-        ok, blockers = evaluate(self.report("**READY**", critical="- Wrong economic definition."), self.det, self.script, self.attestation)
+        ok, blockers = evaluate(self.report("**READY**", critical="- Wrong economic definition."), self.det, self.script, self.source_verification)
         self.assertFalse(ok)
         self.assertTrue(any("critical" in x for x in blockers))
 
     def test_unresolved_marker_blocks(self):
-        ok, blockers = evaluate(self.report("**READY**"), self.det, self.script + "[VERIFY claim]", self.attestation)
+        ok, blockers = evaluate(self.report("**READY**"), self.det, self.script + "[VERIFY claim]", self.source_verification)
         self.assertFalse(ok)
         self.assertTrue(any("verification markers" in x for x in blockers))
 
@@ -102,12 +102,12 @@ class SeverityBasedAcademicGateTests(unittest.TestCase):
 
     def test_missing_issue_sections_fails_closed(self):
         incomplete = "### Overall Verdict\n**READY**\n"
-        ok, blockers = evaluate(incomplete, self.det, self.script, self.attestation)
+        ok, blockers = evaluate(incomplete, self.det, self.script, self.source_verification)
         self.assertFalse(ok)
         self.assertTrue(any("missing a parseable" in x for x in blockers))
 
     def test_structural_blocker_blocks(self):
-        ok, blockers = evaluate(self.report("**READY**"), "- Blocking findings: 2\n", self.script, self.attestation)
+        ok, blockers = evaluate(self.report("**READY**"), "- Blocking findings: 2\n", self.script, self.source_verification)
         self.assertFalse(ok)
         self.assertTrue(any("structural" in x for x in blockers))
 
