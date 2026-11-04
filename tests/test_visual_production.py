@@ -10,6 +10,7 @@ from scripts.render_longform_video import (
     group_sections,
     language_for,
     parse_lesson,
+    render_voice_policy,
 )
 from scripts.render_thumbnails import find_font, render_one
 
@@ -88,6 +89,25 @@ Do not narrate this private source-only section.
         flattened = [p for group in groups for p in group["paragraphs"]]
         expected = [p for _, paragraphs in sections for p in paragraphs]
         self.assertEqual(flattened, expected)
+
+    def test_production_voice_is_upload_eligible(self):
+        policy = render_voice_policy(True, ["Chatterbox Multilingual V3"], False)
+        self.assertEqual(policy["audit_status"], "pass")
+        self.assertTrue(policy["voice_clone_used"])
+        self.assertTrue(policy["upload_eligible"])
+        self.assertFalse(policy["preview_only"])
+
+    def test_preview_voice_renders_but_is_never_upload_eligible(self):
+        policy = render_voice_policy(False, ["eSpeak NG (en-us)"], False)
+        self.assertEqual(policy["audit_status"], "preview")
+        self.assertFalse(policy["voice_clone_used"])
+        self.assertFalse(policy["upload_eligible"])
+        self.assertTrue(policy["preview_only"])
+
+    def test_unresolved_markers_block_even_production_voice(self):
+        policy = render_voice_policy(True, ["Chatterbox Multilingual V3"], True)
+        self.assertEqual(policy["audit_status"], "blocked")
+        self.assertFalse(policy["upload_eligible"])
 
     def test_longform_slide_is_landscape_1920_by_1080(self):
         group = {
