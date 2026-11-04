@@ -18,6 +18,18 @@ class LawOfDemandPolishTests(unittest.TestCase):
         self.assertNotIn("गिफ्फेन वस्तु एक ऐसी हीन वस्तु", result)
         self.assertEqual(len(changes), 2)
 
+    def test_giffen_sentence_with_nonstandard_full_stop_is_repaired(self):
+        source = (
+            "गिफ्फेन वस्तु एक ऐसी हीन वस्तु (inferior good) है जिसके लिए "
+            "नकारात्मक आय प्रभाव, प्रतिस्थापन प्रभाव से अधिक मजबूत होता है, "
+            "जिससे कीमत बढ़ने पर मांग भी बढ़ सकती है。"
+        )
+        result, changes = apply_law_of_demand_polish(source)
+        self.assertIn("गिफ्फेन वस्तुएँ ऐसी हीन वस्तुएँ", result)
+        self.assertNotIn("。", result)
+        self.assertIn("।", result)
+        self.assertEqual(len(changes), 2)
+
     def test_normalizes_nonstandard_full_stop(self):
         source = "मांग बढ़ जाती है。 कीमत कम होती है。"
         result, changes = apply_law_of_demand_polish(source)
