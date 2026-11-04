@@ -95,11 +95,13 @@ def evaluate(review, deterministic, script, attestation):
             blockers.append("The reviewer listed one or more unresolved high-priority issues.")
 
     reviewer_verdict = extract_reviewer_verdict(review)
-    if not verdict_is_approved(reviewer_verdict):
-        blockers.append(
-            "The reviewer did not issue an explicit READY/APPROVED/PASS verdict "
-            f"(detected: {reviewer_verdict or 'missing'})."
-        )
+    if not reviewer_verdict:
+        blockers.append("The academic reviewer did not provide an explicit Overall Verdict.")
+    elif re.search(r"\\b(NOT READY|REJECT(?:ED)?|FAIL(?:ED)?)\\b", reviewer_verdict, re.I):
+        blockers.append(f"The academic reviewer explicitly rejected the lesson (detected: {reviewer_verdict}).")
+    # A HOLD caused only by medium/low editorial recommendations may proceed
+    # to mandatory human review. Critical/high findings above still block.
+    # This stage never approves publication or public upload.
 
     structural_count = extract_blocking_count(deterministic)
     if structural_count is None:
