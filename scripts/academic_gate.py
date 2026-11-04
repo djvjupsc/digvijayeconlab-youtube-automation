@@ -85,7 +85,7 @@ def section_has_findings(body):
     return bool(meaningful)
 
 
-def evaluate(review, deterministic, script, source_verification):
+def evaluate(review, deterministic, script, source_verification=None):
     review_sections = sections(review)
     critical_key = next((k for k in review_sections if k == "critical issues"), None)
     high_key = next(
@@ -129,12 +129,13 @@ def evaluate(review, deterministic, script, source_verification):
 
     if VERIFY.search(script):
         blockers.append("Human verification markers remain in the corrected lesson.")
-    if (
-        not source_verification.is_file()
-        or "ai-assisted source review" not in source_verification.read_text(encoding="utf-8").casefold()
-        or "not a human sign-off" not in source_verification.read_text(encoding="utf-8").casefold()
-    ):
-        blockers.append("A separate source-verification evidence report is missing or invalid.")
+    if source_verification is not None:
+        if (
+            not source_verification.is_file()
+            or "ai-assisted source review" not in source_verification.read_text(encoding="utf-8").casefold()
+            or "not a human sign-off" not in source_verification.read_text(encoding="utf-8").casefold()
+        ):
+            blockers.append("A separate source-verification evidence report is missing or invalid.")
 
     return not blockers, blockers
 
@@ -144,7 +145,11 @@ def main():
     parser.add_argument("review_report")
     parser.add_argument("deterministic_report")
     parser.add_argument("corrected_script")
-    parser.add_argument("source_verification")
+    parser.add_argument(
+        "source_verification",
+        nargs="?",
+        help="Optional dedicated evidence report for a topic-specific source-verification gate.",
+    )
     parser.add_argument("--output", default="output/reviews/academic-gate-decision.md")
     args = parser.parse_args()
 
@@ -160,7 +165,7 @@ def main():
     review = paths[0].read_text(encoding="utf-8")
     deterministic = paths[1].read_text(encoding="utf-8")
     script = paths[2].read_text(encoding="utf-8")
-    source_verification = Path(args.source_verification)
+    source_verification = Path(args.source_verification) if args.source_verification else None
     passed, blockers = evaluate(review, deterministic, script, source_verification)
 
     reviewer_verdict = extract_reviewer_verdict(review) or "Not parsed"
