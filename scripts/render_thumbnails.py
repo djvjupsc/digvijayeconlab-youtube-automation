@@ -193,8 +193,13 @@ def main():
                    font_regular, font_bold, hindi_font)
         for unit in range(1, 11)
     ]
+    expected_paths = [output_dir / f"unit-{unit:02d}-thumbnail.jpg" for unit in range(1, 11)]
+    invalid = [str(path) for path in expected_paths if not path.is_file() or path.stat().st_size == 0]
+    if invalid or len(reports) != 10 or {item["unit"] for item in reports} != set(range(1, 11)):
+        raise RuntimeError(f"Thumbnail batch is incomplete; missing or invalid outputs: {invalid}")
+
     report_path = output_dir / "thumbnail-manifest.json"
-    report_path.write_text(json.dumps({"status": "rendered", "thumbnails": reports},
+    report_path.write_text(json.dumps({"status": "rendered", "count": 10, "thumbnails": reports},
                                       ensure_ascii=False, indent=2) + "\\n", encoding="utf-8")
     print(json.dumps({"status": "rendered", "count": len(reports), "output": str(output_dir)},
                      ensure_ascii=False, indent=2))
