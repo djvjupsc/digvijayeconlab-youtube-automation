@@ -1,5 +1,7 @@
+import shutil
 import tempfile
 import unittest
+import wave
 from pathlib import Path
 from unittest.mock import patch
 
@@ -15,12 +17,37 @@ class NarrationFallbackTests(unittest.TestCase):
 
     def test_preview_text_removes_latex_control_syntax(self):
         cleaned = preview_speech_text(
-            r"Correct Answer: B) $M3$ Explanation: $M3 = M1 + \text{time deposits}$।"
+            r"Correct Answer: B) $M3$ Explanation: $M3 = M1 + \\text{time deposits}$।"
         )
         self.assertIn("M3", cleaned)
         self.assertIn("time deposits", cleaned)
         self.assertNotIn("\\text", cleaned)
         self.assertNotIn("$", cleaned)
+
+    def test_exact_previous_segfault_sample_runs_through_real_espeak_stdin(self):
+        espeak = shutil.which("espeak-ng")
+        if not espeak:
+            self.skipTest("espeak-ng is not installed; CI installs it for this integration test.")
+        failing_text = (
+            r"Correct Answer: B) $M3$ Explanation: By definition, "
+            r"$M3 = M1 + \\text{time deposits with the banking system}$. "
+            r"(हिंदी) परिभाषा के अनुसार, $M3 = M1 + "
+            r"\\text{बैंकिंग प्रणाली के पास समय जमा}$।"
+        )
+        with tempfile.TemporaryDirectory() as root:
+            target = Path(root) / "segfault-regression.wav"
+            used, providers = synthesize_audio_batch(
+                [{"text": failing_text, "language": "hi", "path": str(target), "speed": 145}],
+                chatterbox_enabled=False,
+                allow_preview_fallback=True,
+                espeak_binary=espeak,
+            )
+            self.assertFalse(used)
+            self.assertEqual(providers, ["eSpeak NG (hi)"])
+            self.assertTrue(target.is_file())
+            with wave.open(str(target), "rb") as audio:
+                self.assertGreater(audio.getnframes(), 0)
+                self.assertGreater(audio.getframerate(), 0)
 
     def test_successful_chatterbox_batch_keeps_owner_voice(self):
         with tempfile.TemporaryDirectory() as root:
@@ -30,7 +57,6 @@ class NarrationFallbackTests(unittest.TestCase):
             def synth(text, language, path, seed):
                 calls.append((language, seed))
                 Path(path).write_bytes(b"chatterbox")
-
                 return {"provider": "Chatterbox Multilingual V3"}
 
             with patch("scripts.narration.subprocess.run") as espeak:
@@ -41,7 +67,6 @@ class NarrationFallbackTests(unittest.TestCase):
                     espeak_binary="espeak-ng",
                     chatterbox_synthesize=synth,
                 )
-
             self.assertTrue(used)
             self.assertEqual(calls, [("hi", 1), ("en", 2)])
             self.assertEqual(providers, ["Chatterbox Multilingual V3"] * 2)
@@ -72,7 +97,6 @@ class NarrationFallbackTests(unittest.TestCase):
                     espeak_binary="espeak-ng",
                     chatterbox_synthesize=synth,
                 )
-
             self.assertFalse(used)
             self.assertEqual(attempts, ["hi", "en"])
             self.assertEqual(espeak.call_count, 2)
@@ -113,7 +137,6 @@ class NarrationFallbackTests(unittest.TestCase):
                     allow_preview_fallback=True,
                     espeak_binary="espeak-ng",
                 )
-
             self.assertFalse(used)
             self.assertEqual(providers, ["eSpeak NG (hi)", "eSpeak NG (en-us)"])
 

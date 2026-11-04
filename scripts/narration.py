@@ -8,7 +8,7 @@ from pathlib import Path
 def preview_speech_text(value):
     """Remove LaTeX control syntax before passing bilingual text to eSpeak."""
     text = str(value or "")
-    text = re.sub(r"\\text\s*\{([^{}]*)\}", r"\1", text)
+    text = re.sub(r"\\+text\s*\{([^{}]*)\}", r"\1", text)
     text = re.sub(r"\\[A-Za-z]+", " ", text)
     text = re.sub(r"[$^{}_]", " ", text)
     text = re.sub(r"\\", " ", text)
