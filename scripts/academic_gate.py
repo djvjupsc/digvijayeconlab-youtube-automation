@@ -109,7 +109,7 @@ def evaluate(review, deterministic, script, attestation):
         blockers.append("The academic reviewer did not provide an explicit Overall Verdict.")
     elif any(
         phrase in reviewer_verdict.casefold()
-        for phrase in ("not ready", "reject", "fail")
+        for phrase in ("not ready", "not approved", "reject", "fail", "blocked")
     ):
         blockers.append(f"The academic reviewer explicitly rejected the lesson (detected: {reviewer_verdict}).")
 
