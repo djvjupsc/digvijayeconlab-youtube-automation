@@ -1,7 +1,11 @@
 import json
 import unittest
 
-from scripts.correct_script import (\n    apply_known_editorial_repairs,\n    parse_structured_response,\n    preserve_original_verification_markers,\n)
+from scripts.correct_script import (
+    apply_known_editorial_repairs,
+    parse_structured_response,
+    preserve_original_verification_markers,
+)
 
 
 class StructuredCorrectionTests(unittest.TestCase):
