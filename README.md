@@ -59,7 +59,7 @@ These are recommended release slots, not active publishing automations. The dail
 
 ## Per-lesson quality gates and failure isolation
 
-Every daily unit lesson now has its own generation → original review → correction → corrected review → academic gate sequence. The gate checks the review's explicit verdict, Critical/High issue sections, the deterministic structural report, unresolved `[VERIFY]` markers, and any unresolved items listed in the correction log. A passing result means **ready for human review only**; it does not certify factual accuracy or authorize publishing.
+Every daily unit lesson now has its own generation → original review → correction → corrected review → academic gate sequence. The gate blocks substantive Critical/High issues and deterministic structural defects. Explicit `[VERIFY]` markers and unresolved items in the correction log are retained as a human-review checklist; they do not prevent handoff to a subject-matter reviewer. A passing result means **ready for human review only**; all verification items must be resolved before public release.
 
 A failed topic is recorded as BLOCKED, but the orchestration continues through the remaining independent unit topics so one malformed script or review does not discard the other nine attempts. The batch is marked failed unless all ten lessons pass their automated gates. A failed batch does not advance the rotation and does not start the Short/Community asset stage. The workflow artifact retains successful lesson drafts, gate reports and a batch-status report for diagnosis. Review the artifact before using the same-day manual retry.
 
@@ -157,7 +157,7 @@ The initial operating plan is a 14-day pilot. Review workflow completion, Gemini
 
 The production workflow uses GitHub Actions, Python, FFmpeg, the YouTube Data API and the existing GitHub Actions OAuth secrets. It has no third-party social scheduler or paid publishing API dependency.
 
-- The daily workflow uses YouTube's resumable upload protocol to upload an audited Short and the featured long-form lesson as **PRIVATE** when the repository variable `YOUTUBE_PRIVATE_UPLOAD_ENABLED=true`. Both uploads include the synthetic-media disclosure flag.
+- The daily workflow can upload an audited Short and the featured long-form lesson as **PRIVATE** only when both `YOUTUBE_PRIVATE_UPLOAD_ENABLED=true` and the manual `authorize_private_staging_uploads=true` workflow input are set. The input defaults to false. Both uploads include the synthetic-media disclosure flag.
 - The private uploader has no public-publishing code path. Review the upload in YouTube Studio and make any public-release decision manually.
 - The ten public playlists are created only when a user manually dispatches the workflow and explicitly selects `create_public_playlists=true`. This is off by default and requires the appropriate YouTube write scope.
 - The daily workflow renders one featured long-form lesson per day, not ten long-form videos. The uploader requires a passing render report, ready academic review, owner-reference Chatterbox voice, no music and a valid 1920 × 1080 H.264 MP4. Placeholder eSpeak narration is draft-only.
