@@ -122,7 +122,7 @@ class FreeLLMAPIAdapterTests(unittest.TestCase):
         self.assertEqual(gemini.call_args.args[1], "temporary-google-key")
 
 
-        @patch.dict(os.environ, {
+    @patch.dict(os.environ, {
         "LLM_PROVIDER": "freellmapi",
         "LLM_FALLBACK_PROVIDER": "huggingface,gemini",
         "FREELLMAPI_API_KEY": "temporary-unified-key",
