@@ -1,7 +1,6 @@
-"""Provider adapter for Gemini and FreeLLMAPI's OpenAI-compatible endpoint.
+"""Provider adapter for Gemini, FreeLLMAPI, Cloudflare Workers AI and Hugging Face.
 
-Set LLM_PROVIDER=freellmapi to use FreeLLMAPI. The default remains Gemini
-so existing production workflows are unchanged until explicitly configured.
+Set LLM_PROVIDER=freellmapi to enable the configured independent-provider fallback chain.
 """
 import json
 import os
@@ -83,7 +82,7 @@ def _to_openai_payload(payload):
 def _normalize_openai_response(response):
     choices = response.get("choices") or []
     if not choices:
-        raise RuntimeError("FreeLLMAPI returned no completion choices.")
+        raise RuntimeError("The OpenAI-compatible provider returned no completion choices.")
     message = choices[0].get("message") or {}
     content = message.get("content")
     if isinstance(content, list):
@@ -92,7 +91,7 @@ def _normalize_openai_response(response):
             if isinstance(item, dict) and item.get("type") == "text"
         )
     if not isinstance(content, str) or not content.strip():
-        raise RuntimeError("FreeLLMAPI returned an empty assistant response.")
+        raise RuntimeError("The OpenAI-compatible provider returned an empty assistant response.")
     finish = choices[0].get("finish_reason") or "stop"
     return {
         "candidates": [{
