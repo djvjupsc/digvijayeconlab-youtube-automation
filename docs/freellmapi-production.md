@@ -23,9 +23,15 @@ The FreeLLMAPI source is pinned to upstream commit `fb07845faf7cf986ea9f3692e055
 
 ## Fallback behavior
 
-If FreeLLMAPI cannot serve a request after its bounded retry policy, the adapter attempts the direct Gemini API when `LLM_FALLBACK_PROVIDER=gemini` and `GEMINI_API_KEY` is present.
+If FreeLLMAPI cannot serve a request after its bounded retry policy, the adapter tries the configured fallback chain in order: Hugging Face Inference Providers, then direct Gemini.
 
-This is an endpoint/runtime fallback, **not an independent provider or quota pool**: both routes use Google AI Studio credentials and may share the same Google rate limits.
+- Hugging Face uses the existing `HF_TOKEN` repository secret and the OpenAI-compatible router at `https://router.huggingface.co/v1/chat/completions`.
+- The default fallback model is `Qwen/Qwen3-4B-Instruct-2507:cheapest`; override it with `HF_FALLBACK_MODEL` only after checking current provider availability and pricing.
+- Gemini remains the final endpoint fallback and shares the Google AI Studio credential/quota with FreeLLMAPI.
+- Hugging Face is a separate provider, but its free inference allowance is limited, can change, and may be exhausted or unavailable. This workflow does not purchase credits or enable paid billing. A quota/credit exhaustion response is reported as a failed fallback; it is not treated as guaranteed free capacity.
+- Retries are bounded and respect provider retry hints. The pipeline stops with an explicit error if all configured providers fail.
+
+The production and smoke workflows pass the existing `HF_TOKEN` secret to the runner. No new secret is required if that repository secret is already configured.
 
 ## Cost and publication safeguards
 

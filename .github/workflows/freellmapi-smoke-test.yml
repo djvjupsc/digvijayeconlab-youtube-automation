@@ -18,6 +18,8 @@ jobs:
     name: Test FreeLLMAPI on an isolated GitHub runner
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
     steps:
       - name: Check out the selected test branch
         uses: actions/checkout@v4
@@ -120,9 +122,11 @@ jobs:
           LLM_PROVIDER: freellmapi
           FREELLMAPI_BASE_URL: http://127.0.0.1:3001/v1
           FREELLMAPI_MODEL: gemini-3.5-flash-lite
+          LLM_FALLBACK_PROVIDER: huggingface,gemini
           SCRIPT_UNIT: FreeLLMAPI integration validation
           SCRIPT_LANGUAGE: Bilingual
           SCRIPT_FORMAT: MCQ Set
+          LLM_FALLBACK_PROVIDER: huggingface,gemini
         run: |
           python scripts/generate_script.py "Opportunity Cost" Bilingual "MCQ Set" docs/source-notes/opportunity-cost.md
           test -s output/scripts/opportunity-cost.md
