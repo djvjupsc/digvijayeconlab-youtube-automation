@@ -16,7 +16,8 @@ class ProductionProviderWiringTests(unittest.TestCase):
         self.assertIn("Start temporary FreeLLMAPI for production generation", workflow)
         self.assertIn("Retrieve masked temporary FreeLLMAPI key", workflow)
         self.assertIn("Stop temporary FreeLLMAPI after generation", workflow)
-        self.assertIn("LLM_FALLBACK_PROVIDER: gemini", workflow)
+        self.assertIn("LLM_FALLBACK_PROVIDER: huggingface,gemini", workflow)
+        self.assertIn("HF_TOKEN: ${{ secrets.HF_TOKEN }}", workflow)
         self.assertIn("inputs.llm_provider == 'freellmapi'", workflow)
 
     def test_free_llm_runtime_is_pinned_to_the_tested_revision(self):
