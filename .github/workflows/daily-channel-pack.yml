@@ -97,6 +97,12 @@ jobs:
         run: |
           echo "Claimed run $GITHUB_RUN_ID for publication date ${{ steps.prepare.outputs.publication_date }}."
           echo "Production state is finalized from workflow outcome; no branch push is required."
+      - name: Set up Node.js for temporary FreeLLMAPI
+        if: steps.prepare.outputs.claimed == 'true' && inputs.llm_provider == 'freellmapi'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
       - name: Start temporary FreeLLMAPI for production generation
         if: steps.prepare.outputs.claimed == 'true' && inputs.llm_provider == 'freellmapi'
         env:
