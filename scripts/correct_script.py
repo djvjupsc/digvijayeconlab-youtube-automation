@@ -227,15 +227,27 @@ def apply_known_editorial_repairs(text):
             text = text.replace(old, new)
             changes.append(description)
     # Opportunity Cost pilot: standardize the Q10 bilingual explanation and Hindi terminology.
-    q10_old = """**Explanation (Hindi/English):** 
-- **English:** A point inside the PPF indicates that the economy is producing less than its maximum potential due to unemployment or resource misallocation.
-- **Hindi:** PPF के अंदर एक बिंदु इंगित करता है कि बेरोजगारी या संसाधन दुर्विनियोजन के कारण अर्थव्यवस्था अपनी अधिकतम क्षमता से कम उत्पादन कर रही है।"""
-    q10_new = """**Explanation (English):** A point inside the PPF indicates that the economy is producing less than its maximum potential because some resources are unemployed or not being used efficiently.
-
-**Explanation (Hindi):** PPF के भीतर स्थित बिंदु यह दर्शाता है कि कुछ संसाधन बेरोजगार हैं या उनका कुशलतापूर्वक उपयोग नहीं हो रहा है; इसलिए अर्थव्यवस्था अपनी अधिकतम उत्पादन क्षमता से कम उत्पादन कर रही है।"""
-    if q10_old in text:
-        text = text.replace(q10_old, q10_new)
-        changes.append("Standardized Q10 with separate English and Hindi explanation labels and clearer Hindi wording for unemployment/inefficient resource use.")
+    # Normalize Q10's earlier combined heading regardless of line-ending or whitespace variation.
+    q10_pattern = re.compile(
+        r"\\*\\*Explanation \\(Hindi/English\\):\\*\\*\\s*"
+        r"(?:-\\s*)?\\*\\*English:\\*\\*\\s*(.+?)\\s*"
+        r"(?:-\\s*)?\\*\\*Hindi:\\*\\*\\s*(.+?)(?=\\n\\n|\\n---|$)",
+        re.DOTALL,
+    )
+    def _split_q10_explanation(match):
+        english = match.group(1).strip()
+        hindi = match.group(2).strip()
+        if "point inside the PPF" in english:
+            english = ("A point inside the PPF indicates that the economy is producing less than "
+                       "its maximum potential because some resources are unemployed or not being used efficiently.")
+        if "PPF" in hindi:
+            hindi = ("PPF के भीतर स्थित बिंदु यह दर्शाता है कि कुछ संसाधन बेरोजगार हैं या उनका "
+                     "कुशलतापूर्वक उपयोग नहीं हो रहा है; इसलिए अर्थव्यवस्था अपनी अधिकतम उत्पादन "
+                     "क्षमता से कम उत्पादन कर रही है।")
+        return "**Explanation (English):** " + english + "\\n\\n**Explanation (Hindi):** " + hindi
+    text, q10_count = q10_pattern.subn(_split_q10_explanation, text)
+    if q10_count:
+        changes.append("Standardized Q10 with separate English and Hindi explanation labels and clarified the Hindi PPF explanation.")
 
     hindi_terms = [
         ("भूला हुआ वेतन", "त्यागा गया वेतन"),
