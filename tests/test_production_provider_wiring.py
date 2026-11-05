@@ -12,6 +12,7 @@ class ProductionProviderWiringTests(unittest.TestCase):
         self.assertIn("default: gemini", workflow)
         self.assertIn("options:", workflow)
         self.assertIn("- freellmapi", workflow)
+        self.assertIn("Set up Node.js for temporary FreeLLMAPI", workflow)
         self.assertIn("Start temporary FreeLLMAPI for production generation", workflow)
         self.assertIn("Retrieve masked temporary FreeLLMAPI key", workflow)
         self.assertIn("Stop temporary FreeLLMAPI after generation", workflow)
