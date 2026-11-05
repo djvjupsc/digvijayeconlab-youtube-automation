@@ -104,13 +104,18 @@ def _normalize_openai_response(response):
 
 
 def generate_content(api_url, api_key, payload, label="LLM request", timeout=150):
-    """Return the Gemini-shaped response expected by existing pipeline scripts."""
+    """Use FreeLLMAPI first when selected; fall back to direct Gemini on adapter failure.
+
+    The fallback is an endpoint/runtime fallback using the same Google AI Studio
+    credential, not an independent provider or quota pool.
+    """
     provider = os.environ.get("LLM_PROVIDER", "gemini").strip().lower()
+    try:
+        from .gemini_client import generate_content as gemini_generate
+    except ImportError:
+        from gemini_client import generate_content as gemini_generate
+
     if provider != "freellmapi":
-        try:
-            from .gemini_client import generate_content as gemini_generate
-        except ImportError:
-            from gemini_client import generate_content as gemini_generate
         return gemini_generate(api_url, api_key, payload, label=label, timeout=timeout)
 
     unified_key = get_api_key()
@@ -126,25 +131,40 @@ def generate_content(api_url, api_key, payload, label="LLM request", timeout=150
         },
         method="POST",
     )
-    for attempt in range(1, MAX_ATTEMPTS + 1):
-        try:
-            with urllib.request.urlopen(request, timeout=timeout) as response:
-                return _normalize_openai_response(json.loads(response.read().decode("utf-8")))
-        except urllib.error.HTTPError as exc:
-            detail = exc.read().decode("utf-8", errors="replace")[:1000]
-            if exc.code not in RETRYABLE_HTTP_STATUS or attempt == MAX_ATTEMPTS:
-                raise RuntimeError(f"{label} via FreeLLMAPI failed (HTTP {exc.code}): {detail}") from exc
-            delay = _retry_delay_seconds(exc, detail, attempt) if exc.code == 429 else min(30, 2 ** attempt)
-            if delay > MAX_RATE_LIMIT_WAIT_SECONDS:
-                raise RuntimeError(
-                    f"{label} via FreeLLMAPI is rate-limited for {delay}s, exceeding the "
-                    f"configured wait ceiling of {MAX_RATE_LIMIT_WAIT_SECONDS}s: {detail}"
-                ) from exc
-            print(f"{label}: FreeLLMAPI temporary HTTP {exc.code}; retrying in {delay}s.")
-            time.sleep(delay)
-        except (urllib.error.URLError, TimeoutError) as exc:
-            if attempt == MAX_ATTEMPTS:
-                raise RuntimeError(f"{label} via FreeLLMAPI connection failed: {exc}") from exc
-            delay = 2 ** attempt
-            print(f"{label}: FreeLLMAPI connection issue; retrying in {delay}s.")
-            time.sleep(delay)
+    try:
+        for attempt in range(1, MAX_ATTEMPTS + 1):
+            try:
+                with urllib.request.urlopen(request, timeout=timeout) as response:
+                    return _normalize_openai_response(json.loads(response.read().decode("utf-8")))
+            except urllib.error.HTTPError as exc:
+                detail = exc.read().decode("utf-8", errors="replace")[:1000]
+                if exc.code not in RETRYABLE_HTTP_STATUS or attempt == MAX_ATTEMPTS:
+                    raise RuntimeError(
+                        f"{label} via FreeLLMAPI failed (HTTP {exc.code}): {detail}"
+                    ) from exc
+                delay = _retry_delay_seconds(exc, detail, attempt) if exc.code == 429 else min(30, 2 ** attempt)
+                if delay > MAX_RATE_LIMIT_WAIT_SECONDS:
+                    raise RuntimeError(
+                        f"{label} via FreeLLMAPI is rate-limited for {delay}s, exceeding the "
+                        f"configured wait ceiling of {MAX_RATE_LIMIT_WAIT_SECONDS}s: {detail}"
+                    ) from exc
+                print(f"{label}: FreeLLMAPI temporary HTTP {exc.code}; retrying in {delay}s.")
+                time.sleep(delay)
+            except (urllib.error.URLError, TimeoutError) as exc:
+                if attempt == MAX_ATTEMPTS:
+                    raise RuntimeError(f"{label} via FreeLLMAPI connection failed: {exc}") from exc
+                delay = 2 ** attempt
+                print(f"{label}: FreeLLMAPI connection issue; retrying in {delay}s.")
+                time.sleep(delay)
+    except RuntimeError as exc:
+        fallback = os.environ.get("LLM_FALLBACK_PROVIDER", "gemini").strip().lower()
+        fallback_key = os.environ.get("GEMINI_API_KEY")
+        if fallback != "gemini" or not fallback_key:
+            raise
+        print(
+            f"{label}: FreeLLMAPI unavailable; using direct Gemini endpoint as configured fallback. "
+            "This uses the same Google AI Studio credential and quota."
+        )
+        return gemini_generate(api_url, fallback_key, payload, label=f"{label} Gemini fallback", timeout=timeout)
+
+    raise RuntimeError(f"{label} via FreeLLMAPI failed without a response.")
