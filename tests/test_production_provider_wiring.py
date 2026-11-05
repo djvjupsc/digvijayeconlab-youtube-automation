@@ -18,6 +18,7 @@ class ProductionProviderWiringTests(unittest.TestCase):
         self.assertIn("Stop temporary FreeLLMAPI after generation", workflow)
         self.assertIn("LLM_FALLBACK_PROVIDER: ${{ steps.provider_preflight.outputs.fallback_chain }},gemini", workflow)
         self.assertIn("HF_TOKEN: ${{ secrets.HF_TOKEN }}", workflow)
+        self.assertIn("CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}", workflow)
         self.assertIn("CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}", workflow)
         self.assertIn("contents: write", workflow)
         self.assertIn("git push origin HEAD:main", workflow)
@@ -51,7 +52,7 @@ class ProductionProviderWiringTests(unittest.TestCase):
         preflight_script = (ROOT / "scripts/provider_preflight.py").read_text(encoding="utf-8")
         self.assertIn("Free users have no included monthly Inference Provider credits", preflight_script)
         self.assertNotIn("HF_INFERENCE_TOKEN: ${{ secrets.HF_INFERENCE_TOKEN }}", workflow)
-        self.assertIn("LIVE_INDEPENDENT_PROVIDER_PREFLIGHT_PASS", preflight_script)
+        self.assertIn("LIVE_ZERO_COST_PROVIDER_PREFLIGHT_PASS", preflight_script)
 
     def test_live_fallback_preflight_runs_before_node_build_and_dependency_install(self):
         workflow = (ROOT / ".github/workflows/freellmapi-smoke-test.yml").read_text(encoding="utf-8")
