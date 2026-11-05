@@ -83,6 +83,7 @@ jobs:
           python scripts/topic_queue.py validate --queue config/topic_queue.json
 
       - name: Verify independent providers before claiming production pack
+        id: provider_preflight
         if: inputs.llm_provider == 'freellmapi'
         env:
           LLM_PROVIDER: freellmapi
@@ -177,7 +178,7 @@ jobs:
           echo "FREELLMAPI_API_KEY=$UNIFIED_KEY" >> "$GITHUB_ENV"
           echo "FREELLMAPI_BASE_URL=http://127.0.0.1:3001/v1" >> "$GITHUB_ENV"
           echo "FREELLMAPI_MODEL=gemini-3.5-flash-lite" >> "$GITHUB_ENV"
-          echo "LLM_FALLBACK_PROVIDER=cloudflare,huggingface,gemini" >> "$GITHUB_ENV"
+          echo "LLM_FALLBACK_PROVIDER=${{ steps.provider_preflight.outputs.fallback_chain }},gemini" >> "$GITHUB_ENV"
 
       - name: Create or verify ten public YouTube playlists
         if: steps.prepare.outputs.claimed == 'true' && inputs.create_public_playlists == true
@@ -203,7 +204,7 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: gemini-3.5-flash-lite
           LLM_PROVIDER: ${{ inputs.llm_provider }}
-          LLM_FALLBACK_PROVIDER: cloudflare,huggingface,gemini
+          LLM_FALLBACK_PROVIDER: ${{ steps.provider_preflight.outputs.fallback_chain }},gemini
           FREELLMAPI_BASE_URL: http://127.0.0.1:3001/v1
           FREELLMAPI_MODEL: gemini-3.5-flash-lite
           CHATTERBOX_ENABLED: ${{ vars.CHATTERBOX_ENABLED }}
