@@ -2,12 +2,12 @@
 
 ## Scope
 
-The daily ten-unit workflow defaults to FreeLLMAPI and uses independent Cloudflare Workers AI and Hugging Face fallbacks before the direct Gemini endpoint. It remains manual-only until live reliability and full-pack validation are complete. The workflow does not publish videos or create public playlists unless separate opt-ins are selected.
+The daily ten-unit workflow defaults to FreeLLMAPI and uses a live-verified Cloudflare Workers AI Free-plan fallback before the direct Gemini endpoint. It remains manual-only until live reliability and full-pack validation are complete. The workflow does not publish videos or create public playlists unless separate opt-ins are selected.
 
 ## Run configuration
 
 1. Open **Actions → DigvijayEconLab daily ten-unit production pack → Run workflow**.
-2. The default is now `freellmapi`, which activates the independent fallback chain. Selecting `gemini` bypasses Cloudflare/Hugging Face fallback and uses only direct Gemini.
+2. The default is `freellmapi`, which activates the Cloudflare Free-plan preflight and fallback. Selecting `gemini` bypasses the independent provider and uses only direct Gemini.
 3. Keep **Create public playlists** and **Authorize private staging uploads** disabled unless separately intended.
 4. Inspect the complete artifact and human-review reports before any release.
 
@@ -23,18 +23,18 @@ The FreeLLMAPI source is pinned to upstream commit `fb07845faf7cf986ea9f3692e055
 
 ## Fallback behavior
 
-Before a FreeLLMAPI production pack is claimed, `scripts/provider_preflight.py` tests every configured independent provider using a small bilingual Economics request. The daily workflow stops before claiming work if no independent provider passes. Each configured provider is tested separately; failed optional providers are logged and excluded from that run's fallback chain. The smoke workflow runs the same preflight before building FreeLLMAPI. The probe deliberately forces the FreeLLMAPI endpoint unavailable so it verifies the independent route, not the Google-backed primary route.
+Before a FreeLLMAPI production pack is claimed, `scripts/provider_preflight.py` sends a short bilingual probe to Cloudflare Workers AI. The daily workflow stops before claiming work if Cloudflare credentials are absent, invalid, or its free daily allocation is exhausted. The smoke workflow runs the same check before building FreeLLMAPI. The probe deliberately forces the FreeLLMAPI endpoint unavailable so it verifies the independent route, not the Google-backed primary route.
 
-At runtime, if FreeLLMAPI cannot serve a request after its bounded retry policy, the adapter tries the configured fallback chain in order: Cloudflare Workers AI, Hugging Face Inference Providers, then direct Gemini.
+At runtime, the strict zero-cost fallback order is Cloudflare Workers AI, then direct Gemini. Gemini shares the Google AI Studio credential/quota with FreeLLMAPI and is not an independent quota pool.
 
-- **Cloudflare Workers AI** uses the optional `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` repository secrets and the OpenAI-compatible account endpoint. The default model is `@cf/meta/llama-3.2-3b-instruct` (the previous `@cf/meta/llama-3.1-8b-instruct` model was deprecated on May 30, 2026). Create a token with the minimum Workers AI permissions required by the Cloudflare API.
-- **Hugging Face** uses the dedicated `HF_INFERENCE_TOKEN` secret and `https://router.huggingface.co/v1/chat/completions`. Keep the existing `HF_TOKEN` separate for Chatterbox/Space access; do not overwrite it just to add inference permissions. The default fallback model is `Qwen/Qwen3-4B-Instruct-2507:cheapest`. Create a separate fine-grained token with the **Make calls to Inference Providers** permission and save it as `HF_INFERENCE_TOKEN` in GitHub Actions secrets. The live test previously showed that the existing `HF_TOKEN` lacks this permission (HTTP 403). A general Hub read token alone is insufficient.
-- **Gemini** remains the final endpoint fallback and shares the Google AI Studio credential/quota with FreeLLMAPI. It is not an independent quota pool.
-- Cloudflare Workers Free currently includes 10,000 Workers AI neurons per day. To keep that route at zero cost, the Cloudflare account must remain on the Free plan; Workers Paid charges $0.011 per 1,000 neurons above the daily free allocation. The repository cannot detect or override the account's billing plan, so do not upgrade or attach paid billing for this workflow. Hugging Face currently lists $0.10/month of Inference Provider credits for Free users, subject to change; additional usage requires purchased credits. Gemini free-tier limits are project/model-specific and capacity is not guaranteed. None of these providers guarantees enough free capacity for a 10-unit daily batch.
-- The workflow does not purchase credits or enable a paid plan. If free capacity is exhausted, the request should fail visibly and the batch remains incomplete. Do not add a paid billing method to bypass quotas.
-- Retries are bounded and respect provider retry hints. The pipeline stops with an explicit error if all configured providers fail.
+- **Cloudflare Workers AI** uses the repository secrets `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`. The default model is `@cf/meta/llama-3.2-3b-instruct`, which Cloudflare lists for multilingual dialogue. Create the token from the Workers AI dashboard's REST API setup, or give a custom token both `Workers AI - Read` and `Workers AI - Edit` permissions.
+- **Hugging Face routed Inference Providers are disabled in strict zero-cost mode.** Current Hugging Face pricing says Free users receive no included monthly Inference Provider credits; routed calls require purchased credits or a paid PRO subscription. The new `HF_INFERENCE_TOKEN` secret is therefore not passed to production or smoke workflows and is not used. Keep `HF_TOKEN` separate for Chatterbox/Space access. Do not purchase credits or add a provider-specific paid key for this setup.
+- **Cloudflare Free allocation:** Workers AI Free provides 10,000 neurons per day at no charge. Requests above the allocation fail on the Free plan; do not upgrade to Workers Paid to bypass the limit. The account must remain on the Workers Free plan. Cloudflare documents the daily allowance and that usage beyond it requires Workers Paid.
+- **Gemini** remains a final endpoint fallback. Since it shares the same Google provider/quota with FreeLLMAPI, it may not recover from Google rate limits or outages.
+- The workflow does not purchase credits, add a payment method, or enable a paid plan. If Cloudflare free capacity is exhausted and Gemini is unavailable, the batch fails visibly and remains incomplete.
+- Retries are bounded and respect provider retry hints. The production workflow stops if the independent Cloudflare live preflight fails.
 
-Cloudflare credentials are optional. Without them, Cloudflare is skipped and the adapter proceeds to Hugging Face. The preflight checks all configured provider credentials individually; if a configured token is invalid, it is excluded from that run; at least one independent provider must pass. Fix its permission or remove an incomplete/unused secret to restore it to the chain.
+Cloudflare credentials are required for the default FreeLLMAPI production mode. Without them, the preflight fails before a production pack is claimed. No Hugging Face API call is attempted in this zero-cost configuration.
 
 ## Android and narration dependencies
 
@@ -54,8 +54,7 @@ Cloudflare credentials are optional. Without them, Cloudflare is skipped and the
 ## Required repository secrets
 
 - `GEMINI_API_KEY`: direct Gemini endpoint and final endpoint fallback.
-- `HF_INFERENCE_TOKEN`: fine-grained Hugging Face token with **Make calls to Inference Providers** permission. Keep it separate from `HF_TOKEN` used by Chatterbox/Space integrations.
-- `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`: optional Cloudflare Workers AI fallback credentials.
+- `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`: required for the zero-cost independent Cloudflare Workers AI fallback in default FreeLLMAPI mode.
 - `GOOGLE_AI_STUDIO_API_KEY`: preferred upstream Google provider key for the temporary FreeLLMAPI instance. If absent, the workflow falls back to `GEMINI_API_KEY`.
 
 Never put secret values in repository files, workflow inputs, artifacts, or chat messages.

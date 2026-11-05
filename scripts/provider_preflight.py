@@ -1,7 +1,9 @@
-"""Verify every configured independent LLM fallback before production work is claimed.
+"""Verify a genuinely zero-cost independent provider before production is claimed.
 
-The probe deliberately points FreeLLMAPI at an unused localhost port so each configured
-independent provider is called directly through the normal adapter fallback path.
+Hugging Face routed Inference Providers are intentionally excluded from this
+zero-cost path: current Hugging Face pricing grants Free users no included
+monthly inference credits. Cloudflare Workers AI Free is the independent
+provider supported by this preflight.
 """
 import os
 import sys
@@ -40,15 +42,20 @@ def configured_independent_providers(environ=None):
         warnings.append(
             "Cloudflare skipped: both CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN are required."
         )
+
     if hf_token:
-        providers.append("huggingface")
+        warnings.append(
+            "Hugging Face routed inference is disabled in strict zero-cost mode: "
+            "Free users have no included monthly Inference Provider credits."
+        )
 
     if not providers:
         detail = " ".join(warnings)
         raise RuntimeError(
-            "No independent fallback credentials are configured. Add Cloudflare Workers AI "
-            "credentials or a HF_INFERENCE_TOKEN with 'Make calls to Inference Providers' permission. "
-            + detail
+            "No zero-cost independent fallback is configured. Add CLOUDFLARE_ACCOUNT_ID "
+            "and CLOUDFLARE_API_TOKEN for Cloudflare Workers AI on the Workers Free plan. "
+            "Hugging Face routed inference is not used because Free users have no included "
+            "monthly credits. " + detail
         )
     return providers, warnings
 
@@ -90,21 +97,23 @@ def run_preflight():
     if not passed:
         details = "; ".join(failures) or "No provider returned a valid response."
         raise RuntimeError(
-            "No independent provider passed live preflight. Correct credentials/permissions "
-            "before claiming a production pack. " + details
+            "No zero-cost independent provider passed live preflight. Correct credentials or "
+            "wait for the Cloudflare Free daily allocation to reset before claiming production. "
+            + details
         )
 
     chain = ",".join(passed)
-    print("LIVE_INDEPENDENT_PROVIDER_PREFLIGHT_PASS")
-    print("Verified independent providers:", chain)
+    print("LIVE_ZERO_COST_PROVIDER_PREFLIGHT_PASS")
+    print("Verified zero-cost independent providers:", chain)
     if failures:
-        print("WARNING: providers not enabled in this run:", "; ".join(failures))
+        print("NOTICE: non-zero-cost or unavailable routes excluded:", "; ".join(failures))
     output_path = os.environ.get("GITHUB_OUTPUT")
     if output_path:
         with open(output_path, "a", encoding="utf-8") as output:
             output.write(f"fallback_chain={chain}\n")
     os.environ["LLM_FALLBACK_PROVIDER"] = chain
     return passed
+
 
 def main():
     try:

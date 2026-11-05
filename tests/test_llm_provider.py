@@ -126,54 +126,24 @@ class FreeLLMAPIAdapterTests(unittest.TestCase):
         "LLM_PROVIDER": "freellmapi",
         "LLM_FALLBACK_PROVIDER": "huggingface,gemini",
         "FREELLMAPI_API_KEY": "temporary-unified-key",
-        "FREELLMAPI_BASE_URL": "http://127.0.0.1:3001/v1",
+        "FREELLMAPI_BASE_URL": "http://127.0.0.1:3999/v1",
         "HF_INFERENCE_TOKEN": "temporary-hf-token",
-        "HF_FALLBACK_MODEL": "Qwen/Qwen3-4B-Instruct-2507:cheapest",
-    })
+        "GEMINI_API_KEY": "",
+    }, clear=True)
     @patch("scripts.llm_provider.time.sleep")
     @patch("scripts.llm_provider.urllib.request.urlopen")
-    def test_uses_independent_huggingface_fallback_after_freellmapi_failure(self, urlopen, _sleep):
-        primary_error = llm_provider.urllib.error.HTTPError(
-            "http://127.0.0.1:3001/v1/chat/completions",
-            503, "Unavailable", {}, io.BytesIO(b"temporary failure"),
-        )
-        success = io.BytesIO(json.dumps({
-            "choices": [{"message": {"content": "Independent fallback answer."}, "finish_reason": "stop"}]
-        }).encode("utf-8"))
-        urlopen.side_effect = [primary_error] * llm_provider.MAX_ATTEMPTS + [success]
+    def test_huggingface_is_skipped_in_strict_zero_cost_fallback(self, urlopen, _sleep):
+        urlopen.side_effect = llm_provider.urllib.error.URLError("local FreeLLMAPI unavailable")
         payload = {
             "contents": [{"role": "user", "parts": [{"text": "Explain opportunity cost."}]}],
             "generationConfig": {"temperature": 0.1, "maxOutputTokens": 100},
         }
-        result = llm_provider.generate_content("unused", None, payload, label="HF fallback test")
-        self.assertEqual(
-            result["candidates"][0]["content"]["parts"][0]["text"],
-            "Independent fallback answer.",
-        )
-        request = urlopen.call_args.args[0]
-        self.assertEqual(request.full_url, "https://router.huggingface.co/v1/chat/completions")
-        self.assertEqual(request.get_header("Authorization"), "Bearer temporary-hf-token")
-        body = json.loads(request.data.decode("utf-8"))
-        self.assertEqual(body["model"], "Qwen/Qwen3-4B-Instruct-2507:cheapest")
-
-    @patch.dict(os.environ, {"HF_INFERENCE_TOKEN": "temporary-hf-token"})
-    @patch("scripts.llm_provider.urllib.request.urlopen")
-    def test_huggingface_fallback_honors_retry_after(self, urlopen):
-        limited = llm_provider.urllib.error.HTTPError(
-            "https://router.huggingface.co/v1/chat/completions",
-            429, "rate limited", {"Retry-After": "7"}, io.BytesIO(b"{}"),
-        )
-        success = io.BytesIO(json.dumps({
-            "choices": [{"message": {"content": "Recovered."}, "finish_reason": "stop"}]
-        }).encode("utf-8"))
-        urlopen.side_effect = [limited, success]
-        with patch("scripts.llm_provider.time.sleep") as sleep:
-            result = llm_provider._generate_huggingface(
-                {"contents": [{"role": "user", "parts": [{"text": "test"}]}]}
-            )
-        self.assertEqual(result["candidates"][0]["content"]["parts"][0]["text"], "Recovered.")
-        sleep.assert_called_once_with(7)
-
+        with self.assertRaisesRegex(RuntimeError, "FreeLLMAPI connection failed"):
+            llm_provider.generate_content("unused", None, payload, label="Strict zero-cost test")
+        requested_urls = [call.args[0].full_url for call in urlopen.call_args_list]
+        self.assertEqual(len(requested_urls), llm_provider.MAX_ATTEMPTS)
+        self.assertTrue(all("127.0.0.1:3999" in url for url in requested_urls))
+        self.assertFalse(any("router.huggingface.co" in url for url in requested_urls))
 
     @patch.dict(os.environ, {
         "LLM_PROVIDER": "freellmapi",

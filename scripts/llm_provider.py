@@ -242,8 +242,11 @@ def generate_content(api_url, api_key, payload, label="LLM request", timeout=150
                     print(f"{label}: FreeLLMAPI unavailable; trying Cloudflare Workers AI fallback.")
                     return _generate_cloudflare(payload, label=f"{label} Cloudflare fallback", timeout=timeout)
                 if fallback in {"huggingface", "hf"}:
-                    print(f"{label}: FreeLLMAPI unavailable; trying Hugging Face Inference Providers fallback.")
-                    return _generate_huggingface(payload, label=f"{label} Hugging Face fallback", timeout=timeout)
+                    print(
+                        f"{label}: Hugging Face routed inference skipped in strict zero-cost mode; "
+                        "Free users have no included monthly Inference Provider credits."
+                    )
+                    continue
                 if fallback == "gemini":
                     fallback_key = os.environ.get("GEMINI_API_KEY")
                     if not fallback_key:
