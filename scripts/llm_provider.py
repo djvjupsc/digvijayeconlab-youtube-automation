@@ -46,6 +46,11 @@ def get_api_key():
         if not key:
             raise RuntimeError("FREELLMAPI_API_KEY is required when LLM_PROVIDER=freellmapi.")
         return key
+    if provider == "omniroute":
+        key = os.environ.get("OMNIROUTE_API_KEY")
+        if not key:
+            raise RuntimeError("OMNIROUTE_API_KEY is required when LLM_PROVIDER=omniroute.")
+        return key
     key = os.environ.get("GEMINI_API_KEY")
     if not key:
         raise RuntimeError("GEMINI_API_KEY is required when LLM_PROVIDER=gemini.")
@@ -100,6 +105,43 @@ def _normalize_openai_response(response):
         }],
         "modelVersion": response.get("model", ""),
     }
+
+
+def _generate_omniroute(payload, label="LLM request", timeout=150):
+    """Call a locally hosted OmniRoute OpenAI-compatible gateway."""
+    base_url = os.environ.get("OMNIROUTE_BASE_URL", "http://127.0.0.1:20128/v1").rstrip("/")
+    model = os.environ.get("OMNIROUTE_MODEL", "auto")
+    request_data = json.dumps({**_to_openai_payload(payload), "model": model}).encode("utf-8")
+    url = base_url + "/chat/completions"
+    request = urllib.request.Request(
+        url,
+        data=request_data,
+        headers={
+            "Authorization": f"Bearer {os.environ['OMNIROUTE_API_KEY']}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        try:
+            with urllib.request.urlopen(request, timeout=timeout) as response:
+                return _normalize_openai_response(json.loads(response.read().decode("utf-8")))
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="replace")[:1000]
+            if exc.code not in RETRYABLE_HTTP_STATUS or attempt == MAX_ATTEMPTS:
+                raise RuntimeError(f"{label} via OmniRoute failed (HTTP {exc.code}): {detail}") from exc
+            delay = _retry_delay_seconds(exc, detail, attempt) if exc.code == 429 else min(30, 2 ** attempt)
+            if delay > MAX_RATE_LIMIT_WAIT_SECONDS:
+                raise RuntimeError(f"{label} via OmniRoute rate limit exceeds wait ceiling ({delay}s).") from exc
+            print(f"{label}: OmniRoute temporary HTTP {exc.code}; retrying in {delay}s.")
+            time.sleep(delay)
+        except (urllib.error.URLError, TimeoutError) as exc:
+            if attempt == MAX_ATTEMPTS:
+                raise RuntimeError(f"{label} via OmniRoute connection failed: {exc}") from exc
+            delay = 2 ** attempt
+            print(f"{label}: OmniRoute connection issue; retrying in {delay}s.")
+            time.sleep(delay)
+    raise RuntimeError(f"{label} via OmniRoute failed without a response.")
 
 
 def _generate_cloudflare(payload, label="LLM request", timeout=150):
@@ -184,6 +226,10 @@ def generate_content(api_url, api_key, payload, label="LLM request", timeout=150
         from .gemini_client import generate_content as gemini_generate
     except ImportError:
         from gemini_client import generate_content as gemini_generate
+
+    if provider == "omniroute":
+        get_api_key()
+        return _generate_omniroute(payload, label=label, timeout=timeout)
 
     if provider != "freellmapi":
         return gemini_generate(api_url, api_key, payload, label=label, timeout=timeout)
