@@ -40,6 +40,23 @@ Cloudflare credentials are optional GitHub repository secrets:
 
 Create a narrowly scoped token using Cloudflare's **Workers AI - Read** and **Workers AI - Edit** permissions. Do not put the token in source code, chat, workflow inputs or artifacts. Keep the Cloudflare account on the Workers Free plan if you do not authorize paid usage.
 
+### Configure the independent fallback credentials
+
+**Hugging Face (required unless Cloudflare is configured):**
+1. Open [Hugging Face Access Tokens](https://huggingface.co/settings/tokens).
+2. Create a **fine-grained** token.
+3. Enable the specific permission **Make calls to Inference Providers**.
+4. Replace the GitHub repository secret named `HF_TOKEN` with this new token under **Settings → Secrets and variables → Actions**. Do not paste the token into chat or a source file. The existing token used for dataset downloads may not include this permission; the live smoke run returned HTTP 403 until it is granted.
+
+**Cloudflare Workers AI (recommended optional independent fallback):**
+1. In the Cloudflare dashboard, open **Workers & Pages → AI → Workers AI → Use REST API**.
+2. Create a Workers AI API token, or create a custom token with only **Workers AI - Read** and **Workers AI - Edit**.
+3. Copy the Account ID from that page.
+4. Add repository Actions secrets named `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`.
+5. Keep the account on the **Workers Free** plan if paid usage is not authorized. Do not attach/upgrade to a paid plan for this project.
+
+The smoke test now checks the independent provider before installing the heavier video/voice test dependencies or building FreeLLMAPI. It makes one short request and fails early with a visible reason if credentials are not configured.
+
 The smoke workflow includes one deliberately short live fallback probe. It makes the local FreeLLMAPI endpoint unavailable for that single test call, then tests Cloudflare first (when configured) and Hugging Face next. It does not use Gemini as part of this probe.
 
 ## Voice and video
