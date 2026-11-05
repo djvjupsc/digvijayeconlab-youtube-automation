@@ -9,6 +9,14 @@ on:
         required: false
         type: boolean
         default: false
+      llm_provider:
+        description: "AI provider for all lesson and daily asset generation (FreeLLMAPI requires the Google AI Studio secret)"
+        required: true
+        type: choice
+        options:
+          - gemini
+          - freellmapi
+        default: gemini
       resume_from_run_id:
         description: "Optional previous failed workflow run ID; reuse only lesson packages with matching topics and a passing academic gate"
         required: false
@@ -89,6 +97,66 @@ jobs:
         run: |
           echo "Claimed run $GITHUB_RUN_ID for publication date ${{ steps.prepare.outputs.publication_date }}."
           echo "Production state is finalized from workflow outcome; no branch push is required."
+      - name: Start temporary FreeLLMAPI for production generation
+        if: steps.prepare.outputs.claimed == 'true' && inputs.llm_provider == 'freellmapi'
+        env:
+          GOOGLE_AI_STUDIO_API_KEY: ${{ secrets.GOOGLE_AI_STUDIO_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          set -euo pipefail
+          PROVIDER_KEY="${GOOGLE_AI_STUDIO_API_KEY:-$GEMINI_API_KEY}"
+          test -n "$PROVIDER_KEY" || { echo "Missing GOOGLE_AI_STUDIO_API_KEY (or existing GEMINI_API_KEY fallback) repository secret."; exit 1; }
+          echo "::add-mask::$PROVIDER_KEY"
+          export HOST=127.0.0.1
+          export PORT=3001
+          export NODE_ENV=production
+          export ENCRYPTION_KEY="$(node -e 'console.log(require("crypto").randomBytes(32).toString("hex"))')"
+          export FREEAPI_DB_PATH="$RUNNER_TEMP/freellmapi-production.sqlite"
+          export CI_ADMIN_PASSWORD="$(node -e 'console.log(require("crypto").randomBytes(24).toString("base64url"))')"
+          echo "::add-mask::$CI_ADMIN_PASSWORD"
+          echo "CI_ADMIN_PASSWORD=$CI_ADMIN_PASSWORD" >> "$GITHUB_ENV"
+          export FREEAPI_CONFIG_JSON="$(PROVIDER_KEY="$PROVIDER_KEY" node -e '
+            const config = {
+              admin: { email: "ci-admin@example.com", password: process.env.CI_ADMIN_PASSWORD },
+              keys: [{ platform: "google", key: process.env.PROVIDER_KEY, label: "DigvijayEconLab production run", enabled: true }],
+              models: [{ platform: "google", modelId: "gemini-3.5-flash-lite", displayName: "Gemini Flash Lite", fallbackEnabled: true }],
+              routing: { strategy: "balanced" }
+            };
+            process.stdout.write(JSON.stringify(config));
+          ')"
+          git clone --depth 1 https://github.com/tashfeenahmed/freellmapi.git "$RUNNER_TEMP/freellmapi"
+          cd "$RUNNER_TEMP/freellmapi"
+          npm ci
+          npm run build
+          nohup node server/dist/index.js > "$RUNNER_TEMP/freellmapi-production.log" 2>&1 &
+          echo "$!" > "$RUNNER_TEMP/freellmapi-production.pid"
+          for attempt in $(seq 1 60); do
+            if curl --silent --fail http://127.0.0.1:3001/api/auth/status >/dev/null; then
+              echo "Temporary FreeLLMAPI is ready on localhost."
+              exit 0
+            fi
+            sleep 2
+          done
+          tail -n 80 "$RUNNER_TEMP/freellmapi-production.log"
+          exit 1
+
+      - name: Retrieve masked temporary FreeLLMAPI key
+        if: steps.prepare.outputs.claimed == 'true' && inputs.llm_provider == 'freellmapi'
+        run: |
+          set -euo pipefail
+          LOGIN="$(curl --silent --show-error --fail -H 'Content-Type: application/json' \
+            -d "$(node -e 'process.stdout.write(JSON.stringify({email:"ci-admin@example.com",password:process.env.CI_ADMIN_PASSWORD}))')" \
+            http://127.0.0.1:3001/api/auth/login)"
+          TOKEN="$(node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>process.stdout.write(JSON.parse(s).token))' <<< "$LOGIN")"
+          KEY_RESPONSE="$(curl --silent --show-error --fail -H "Authorization: Bearer $TOKEN" http://127.0.0.1:3001/api/settings/api-key)"
+          UNIFIED_KEY="$(node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>process.stdout.write(JSON.parse(s).apiKey))' <<< "$KEY_RESPONSE")"
+          test -n "$UNIFIED_KEY"
+          echo "::add-mask::$UNIFIED_KEY"
+          echo "FREELLMAPI_API_KEY=$UNIFIED_KEY" >> "$GITHUB_ENV"
+          echo "FREELLMAPI_BASE_URL=http://127.0.0.1:3001/v1" >> "$GITHUB_ENV"
+          echo "FREELLMAPI_MODEL=gemini-3.5-flash-lite" >> "$GITHUB_ENV"
+          echo "LLM_FALLBACK_PROVIDER=gemini" >> "$GITHUB_ENV"
+
       - name: Create or verify ten public YouTube playlists
         if: steps.prepare.outputs.claimed == 'true' && inputs.create_public_playlists == true
         continue-on-error: true
@@ -112,6 +180,10 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: gemini-3.5-flash-lite
+          LLM_PROVIDER: ${{ inputs.llm_provider }}
+          LLM_FALLBACK_PROVIDER: gemini
+          FREELLMAPI_BASE_URL: http://127.0.0.1:3001/v1
+          FREELLMAPI_MODEL: gemini-3.5-flash-lite
           CHATTERBOX_ENABLED: ${{ vars.CHATTERBOX_ENABLED }}
           CHATTERBOX_SPACE: ${{ vars.CHATTERBOX_SPACE }}
           CHATTERBOX_REFERENCE_REPO: ${{ vars.CHATTERBOX_REFERENCE_REPO }}
@@ -125,6 +197,14 @@ jobs:
             RESUME_ARGS+=(--resume-from-dir resume-artifact)
           fi
           python scripts/daily_production.py process --manifest output/daily_manifest.json "${RESUME_ARGS[@]}"
+
+      - name: Stop temporary FreeLLMAPI after generation
+        if: always() && steps.prepare.outputs.claimed == 'true' && inputs.llm_provider == 'freellmapi'
+        run: |
+          if [ -f "$RUNNER_TEMP/freellmapi-production.pid" ]; then
+            kill "$(cat "$RUNNER_TEMP/freellmapi-production.pid")" 2>/dev/null || true
+          fi
+          rm -f "$RUNNER_TEMP/freellmapi-production.sqlite" "$RUNNER_TEMP/freellmapi-production.sqlite-wal" "$RUNNER_TEMP/freellmapi-production.sqlite-shm"
 
       - name: Render branded 16:9 thumbnails for all ten units
         if: steps.prepare.outputs.claimed == 'true'
