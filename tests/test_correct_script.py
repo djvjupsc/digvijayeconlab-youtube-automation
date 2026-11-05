@@ -156,6 +156,7 @@ class StructuredCorrectionTests(unittest.TestCase):
     def test_repairs_opportunity_cost_bilingual_parity_cost_types_and_source_claim(self):
         source = "\\n".join([
             "(एक वस्तु के अधिक उत्पादन की अवसर लागत दूसरी वस्तु की छोड़ी जाने वाली मात्रा से मापी जाती है।)",
+            "असीमित मानवीय आवश्यकताओं और संसाधनों की दुर्लता के कारण चयन करना पड़ता है।",
             "If an individual leaves a job paying ₹50,000 per year to start a business, and incurs no other explicit costs besides buying ₹20,000 worth of supplies, what is the implicit cost of starting the business? [VERIFY]",
             "The implicit cost is the forgone salary from the previous job (₹50,000) because it represents the value of the resource supplied by the owner without an explicit cash transaction. (Note: Specific numerical values are illustrative).",
             "निहित लागत पिछली नौकरी से छोड़ा गया वेतन (₹50,000) है क्योंकि यह बिना किसी स्पष्ट नकद लेनदेन के मालिक द्वारा आपूर्ति किए गए संसाधन के मूल्य का प्रतिनिधित्व करता है।",
@@ -163,6 +164,8 @@ class StructuredCorrectionTests(unittest.TestCase):
         ])
         repaired, changes = apply_known_editorial_repairs(source)
         self.assertIn("अवतल PPF बढ़ती अवसर लागत को दर्शाता है।", repaired)
+        self.assertIn("असीमित मानवीय इच्छाओं", repaired)
+        self.assertIn("संसाधनों की दुर्लभता", repaired)
         self.assertIn("forgone salary is the only implicit cost", repaired)
         self.assertIn("supplies are an explicit cost", repaired)
         self.assertIn("The ₹20,000 spent on supplies is an explicit cost", repaired)
