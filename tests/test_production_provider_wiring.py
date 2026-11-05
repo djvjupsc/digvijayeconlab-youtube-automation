@@ -56,6 +56,7 @@ class ProductionProviderWiringTests(unittest.TestCase):
         freeapi_build = workflow.index("Download and build FreeLLMAPI")
         font_install = workflow.index("Install Devanagari font and eSpeak test tools")
         dependency_install = workflow.index("Install Python test dependencies")
+        preflight_script = (ROOT / "scripts/provider_preflight.py").read_text(encoding="utf-8")
         self.assertLess(probe, node)
         self.assertLess(probe, freeapi_build)
         self.assertLess(probe, font_install)
