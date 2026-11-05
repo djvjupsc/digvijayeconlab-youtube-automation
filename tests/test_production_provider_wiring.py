@@ -18,6 +18,7 @@ class ProductionProviderWiringTests(unittest.TestCase):
         self.assertIn("Stop temporary FreeLLMAPI after generation", workflow)
         self.assertIn("LLM_FALLBACK_PROVIDER: cloudflare,huggingface,gemini", workflow)
         self.assertIn("HF_TOKEN: ${{ secrets.HF_TOKEN }}", workflow)
+        self.assertIn("HF_INFERENCE_TOKEN: ${{ secrets.HF_INFERENCE_TOKEN }}", workflow)
         self.assertIn("CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}", workflow)
         self.assertIn("contents: write", workflow)
         self.assertIn("git push origin HEAD:main", workflow)
@@ -54,6 +55,8 @@ class ProductionProviderWiringTests(unittest.TestCase):
         self.assertLess(probe, font_install)
         self.assertLess(probe, dependency_install)
         self.assertIn("Make calls to Inference Providers permission", workflow)
+        self.assertIn("HF_INFERENCE_TOKEN", workflow)
+        self.assertIn("Keep HF_TOKEN unchanged", workflow)
 
 
 if __name__ == "__main__":
