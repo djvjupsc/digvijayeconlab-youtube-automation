@@ -9,6 +9,11 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+try:
+    from .llm_provider import generate_content, get_api_key
+except ImportError:
+    from llm_provider import generate_content, get_api_key
+
 MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
 API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
 
@@ -83,43 +88,11 @@ SCHEMA = {
 
 
 def call_gemini(api_key, payload, max_attempts=5, backoff_seconds=3):
-    """Call Gemini with bounded exponential retries for transient service failures."""
-    request = urllib.request.Request(
-        API_URL,
-        data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
-        headers={"x-goog-api-key": api_key, "Content-Type": "application/json"},
-        method="POST",
-    )
-    transient_http_codes = {408, 429, 500, 502, 503, 504}
-    for attempt in range(1, max_attempts + 1):
-        try:
-            with urllib.request.urlopen(request, timeout=150) as response:
-                return json.loads(response.read().decode("utf-8"))
-        except urllib.error.HTTPError as exc:
-            detail = exc.read().decode("utf-8", errors="replace")[:1200]
-            if exc.code not in transient_http_codes or attempt >= max_attempts:
-                raise SystemExit(
-                    f"Gemini daily-asset generation failed (HTTP {exc.code}) "
-                    f"after {attempt}/{max_attempts} attempt(s): {detail}"
-                ) from exc
-            delay = backoff_seconds * (2 ** (attempt - 1))
-            print(
-                f"Gemini daily-asset generation: temporary HTTP {exc.code}; "
-                f"retry {attempt + 1}/{max_attempts} in {delay}s.",
-                flush=True,
-            )
-            time.sleep(delay)
-        except (urllib.error.URLError, TimeoutError) as exc:
-            if attempt >= max_attempts:
-                raise SystemExit(
-                    f"Gemini daily-asset connection failed after {attempt}/{max_attempts} attempts: {exc}"
-                ) from exc
-            delay = backoff_seconds * (2 ** (attempt - 1))
-            print(
-                f"Gemini daily-asset connection error; retry {attempt + 1}/{max_attempts} in {delay}s: {exc}",
-                flush=True,
-            )
-            time.sleep(delay)
+    """Use the shared provider adapter; Gemini remains the default and fallback."""
+    try:
+        return generate_content(API_URL, api_key, payload, label="Daily asset generation", timeout=180)
+    except RuntimeError as exc:
+        raise SystemExit(str(exc)) from exc
 
 
 def validate(data, expected_playlist_titles=None):
@@ -188,9 +161,10 @@ def main():
         raise SystemExit("Usage: generate_daily_assets.py DAILY_MANIFEST.json")
     manifest_path = Path(sys.argv[1])
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        raise SystemExit("GEMINI_API_KEY is not configured.")
+    try:
+        api_key = get_api_key()
+    except RuntimeError as exc:
+        raise SystemExit(str(exc)) from exc
 
     topics = "\n".join(
         f"Unit {item['unit']}: {item['unit_name']} — {item['topic']}"
