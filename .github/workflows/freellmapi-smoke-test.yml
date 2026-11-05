@@ -151,7 +151,7 @@ jobs:
           LLM_PROVIDER: freellmapi
           FREELLMAPI_BASE_URL: http://127.0.0.1:3001/v1
           FREELLMAPI_MODEL: gemini-3.5-flash-lite
-          LLM_FALLBACK_PROVIDER: huggingface,gemini
+          LLM_FALLBACK_PROVIDER: cloudflare,huggingface,gemini
           SCRIPT_UNIT: FreeLLMAPI integration validation
           SCRIPT_LANGUAGE: Bilingual
           SCRIPT_FORMAT: MCQ Set
