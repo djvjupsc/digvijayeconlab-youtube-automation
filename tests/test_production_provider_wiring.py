@@ -47,7 +47,7 @@ class ProductionProviderWiringTests(unittest.TestCase):
         self.assertIn("CLOUDFLARE_FALLBACK_MODEL: \"@cf/meta/llama-3.2-3b-instruct\"", workflow)
         self.assertIn("python scripts/provider_preflight.py", workflow)
         self.assertIn("id: provider_preflight", workflow)
-        self.assertIn("id: provider_preflight", workflow)
+        self.assertIn("LLM_FALLBACK_PROVIDER=${{ steps.provider_preflight.outputs.fallback_chain }},gemini", workflow)
         preflight_script = (ROOT / "scripts/provider_preflight.py").read_text(encoding="utf-8")
         self.assertIn("Make calls to Inference Providers", preflight_script)
         self.assertIn("LIVE_INDEPENDENT_PROVIDER_PREFLIGHT_PASS", preflight_script)
