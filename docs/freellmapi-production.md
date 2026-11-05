@@ -44,7 +44,7 @@ Cloudflare credentials are optional. Without them, Cloudflare is skipped and the
 ## Cost and publication safeguards
 
 - No billing setup or paid service is enabled by this workflow.
-- GitHub Actions usage remains subject to the repository's included Actions quota. For a private repository on GitHub Free, the published allowance is 2,000 minutes/month and 500 MB storage; other plans have different allowances. A full production run can consume a material share of that monthly budget. Keep Actions budget/overage controls configured to stop rather than purchase extra usage.
+- GitHub Actions usage remains subject to the repository owner's included compute allowance. GitHub's current plan table lists $12/month of included compute usage and 500 MB Actions storage for GitHub Free; this is expressed as a monetary compute allowance, not a fixed minutes quota. Standard hosted runners for private repositories draw from this amount. Usage beyond the allowance can be billed unless the owner configures a budget with 'Stop usage when budget limit is reached'. The repository automation cannot inspect or change the owner's billing budget. To preserve a strict zero-cost setup, configure the billing budget to stop usage and expect workflows to stop when the included allowance is exhausted.
 - FreeLLMAPI is not exposed to the public internet and is not hosted persistently.
 - The daily workflow defaults to FreeLLMAPI so the independent fallback chain is active. The workflow remains manual-only until a full production-readiness run passes.
 - Public playlist creation and private staging uploads remain separate, explicit workflow inputs and default to false.
