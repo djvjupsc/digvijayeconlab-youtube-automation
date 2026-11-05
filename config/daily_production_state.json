@@ -1,9 +1,10 @@
 {
   "version": 1,
   "completed_days": 0,
-  "last_claimed_date": null,
+  "last_claimed_date": "2026-11-05",
   "last_completed_date": null,
-  "last_status": null,
+  "last_status": "failed",
   "active_run_id": null,
-  "active_date": null
+  "active_date": null,
+  "active_day_index": null
 }
