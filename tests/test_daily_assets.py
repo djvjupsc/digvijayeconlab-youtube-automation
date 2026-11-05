@@ -48,7 +48,7 @@ class DailyAssetsValidationTests(unittest.TestCase):
 
 
     def test_call_gemini_uses_shared_provider_adapter(self):
-        expected = {"candidates": [{"content": {"parts": [{"text": "{\\"ok\\":true}"}]}}]}
+        expected = {"candidates": [{"content": {"parts": [{"text": "adapter response"}]}}]}
         with patch("scripts.generate_daily_assets.generate_content", return_value=expected) as adapter:
             result = call_gemini("test-key", {"contents": []})
         self.assertEqual(result, expected)
