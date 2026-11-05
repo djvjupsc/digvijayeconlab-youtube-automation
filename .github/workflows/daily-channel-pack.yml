@@ -297,7 +297,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-      - name: Finalize daily production report without pushing to main
+      - name: Finalize daily report and persist rotation state to main
         if: always() && steps.prepare.outputs.claimed == 'true'
         env:
           PACK_JOB_STATUS: ${{ job.status }}
