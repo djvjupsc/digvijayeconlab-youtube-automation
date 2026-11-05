@@ -4,7 +4,7 @@ Cloud-based educational content production for DigvijayEconLab.
 
 ## Current operating mode
 
-The **daily ten-unit production workflow** is scheduled for **08:00 Asia/Kolkata**. Each successful daily pack prepares material for the following publication date:
+The **daily ten-unit production workflow is currently manual-only**. Its 08:00 Asia/Kolkata schedule is intentionally disabled until the complete ten-unit run, provider quotas, voice path and state persistence have passed a production-readiness run. Each successful daily pack prepares material for the following publication date:
 
 - 10 bilingual full-lesson script packages: one lesson from every UGC NET Economics unit.
 - One bilingual 9:16 YouTube Short MP4 draft.
@@ -39,7 +39,7 @@ Public video publishing and automatic scheduling remain disabled. An optional up
 - `scripts/render_longform_video.py` — converts the featured corrected lesson into a 1920 × 1080 narrated slide-based MP4, validates the render, and marks it upload-eligible only when the owner-authorized Chatterbox voice was used.
 - `scripts/topic_queue.py` — manages the legacy one-topic queue.
 - `tests/` — offline unit, upload-safeguard, thumbnail and long-form parsing/render tests.
-- `.github/workflows/daily-channel-pack.yml` — scheduled daily ten-unit production pack at 08:00 IST.
+- `.github/workflows/daily-channel-pack.yml` — manual ten-unit production pack; it defaults to FreeLLMAPI with optional Cloudflare Workers AI and Hugging Face fallbacks. Scheduled execution is disabled until readiness is demonstrated.
 - `.github/workflows/script-draft.yml` — legacy single-topic workflow, manually triggered or triggered by changes to its separate topic queue.
 - `.github/workflows/quality-tests.yml` — runs code compilation, unit tests and plan validation on pull requests and main pushes.
 
@@ -80,7 +80,7 @@ The current rotation starts at the first topic listed for each unit in `config/u
 
 ## First daily pack
 
-The workflow's first scheduled run is **4 November 2026 at 08:00 IST**. It will prepare the publication pack for **5 November 2026**. This is one day ahead to allow review and editing.
+The original planning target was **4 November 2026 at 08:00 IST** for the first scheduled run, but the schedule remains disabled. Manual production runs must be reviewed before any release.
 
 ## Playlist setup
 
@@ -135,7 +135,7 @@ When Chatterbox is unavailable or disabled, eSpeak may be used to create a visua
 
 ## Gemini API and quota safeguards
 
-The workflow uses Gemini Developer API model `gemini-3.5-flash-lite` through the GitHub Actions secret `GEMINI_API_KEY`. Gemini Developer API access is separate from a Google AI Pro consumer subscription. Rate limits depend on the Google AI Studio project and model; check the active limits in AI Studio. This daily batch can require up to 41 sequential Gemini requests (10 scripts × generation/review/correction/re-review, plus one Short/Community generation request). The workflow spaces AI requests to reduce rate-limit pressure, but the free-tier project may still reject or exhaust the daily batch. No paid billing is configured. If quota is insufficient, reduce output volume or request a separate billing decision; do not bypass quality gates.
+The default workflow provider is FreeLLMAPI, which routes to the configured Google AI Studio model first. If that route fails, the adapter can try Cloudflare Workers AI (optional credentials), Hugging Face Inference Providers, then direct Gemini as a final endpoint fallback. Direct Gemini shares the same Google project quota as the FreeLLMAPI Google route. The ten-unit batch can require up to 41 model requests (10 lessons × generation/review/correction/re-review, plus one daily-assets generation request). Free quotas are finite and provider-specific; rate limits, shared service availability and monthly/daily allowances may cause a run to stop. Cloudflare Workers AI currently lists 10,000 free neurons per day on the Workers Free plan; Hugging Face currently lists $0.10 monthly Inference Provider credits for Free users, subject to change; Gemini free-tier limits depend on the model and project. The pipeline is configured not to purchase credits or enable paid billing. If a quota is exhausted, the run should fail visibly rather than silently switch to paid usage.
 
 Free-tier requests may be used by Google to improve its products. Do not submit personal, confidential or sensitive information.
 
@@ -173,7 +173,7 @@ Remove unused paid-scheduler credentials from GitHub Actions repository secrets 
 
 ## Free Chatterbox voice clone setup
 
-The preferred free narration provider is the official ResembleAI Chatterbox Multilingual V3 Hugging Face Space:
+The preferred no-fee narration provider is the official ResembleAI Chatterbox Multilingual V3 Hugging Face Space, but it is a shared, quota-limited service rather than a production SLA:
 https://huggingface.co/spaces/ResembleAI/Chatterbox-Multilingual-TTS-V3
 
 The Space supports Hindi and English reference-audio voice generation. Its current UI/API limit is 300 characters per request; the adapter splits longer narration at sentence/word boundaries and joins the returned WAV segments. It uses the documented Generate endpoint and the neutral settings (exaggeration 0.5, temperature 0.8, CFG/pace 0.5).
