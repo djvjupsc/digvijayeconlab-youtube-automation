@@ -226,6 +226,29 @@ def apply_known_editorial_repairs(text):
         if old in text:
             text = text.replace(old, new)
             changes.append(description)
+    # Opportunity Cost pilot: standardize the Q10 bilingual explanation and Hindi terminology.
+    q10_old = """**Explanation (Hindi/English):** 
+- **English:** A point inside the PPF indicates that the economy is producing less than its maximum potential due to unemployment or resource misallocation.
+- **Hindi:** PPF के अंदर एक बिंदु इंगित करता है कि बेरोजगारी या संसाधन दुर्विनियोजन के कारण अर्थव्यवस्था अपनी अधिकतम क्षमता से कम उत्पादन कर रही है।"""
+    q10_new = """**Explanation (English):** A point inside the PPF indicates that the economy is producing less than its maximum potential because some resources are unemployed or not being used efficiently.
+
+**Explanation (Hindi):** PPF के भीतर स्थित बिंदु यह दर्शाता है कि कुछ संसाधन बेरोजगार हैं या उनका कुशलतापूर्वक उपयोग नहीं हो रहा है; इसलिए अर्थव्यवस्था अपनी अधिकतम उत्पादन क्षमता से कम उत्पादन कर रही है।"""
+    if q10_old in text:
+        text = text.replace(q10_old, q10_new)
+        changes.append("Standardized Q10 with separate English and Hindi explanation labels and clearer Hindi wording for unemployment/inefficient resource use.")
+
+    hindi_terms = [
+        ("भूला हुआ वेतन", "त्यागा गया वेतन"),
+        ("भूला हुआ ब्याज", "त्यागा गया ब्याज"),
+        ("भूला हुआ रिटर्न", "त्यागा गया प्रतिफल"),
+        ("भूला हुआ किराया", "त्यागा गया किराया"),
+        ("निरंतर अवसर लागत", "स्थिर अवसर लागत"),
+    ]
+    for old, new in hindi_terms:
+        if old in text:
+            text = text.replace(old, new)
+            changes.append(f"Standardized Hindi translation of '{old}' as '{new}'.")
+
     return text, changes
 
 
@@ -273,7 +296,7 @@ For every bilingual recap bullet, compare the English and Hindi text clause by c
 any missing substantive statement, qualification or conclusion. Specifically retain the statement
 that a concave PPF reflects increasing opportunity costs in the Hindi PPF recap.
 For cost examples, distinguish explicit cash purchases from implicit opportunity costs.
-If the question asks only for implicit cost, explain that forgone salary is implicit and purchased
+For Hindi economics terminology, translate 'forgone' as 'त्यागा गया' or 'छोड़ा गया', never as 'भूला हुआ'; use 'स्थिर अवसर लागत' for constant opportunity cost.\nIf the question asks only for implicit cost, explain that forgone salary is implicit and purchased
 supplies are explicit; state assumptions clearly and distinguish the requested answer from total
 economic cost. Do not describe hypothetical arithmetic as needing an external source.
 Never claim alignment with official MPPSC curriculum or syllabus unless the relevant official
