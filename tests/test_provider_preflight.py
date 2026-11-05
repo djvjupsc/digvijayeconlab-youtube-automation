@@ -19,27 +19,32 @@ GOOD_RESPONSE = {
 
 
 class ProviderPreflightTests(unittest.TestCase):
-    def test_requires_at_least_one_independent_provider(self):
-        with self.assertRaisesRegex(RuntimeError, "No independent fallback credentials"):
+    def test_requires_cloudflare_for_zero_cost_independent_fallback(self):
+        with self.assertRaisesRegex(RuntimeError, "No zero-cost independent fallback"):
             provider_preflight.configured_independent_providers({})
 
-    def test_skips_partial_cloudflare_credentials_when_huggingface_is_configured(self):
-        providers, warnings = provider_preflight.configured_independent_providers({
-            "CLOUDFLARE_ACCOUNT_ID": "account-only",
-            "CLOUDFLARE_API_TOKEN": "",
-            "HF_INFERENCE_TOKEN": "hf-token",
-        })
-        self.assertEqual(providers, ["huggingface"])
-        self.assertTrue(any("Cloudflare skipped" in item for item in warnings))
+    def test_rejects_huggingface_only_even_when_inference_token_exists(self):
+        with self.assertRaisesRegex(RuntimeError, "Free users have no included monthly credits"):
+            provider_preflight.configured_independent_providers({
+                "HF_INFERENCE_TOKEN": "hf-token",
+            })
 
-    def test_lists_configured_providers_in_fallback_order(self):
+    def test_skips_partial_cloudflare_and_huggingface_in_zero_cost_mode(self):
+        with self.assertRaisesRegex(RuntimeError, "No zero-cost independent fallback"):
+            provider_preflight.configured_independent_providers({
+                "CLOUDFLARE_ACCOUNT_ID": "account-only",
+                "CLOUDFLARE_API_TOKEN": "",
+                "HF_INFERENCE_TOKEN": "hf-token",
+            })
+
+    def test_cloudflare_is_the_only_zero_cost_independent_provider(self):
         providers, warnings = provider_preflight.configured_independent_providers({
             "CLOUDFLARE_ACCOUNT_ID": "account",
-            "CLOUDFLARE_API_TOKEN": "token",
+            "CLOUDFLARE_API_TOKEN": "cloudflare-token",
             "HF_INFERENCE_TOKEN": "hf-token",
         })
-        self.assertEqual(providers, ["cloudflare", "huggingface"])
-        self.assertFalse(warnings)
+        self.assertEqual(providers, ["cloudflare"])
+        self.assertTrue(any("Hugging Face routed inference is disabled" in item for item in warnings))
 
     @patch.dict(os.environ, {
         "LLM_PROVIDER": "freellmapi",
@@ -51,14 +56,15 @@ class ProviderPreflightTests(unittest.TestCase):
     }, clear=True)
     @patch("scripts.provider_preflight.get_api_key", return_value="placeholder")
     @patch("scripts.provider_preflight.generate_content", return_value=GOOD_RESPONSE)
-    def test_checks_each_configured_independent_provider(self, generate, _key):
-        passed = provider_preflight.run_preflight()
-        self.assertEqual(passed, ["cloudflare", "huggingface"])
-        calls = [call.kwargs["label"] for call in generate.call_args_list]
-        self.assertEqual(calls, [
-            "Live cloudflare provider preflight",
-            "Live huggingface provider preflight",
-        ])
+    def test_live_preflight_tests_only_cloudflare_and_exports_chain(self, generate, _key):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output_path = Path(temp_dir) / "github-output.txt"
+            with patch.dict(os.environ, {"GITHUB_OUTPUT": str(output_path)}):
+                passed = provider_preflight.run_preflight()
+            self.assertEqual(passed, ["cloudflare"])
+            self.assertEqual(generate.call_count, 1)
+            self.assertEqual(generate.call_args.kwargs["label"], "Live cloudflare provider preflight")
+            self.assertIn("fallback_chain=cloudflare", output_path.read_text(encoding="utf-8"))
 
     @patch.dict(os.environ, {
         "LLM_PROVIDER": "freellmapi",
@@ -66,34 +72,11 @@ class ProviderPreflightTests(unittest.TestCase):
         "FREELLMAPI_BASE_URL": "http://127.0.0.1:3999/v1",
         "CLOUDFLARE_ACCOUNT_ID": "account",
         "CLOUDFLARE_API_TOKEN": "cloudflare-token",
-        "HF_INFERENCE_TOKEN": "hf-token",
     }, clear=True)
     @patch("scripts.provider_preflight.get_api_key", return_value="placeholder")
-    @patch("scripts.provider_preflight.generate_content")
-    def test_uses_only_the_provider_that_passed_and_exports_chain(self, generate, _key):
-        def provider_result(*args, **kwargs):
-            if kwargs["label"].startswith("Live huggingface"):
-                raise RuntimeError("HTTP 403 permission denied")
-            return GOOD_RESPONSE
-
-        generate.side_effect = provider_result
-        with tempfile.TemporaryDirectory() as temp_dir:
-            output_path = Path(temp_dir) / "github-output.txt"
-            with patch.dict(os.environ, {"GITHUB_OUTPUT": str(output_path)}):
-                passed = provider_preflight.run_preflight()
-            self.assertEqual(passed, ["cloudflare"])
-            self.assertIn("fallback_chain=cloudflare", output_path.read_text(encoding="utf-8"))
-
-    @patch.dict(os.environ, {
-        "LLM_PROVIDER": "freellmapi",
-        "FREELLMAPI_API_KEY": "placeholder",
-        "FREELLMAPI_BASE_URL": "http://127.0.0.1:3999/v1",
-        "HF_INFERENCE_TOKEN": "hf-token",
-    }, clear=True)
-    @patch("scripts.provider_preflight.get_api_key", return_value="placeholder")
-    @patch("scripts.provider_preflight.generate_content", side_effect=RuntimeError("HTTP 403 permission denied"))
-    def test_blocks_when_no_configured_provider_passes_live_probe(self, _generate, _key):
-        with self.assertRaisesRegex(RuntimeError, "No independent provider passed live preflight"):
+    @patch("scripts.provider_preflight.generate_content", side_effect=RuntimeError("HTTP 429 daily neuron allocation exhausted"))
+    def test_blocks_when_cloudflare_free_capacity_is_exhausted(self, _generate, _key):
+        with self.assertRaisesRegex(RuntimeError, "No zero-cost independent provider passed live preflight"):
             provider_preflight.run_preflight()
 
 
