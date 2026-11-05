@@ -89,7 +89,7 @@ jobs:
           UNIFIED_KEY="$(node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>process.stdout.write(JSON.parse(s).apiKey))' <<< "$API_KEY_RESPONSE")"
           test -n "$UNIFIED_KEY"
           echo "::add-mask::$UNIFIED_KEY"
-          echo "FREELLMAPI_UNIFIED_KEY=$UNIFIED_KEY" >> "$GITHUB_ENV"
+          echo "FREELLMAPI_API_KEY=$UNIFIED_KEY" >> "$GITHUB_ENV"
           echo "Temporary unified key retrieved and masked; it will not be printed."
 
       - name: Set up Python for the Economics pipeline
