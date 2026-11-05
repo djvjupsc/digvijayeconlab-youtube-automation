@@ -229,10 +229,9 @@ def apply_known_editorial_repairs(text):
     # Opportunity Cost pilot: standardize the Q10 bilingual explanation and Hindi terminology.
     # Normalize Q10's earlier combined heading regardless of line-ending or whitespace variation.
     q10_pattern = re.compile(
-        r"\*\*Explanation \(Hindi/English\):\*\*\s*"
-        r"(?:-\s*)?\*\*English:\*\*\s*(.+?)\s*"
-        r"(?:-\s*)?\*\*Hindi:\*\*\s*(.+?)(?=\n\n|\n---|$)",
-        re.DOTALL,
+        r"(?m)^\\*\\*Explanation \\(Hindi/English\\):\\*\\*[ \\t]*\\r?\\n"
+        r"(?:- [ \\t]*)?\\*\\*English:\\*\\*[ \\t]*([^\\r\\n]+)\\r?\\n"
+        r"(?:- [ \\t]*)?\\*\\*Hindi:\\*\\*[ \\t]*([^\\r\\n]+)"
     )
     def _split_q10_explanation(match):
         english = match.group(1).strip()
