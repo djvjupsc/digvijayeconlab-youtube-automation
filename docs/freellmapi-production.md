@@ -23,7 +23,7 @@ The FreeLLMAPI source is pinned to upstream commit `fb07845faf7cf986ea9f3692e055
 
 ## Fallback behavior
 
-Before a FreeLLMAPI production pack is claimed, `scripts/provider_preflight.py` tests every configured independent provider using a small bilingual Economics request. The daily workflow stops before claiming work if any configured provider fails. The smoke workflow runs the same preflight before building FreeLLMAPI. The probe deliberately forces the FreeLLMAPI endpoint unavailable so it verifies the independent route, not the Google-backed primary route.
+Before a FreeLLMAPI production pack is claimed, `scripts/provider_preflight.py` tests every configured independent provider using a small bilingual Economics request. The daily workflow stops before claiming work if no independent provider passes. Each configured provider is tested separately; failed optional providers are logged and excluded from that run's fallback chain. The smoke workflow runs the same preflight before building FreeLLMAPI. The probe deliberately forces the FreeLLMAPI endpoint unavailable so it verifies the independent route, not the Google-backed primary route.
 
 At runtime, if FreeLLMAPI cannot serve a request after its bounded retry policy, the adapter tries the configured fallback chain in order: Cloudflare Workers AI, Hugging Face Inference Providers, then direct Gemini.
 
@@ -34,7 +34,7 @@ At runtime, if FreeLLMAPI cannot serve a request after its bounded retry policy,
 - The workflow does not purchase credits or enable a paid plan. If free capacity is exhausted, the request should fail visibly and the batch remains incomplete. Do not add a paid billing method to bypass quotas.
 - Retries are bounded and respect provider retry hints. The pipeline stops with an explicit error if all configured providers fail.
 
-Cloudflare credentials are optional. Without them, Cloudflare is skipped and the adapter proceeds to Hugging Face. The preflight checks all configured provider credentials individually; if a configured token is invalid, fix its permission or remove the incomplete/unused secret before running production.
+Cloudflare credentials are optional. Without them, Cloudflare is skipped and the adapter proceeds to Hugging Face. The preflight checks all configured provider credentials individually; if a configured token is invalid, it is excluded from that run; at least one independent provider must pass. Fix its permission or remove an incomplete/unused secret to restore it to the chain.
 
 ## Android and narration dependencies
 
