@@ -16,7 +16,7 @@ class ProductionProviderWiringTests(unittest.TestCase):
         self.assertIn("Start temporary FreeLLMAPI for production generation", workflow)
         self.assertIn("Retrieve masked temporary FreeLLMAPI key", workflow)
         self.assertIn("Stop temporary FreeLLMAPI after generation", workflow)
-        self.assertIn("LLM_FALLBACK_PROVIDER: cloudflare,huggingface,gemini", workflow)
+        self.assertIn("LLM_FALLBACK_PROVIDER: ${{ steps.provider_preflight.outputs.fallback_chain }},gemini", workflow)
         self.assertIn("HF_TOKEN: ${{ secrets.HF_TOKEN }}", workflow)
         self.assertIn("CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}", workflow)
         self.assertIn("contents: write", workflow)
@@ -26,6 +26,7 @@ class ProductionProviderWiringTests(unittest.TestCase):
         claim = workflow.index("Claim today's production pack")
         self.assertLess(preflight, claim)
         self.assertIn("python scripts/provider_preflight.py", workflow)
+        self.assertIn("id: provider_preflight", workflow)
 
     def test_free_llm_runtime_is_pinned_to_the_tested_revision(self):
         expected = "fb07845faf7cf986ea9f3692e055076035dd8739"
@@ -45,6 +46,8 @@ class ProductionProviderWiringTests(unittest.TestCase):
         self.assertIn("FREELLMAPI_BASE_URL: http://127.0.0.1:3999/v1", workflow)
         self.assertIn("CLOUDFLARE_FALLBACK_MODEL: \"@cf/meta/llama-3.2-3b-instruct\"", workflow)
         self.assertIn("python scripts/provider_preflight.py", workflow)
+        self.assertIn("id: provider_preflight", workflow)
+        self.assertIn("id: provider_preflight", workflow)
         preflight_script = (ROOT / "scripts/provider_preflight.py").read_text(encoding="utf-8")
         self.assertIn("Make calls to Inference Providers", preflight_script)
         self.assertIn("LIVE_INDEPENDENT_PROVIDER_PREFLIGHT_PASS", preflight_script)
