@@ -53,7 +53,7 @@ jobs:
           echo "CI_ADMIN_PASSWORD=$CI_ADMIN_PASSWORD" >> "$GITHUB_ENV"
           export FREEAPI_CONFIG_JSON="$(node -e '
             const config = {
-              admin: { email: "ci-admin@localhost", password: process.env.CI_ADMIN_PASSWORD },
+              admin: { email: "ci-admin@example.com", password: process.env.CI_ADMIN_PASSWORD },
               keys: [{ platform: "google", key: process.env.GOOGLE_AI_STUDIO_API_KEY, label: "GitHub Actions smoke test", enabled: true }],
               models: [{ platform: "google", modelId: "gemini-3.5-flash-lite", displayName: "Gemini Flash Lite", fallbackEnabled: true }],
               routing: { strategy: "balanced" }
@@ -79,7 +79,7 @@ jobs:
           set -euo pipefail
           LOGIN="$(curl --silent --show-error --fail \
             -H 'Content-Type: application/json' \
-            -d "$(node -e 'process.stdout.write(JSON.stringify({email:"ci-admin@localhost",password:process.env.CI_ADMIN_PASSWORD}))')" \
+            -d "$(node -e 'process.stdout.write(JSON.stringify({email:"ci-admin@example.com",password:process.env.CI_ADMIN_PASSWORD}))')" \
             http://127.0.0.1:3001/api/auth/login)"
           DASHBOARD_TOKEN="$(node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>process.stdout.write(JSON.parse(s).token))' <<< "$LOGIN")"
           test -n "$DASHBOARD_TOKEN"
