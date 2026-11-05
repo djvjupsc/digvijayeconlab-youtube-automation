@@ -178,5 +178,25 @@ class StructuredCorrectionTests(unittest.TestCase):
 
 
 
+    def test_repairs_opportunity_cost_q10_bilingual_labels_and_forgone_translation(self):
+        source = "\\n".join([
+            "**Explanation (Hindi/English):** ",
+            "- **English:** A point inside the PPF indicates that the economy is producing less than its maximum potential due to unemployment or resource misallocation.",
+            "- **Hindi:** PPF के अंदर एक बिंदु इंगित करता है कि बेरोजगारी या संसाधन दुर्विनियोजन के कारण अर्थव्यवस्था अपनी अधिकतम क्षमता से कम उत्पादन कर रही है।",
+            "भूला हुआ वेतन और भूला हुआ ब्याज",
+            "निरंतर अवसर लागत",
+        ])
+        repaired, changes = apply_known_editorial_repairs(source)
+        self.assertIn("**Explanation (English):**", repaired)
+        self.assertIn("**Explanation (Hindi):**", repaired)
+        self.assertIn("कुछ संसाधन बेरोजगार हैं", repaired)
+        self.assertIn("त्यागा गया वेतन", repaired)
+        self.assertIn("त्यागा गया ब्याज", repaired)
+        self.assertIn("स्थिर अवसर लागत", repaired)
+        self.assertNotIn("Hindi/English", repaired)
+        self.assertNotIn("भूला हुआ", repaired)
+        self.assertGreaterEqual(len(changes), 4)
+
+
 if __name__ == "__main__":
     unittest.main()
