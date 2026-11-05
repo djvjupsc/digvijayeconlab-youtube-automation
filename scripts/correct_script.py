@@ -8,9 +8,11 @@ import urllib.request
 from pathlib import Path
 
 try:
-    from .gemini_client import generate_content, MAX_GEMINI_ATTEMPTS, RETRYABLE_HTTP_STATUS
+    from .llm_provider import generate_content, get_api_key
+    from .gemini_client import MAX_GEMINI_ATTEMPTS, RETRYABLE_HTTP_STATUS
 except ImportError:
-    from gemini_client import generate_content, MAX_GEMINI_ATTEMPTS, RETRYABLE_HTTP_STATUS
+    from llm_provider import generate_content, get_api_key
+    from gemini_client import MAX_GEMINI_ATTEMPTS, RETRYABLE_HTTP_STATUS
 
 try:
     from .quality_checks import sanitize_math_notation
@@ -38,7 +40,7 @@ RESPONSE_SCHEMA = {
 
 def call_gemini(api_key, payload):
     try:
-        return generate_content(API_URL, api_key, payload, label="Gemini correction", timeout=150)
+        return generate_content(API_URL, api_key, payload, label="Academic correction", timeout=150)
     except RuntimeError as exc:
         raise SystemExit(str(exc)) from exc
 
@@ -197,6 +199,27 @@ def apply_known_editorial_repairs(text):
         ("## Worked Example / Application (Hypothetical Sectoral Contribution Analysis)\n## कार्यशील उदाहरण / अनुप्रयोग (काल्पनिक क्षेत्रीय योगदान विश्लेषण)",
          "## Worked Example / Application: Hypothetical Sectoral Contribution Analysis / कार्यशील उदाहरण: काल्पनिक क्षेत्रीय योगदान विश्लेषण",
          "Consolidated the duplicated bilingual Worked Example headings into one section heading."),
+        # Hindi editorial normalization: correct the common spelling error for scarcity.
+        ("संसाधनों की दुर्लता", "संसाधनों की दुर्लभता",
+         "Corrected the Hindi spelling of scarcity (दुर्लभता)."),
+        ("असीमित मानवीय आवश्यकताओं", "असीमित मानवीय इच्छाओं",
+         "Used the more precise Hindi equivalent for unlimited human wants."),
+        # Opportunity Cost pilot: restore complete bilingual recap parity and distinguish cost categories.
+        ("(एक वस्तु के अधिक उत्पादन की अवसर लागत दूसरी वस्तु की छोड़ी जाने वाली मात्रा से मापी जाती है।)",
+         "(एक नतोदर PPF संसाधनों की अपूर्ण प्रतिस्थाप्यता के कारण एक वस्तु के उत्पादन से दूसरी वस्तु के उत्पादन की ओर बढ़ने पर बढ़ती अवसर लागत को दर्शाता है।)",
+         "Restored a faithful Hindi translation of the English recap on increasing opportunity costs and imperfect resource substitutability."),
+        ("If an individual leaves a job paying ₹50,000 per year to start a business, and incurs no other explicit costs besides buying ₹20,000 worth of supplies, what is the implicit cost of starting the business? [VERIFY]",
+         "If an individual leaves a job paying ₹50,000 per year to start a business and purchases ₹20,000 worth of supplies, what is the implicit cost of starting the business? Assume the forgone salary is the only implicit cost; the supplies are an explicit cost. [VERIFY]",
+         "Clarified that forgone salary is the implicit cost while the purchase of supplies is an explicit cost."),
+        ("The implicit cost is the forgone salary from the previous job (₹50,000) because it represents the value of the resource supplied by the owner without an explicit cash transaction. (Note: Specific numerical values are illustrative).",
+         "The implicit cost is the ₹50,000 salary forgone: it is the opportunity cost of the owner's labour supplied to the business. The ₹20,000 spent on supplies is an explicit cost and is not part of the implicit-cost answer. If both stated costs are requested, their combined economic cost is ₹70,000. (All figures are hypothetical and illustrative).",
+         "Explained why the forgone salary is implicit, supplies are explicit, and the combined stated economic cost is ₹70,000."),
+        ("निहित लागत पिछली नौकरी से छोड़ा गया वेतन (₹50,000) है क्योंकि यह बिना किसी स्पष्ट नकद लेनदेन के मालिक द्वारा आपूर्ति किए गए संसाधन के मूल्य का प्रतिनिधित्व करता है।",
+         "निहित लागत छोड़ा गया ₹50,000 का वेतन है; यह व्यवसाय में मालिक द्वारा दिए गए श्रम की अवसर लागत है। ₹20,000 की आपूर्ति सामग्री पर किया गया खर्च स्पष्ट लागत है और निहित लागत के उत्तर में शामिल नहीं होगा। यदि दोनों बताई गई लागतों के बारे में पूछा जाए, तो उनकी संयुक्त आर्थिक लागत ₹70,000 होगी। (सभी संख्याएँ काल्पनिक और उदाहरणार्थ हैं)।",
+         "Completed the Hindi explanation of implicit salary cost, explicit supplies cost and combined economic cost."),
+        ("**Verification Status:** Standard economic principles verified against general curriculum guidelines for MPPSC Assistant Professor Economics. Numerical illustrations are marked [VERIFY] where specific parameter values are assumed for problem-solving practice.",
+         "**Verification Status:** The concepts are presented as standard introductory microeconomic theory. This draft has not been independently checked against the latest official MPPSC Assistant Professor Economics syllabus or a supplied primary source. Confirm syllabus alignment and supporting references before publication. Numerical illustrations are hypothetical and remain subject to human review.",
+         "Removed the unsupported claim of official curriculum verification and stated the actual source-verification limitation."),
     ]
     changes = []
     for old, new, description in repairs:
@@ -211,9 +234,10 @@ def main():
         raise SystemExit("Usage: correct_script.py SCRIPT_PATH REVIEW_PATH [SOURCE_NOTES]")
     script_path, review_path = Path(sys.argv[1]), Path(sys.argv[2])
     source_notes = load_optional_source_notes(sys.argv[3] if len(sys.argv) > 3 else None)
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        raise SystemExit("GEMINI_API_KEY is not configured.")
+    try:
+        api_key = get_api_key()
+    except RuntimeError as exc:
+        raise SystemExit(str(exc)) from exc
     if not script_path.is_file() or not review_path.is_file():
         raise SystemExit("The original script or academic review report was not found.")
 
@@ -245,6 +269,15 @@ Do not browse, invent facts, invent citations, or claim independent verification
 Preserve topic, teaching sequence, examples, MCQs, answer keys, bilingual structure,
 and useful detail unless a specific issue requires a change. Correct clear editorial,
 notation, grammar, formatting, translation parity, and consistency problems.
+For every bilingual recap bullet, compare the English and Hindi text clause by clause and restore
+any missing substantive statement, qualification or conclusion. Specifically retain the statement
+that a concave PPF reflects increasing opportunity costs in the Hindi PPF recap.
+For cost examples, distinguish explicit cash purchases from implicit opportunity costs.
+If the question asks only for implicit cost, explain that forgone salary is implicit and purchased
+supplies are explicit; state assumptions clearly and distinguish the requested answer from total
+economic cost. Do not describe hypothetical arithmetic as needing an external source.
+Never claim alignment with official MPPSC curriculum or syllabus unless the relevant official
+document was supplied and used. Without that source, state that syllabus alignment remains unverified.
 Prefer plain Unicode arrows (↑ and ↓) and simple derivative text such as dQ_d/dP.
 Avoid nested LaTeX formatting macros such as raisebox and tiny. Do not emit control
 characters inside formulas or text.

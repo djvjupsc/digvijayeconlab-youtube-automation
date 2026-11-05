@@ -153,5 +153,30 @@ class StructuredCorrectionTests(unittest.TestCase):
         self.assertEqual(len(changes), 4)
 
 
+    def test_repairs_opportunity_cost_bilingual_parity_cost_types_and_source_claim(self):
+        source = "\\n".join([
+            "(एक वस्तु के अधिक उत्पादन की अवसर लागत दूसरी वस्तु की छोड़ी जाने वाली मात्रा से मापी जाती है।)",
+            "असीमित मानवीय आवश्यकताओं और संसाधनों की दुर्लता के कारण चयन करना पड़ता है।",
+            "If an individual leaves a job paying ₹50,000 per year to start a business, and incurs no other explicit costs besides buying ₹20,000 worth of supplies, what is the implicit cost of starting the business? [VERIFY]",
+            "The implicit cost is the forgone salary from the previous job (₹50,000) because it represents the value of the resource supplied by the owner without an explicit cash transaction. (Note: Specific numerical values are illustrative).",
+            "निहित लागत पिछली नौकरी से छोड़ा गया वेतन (₹50,000) है क्योंकि यह बिना किसी स्पष्ट नकद लेनदेन के मालिक द्वारा आपूर्ति किए गए संसाधन के मूल्य का प्रतिनिधित्व करता है।",
+            "**Verification Status:** Standard economic principles verified against general curriculum guidelines for MPPSC Assistant Professor Economics. Numerical illustrations are marked [VERIFY] where specific parameter values are assumed for problem-solving practice.",
+        ])
+        repaired, changes = apply_known_editorial_repairs(source)
+        self.assertIn("नतोदर PPF संसाधनों की अपूर्ण प्रतिस्थाप्यता", repaired)
+        self.assertIn("असीमित मानवीय इच्छाओं", repaired)
+        self.assertIn("संसाधनों की दुर्लभता", repaired)
+        self.assertIn("forgone salary is the only implicit cost", repaired)
+        self.assertIn("supplies are an explicit cost", repaired)
+        self.assertIn("The ₹20,000 spent on supplies is an explicit cost", repaired)
+        self.assertIn("combined economic cost is ₹70,000", repaired)
+        self.assertIn("आपूर्ति सामग्री पर किया गया खर्च स्पष्ट लागत है", repaired)
+        self.assertIn("संयुक्त आर्थिक लागत ₹70,000 होगी", repaired)
+        self.assertIn("has not been independently checked against the latest official MPPSC", repaired)
+        self.assertNotIn("verified against general curriculum guidelines", repaired)
+        self.assertGreaterEqual(len(changes), 5)
+
+
+
 if __name__ == "__main__":
     unittest.main()

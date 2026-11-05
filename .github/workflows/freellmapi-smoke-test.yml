@@ -1,0 +1,187 @@
+name: FreeLLMAPI integration smoke test
+
+on:
+  push:
+    branches:
+      - test/freellmapi-integration
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: freellmapi-smoke-test
+  cancel-in-progress: true
+
+jobs:
+  freellmapi-smoke-test:
+    name: Test FreeLLMAPI on an isolated GitHub runner
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out the selected test branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Download and build FreeLLMAPI
+        run: |
+          git clone --depth 1 https://github.com/tashfeenahmed/freellmapi.git freellmapi
+          cd freellmapi
+          test "$(git rev-parse HEAD)" = "fb07845faf7cf986ea9f3692e055076035dd8739" || { echo "Unexpected FreeLLMAPI source revision."; exit 1; }
+          npm ci
+          npm run build
+
+      - name: Start temporary localhost-only FreeLLMAPI server
+        env:
+          GOOGLE_AI_STUDIO_API_KEY: ${{ secrets.GOOGLE_AI_STUDIO_API_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$GOOGLE_AI_STUDIO_API_KEY" || { echo "Missing GOOGLE_AI_STUDIO_API_KEY repository secret."; exit 1; }
+          export HOST=127.0.0.1
+          export PORT=3001
+          export NODE_ENV=production
+          export ENCRYPTION_KEY="$(node -e 'console.log(require("crypto").randomBytes(32).toString("hex"))')"
+          export FREEAPI_DB_PATH="$RUNNER_TEMP/freellmapi.sqlite"
+          export CI_ADMIN_PASSWORD="$(node -e 'console.log(require("crypto").randomBytes(24).toString("base64url"))')"
+          echo "::add-mask::$CI_ADMIN_PASSWORD"
+          echo "CI_ADMIN_PASSWORD=$CI_ADMIN_PASSWORD" >> "$GITHUB_ENV"
+          export FREEAPI_CONFIG_JSON="$(node -e '
+            const config = {
+              admin: { email: "ci-admin@example.com", password: process.env.CI_ADMIN_PASSWORD },
+              keys: [{ platform: "google", key: process.env.GOOGLE_AI_STUDIO_API_KEY, label: "GitHub Actions smoke test", enabled: true }],
+              models: [{ platform: "google", modelId: "gemini-3.5-flash-lite", displayName: "Gemini Flash Lite", fallbackEnabled: true }],
+              routing: { strategy: "balanced" }
+            };
+            process.stdout.write(JSON.stringify(config));
+          ' )"
+          cd freellmapi
+          nohup node server/dist/index.js > "$RUNNER_TEMP/freellmapi.log" 2>&1 &
+          echo "$!" > "$RUNNER_TEMP/freellmapi.pid"
+          for attempt in $(seq 1 60); do
+            if curl --silent --fail http://127.0.0.1:3001/api/auth/status >/dev/null; then
+              echo "FreeLLMAPI server is responding on localhost."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "FreeLLMAPI did not become ready. Recent server log:"
+          tail -n 80 "$RUNNER_TEMP/freellmapi.log"
+          exit 1
+
+      - name: Authenticate and retrieve the temporary unified API key
+        run: |
+          set -euo pipefail
+          LOGIN="$(curl --silent --show-error --fail \
+            -H 'Content-Type: application/json' \
+            -d "$(node -e 'process.stdout.write(JSON.stringify({email:"ci-admin@example.com",password:process.env.CI_ADMIN_PASSWORD}))')" \
+            http://127.0.0.1:3001/api/auth/login)"
+          DASHBOARD_TOKEN="$(node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>process.stdout.write(JSON.parse(s).token))' <<< "$LOGIN")"
+          test -n "$DASHBOARD_TOKEN"
+          API_KEY_RESPONSE="$(curl --silent --show-error --fail \
+            -H "Authorization: Bearer $DASHBOARD_TOKEN" \
+            http://127.0.0.1:3001/api/settings/api-key)"
+          UNIFIED_KEY="$(node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>process.stdout.write(JSON.parse(s).apiKey))' <<< "$API_KEY_RESPONSE")"
+          test -n "$UNIFIED_KEY"
+          echo "::add-mask::$UNIFIED_KEY"
+          echo "FREELLMAPI_API_KEY=$UNIFIED_KEY" >> "$GITHUB_ENV"
+          echo "Temporary unified key retrieved and masked; it will not be printed."
+
+      - name: Set up Python for the Economics pipeline
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Devanagari font and eSpeak test tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends fontconfig fonts-noto-core espeak-ng
+          fc-cache -f
+          fc-match -f '%{family}\\n%{file}\\n' 'Noto Sans Devanagari:lang=hi'
+
+      - name: Install Python test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-pilot.txt
+
+      - name: Run offline regression tests
+        run: |
+          python -m compileall -q scripts tests
+          python -m unittest discover -s tests -v
+
+      - name: Generate one Economics MCQ draft through FreeLLMAPI
+        env:
+          LLM_PROVIDER: freellmapi
+          FREELLMAPI_BASE_URL: http://127.0.0.1:3001/v1
+          FREELLMAPI_MODEL: gemini-3.5-flash-lite
+          SCRIPT_UNIT: FreeLLMAPI integration validation
+          SCRIPT_LANGUAGE: Bilingual
+          SCRIPT_FORMAT: MCQ Set
+        run: |
+          python scripts/generate_script.py "Opportunity Cost" Bilingual "MCQ Set" docs/source-notes/opportunity-cost.md
+          test -s output/scripts/opportunity-cost.md
+
+      - name: Run first academic review through FreeLLMAPI
+        env:
+          LLM_PROVIDER: freellmapi
+          FREELLMAPI_BASE_URL: http://127.0.0.1:3001/v1
+          FREELLMAPI_MODEL: gemini-3.5-flash-lite
+          SCRIPT_UNIT: FreeLLMAPI integration validation
+          SCRIPT_LANGUAGE: Bilingual
+          SCRIPT_FORMAT: MCQ Set
+        run: |
+          python scripts/review_script.py output/scripts/opportunity-cost.md docs/source-notes/opportunity-cost.md
+          test -s output/reviews/opportunity-cost-quality-review.md
+
+      - name: Run structured correction through FreeLLMAPI
+        env:
+          LLM_PROVIDER: freellmapi
+          FREELLMAPI_BASE_URL: http://127.0.0.1:3001/v1
+          FREELLMAPI_MODEL: gemini-3.5-flash-lite
+        run: |
+          python scripts/correct_script.py \
+            output/scripts/opportunity-cost.md \
+            output/reviews/opportunity-cost-quality-review.md \
+            docs/source-notes/opportunity-cost.md
+          test -s output/corrected_scripts/opportunity-cost.md
+          test -s output/corrections/opportunity-cost-correction-log.md
+
+      - name: Run second academic review through FreeLLMAPI
+        env:
+          LLM_PROVIDER: freellmapi
+          FREELLMAPI_BASE_URL: http://127.0.0.1:3001/v1
+          FREELLMAPI_MODEL: gemini-3.5-flash-lite
+          SCRIPT_UNIT: FreeLLMAPI integration validation
+          SCRIPT_LANGUAGE: Bilingual
+          SCRIPT_FORMAT: MCQ Set
+          REVIEW_STAGE: post-correction
+        run: |
+          python scripts/review_script.py output/corrected_scripts/opportunity-cost.md docs/source-notes/opportunity-cost.md
+          test -s output/reviews/opportunity-cost-quality-review.md
+      - name: Preserve test drafts for human inspection
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: freellmapi-economics-one-lesson-test
+          path: |
+            output/scripts/
+            output/reviews/
+            output/corrected_scripts/
+            output/corrections/
+            docs/source-notes/opportunity-cost.md
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Stop temporary server
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/freellmapi.pid" ]; then
+            kill "$(cat "$RUNNER_TEMP/freellmapi.pid")" 2>/dev/null || true
+          fi
+          rm -f "$RUNNER_TEMP/freellmapi.sqlite" "$RUNNER_TEMP/freellmapi.sqlite-wal" "$RUNNER_TEMP/freellmapi.sqlite-shm"

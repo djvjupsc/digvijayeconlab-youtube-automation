@@ -7,9 +7,9 @@ import urllib.request
 from pathlib import Path
 
 try:
-    from .gemini_client import generate_content
+    from .llm_provider import generate_content, get_api_key
 except ImportError:
-    from gemini_client import generate_content
+    from llm_provider import generate_content, get_api_key
 
 try:
     from .source_notes import resolve_source_notes_argument
@@ -31,9 +31,10 @@ def main():
 
     topic, language, content_format = sys.argv[1:4]
     source_notes = resolve_source_notes_argument(sys.argv[4] if len(sys.argv) > 4 else None)
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        raise SystemExit("GEMINI_API_KEY is not configured. Add it as a GitHub Actions secret.")
+    try:
+        api_key = get_api_key()
+    except RuntimeError as exc:
+        raise SystemExit(str(exc)) from exc
 
     allowed_languages = {"Hindi", "English", "Bilingual"}
     allowed_formats = {"Concept Explainer", "MCQ Set", "Previous-Year-Question Analysis"}
@@ -54,6 +55,19 @@ raisebox or tiny, and do not put control characters inside mathematical expressi
 For Bilingual output, provide the English explanation followed by a faithful Hindi equivalent
 for each substantive teaching point or paragraph. Do not blend Latin and Devanagari characters
 inside a single word. Keep standard English technical terms in parentheses where useful.
+Before finalizing, compare every English recap bullet and explanation with its Hindi counterpart.
+The Hindi version must preserve every substantive clause, qualification, relationship and conclusion;
+do not omit a second sentence or a concluding implication. In particular, when the English PPF recap
+states that a concave PPF reflects increasing opportunity costs, state that same point explicitly in Hindi.
+For cost questions, clearly distinguish explicit cash outlays from implicit opportunity costs.
+When a question asks for implicit cost only, identify forgone owner salary or labour as implicit cost
+and label purchases/supplies as explicit cost; do not confuse the two. State all assumptions and make
+hypothetical values explicit. If useful, state total economic cost separately from the requested
+implicit-cost answer.
+In Source and Verification Notes, never claim that material has been checked against official MPPSC
+curriculum or syllabus guidelines unless the corresponding official source was actually supplied and
+used. When no official syllabus or source notes are supplied, say that syllabus alignment and source
+verification have not been independently checked and require human confirmation.
 For a Concept Explainer, include a dedicated, populated Markdown section titled
 "## Worked Example / Application" or "## Demand Schedule" (a suitable Hindi-English
 equivalent is acceptable). This must contain a worked illustrative example with clear
@@ -108,7 +122,7 @@ English and Hindi explanations for each substantive teaching point. Include sour
         "generationConfig": {"temperature": 0.4, "maxOutputTokens": 8192},
     }
     try:
-        result = generate_content(API_URL, api_key, payload, label="Gemini script generation", timeout=120)
+        result = generate_content(API_URL, api_key, payload, label="Script generation", timeout=120)
     except RuntimeError as exc:
         raise SystemExit(str(exc)) from exc
 

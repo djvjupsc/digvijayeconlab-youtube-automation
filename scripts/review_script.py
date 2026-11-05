@@ -7,9 +7,9 @@ import urllib.request
 from pathlib import Path
 
 try:
-    from .gemini_client import generate_content
+    from .llm_provider import generate_content, get_api_key
 except ImportError:
-    from gemini_client import generate_content
+    from llm_provider import generate_content, get_api_key
 
 try:
     from .quality_checks import analyze_script, render_report
@@ -31,9 +31,10 @@ def main():
 
     script_path = Path(sys.argv[1])
     source_notes = load_optional_source_notes(sys.argv[2] if len(sys.argv) > 2 else None)
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        raise SystemExit("GEMINI_API_KEY is not configured.")
+    try:
+        api_key = get_api_key()
+    except RuntimeError as exc:
+        raise SystemExit(str(exc)) from exc
     if not script_path.is_file():
         raise SystemExit(f"Script file not found: {script_path}")
 
@@ -105,7 +106,7 @@ SCRIPT TO REVIEW:
         "generationConfig": {"temperature": 0.2, "maxOutputTokens": 8192},
     }
     try:
-        result = generate_content(API_URL, api_key, payload, label="Gemini academic review", timeout=120)
+        result = generate_content(API_URL, api_key, payload, label="Academic review", timeout=120)
     except RuntimeError as exc:
         raise SystemExit(str(exc)) from exc
 
