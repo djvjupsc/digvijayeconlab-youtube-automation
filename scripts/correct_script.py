@@ -206,8 +206,8 @@ def apply_known_editorial_repairs(text):
          "Used the more precise Hindi equivalent for unlimited human wants."),
         # Opportunity Cost pilot: restore complete bilingual recap parity and distinguish cost categories.
         ("(एक वस्तु के अधिक उत्पादन की अवसर लागत दूसरी वस्तु की छोड़ी जाने वाली मात्रा से मापी जाती है।)",
-         "(एक वस्तु के अधिक उत्पादन की अवसर लागत दूसरी वस्तु की छोड़ी जाने वाली मात्रा से मापी जाती है। अवतल PPF बढ़ती अवसर लागत को दर्शाता है।)",
-         "Restored the Hindi translation of the English recap clause explaining increasing opportunity costs on a concave PPF."),
+         "(एक नतोदर PPF संसाधनों की अपूर्ण प्रतिस्थाप्यता के कारण एक वस्तु के उत्पादन से दूसरी वस्तु के उत्पादन की ओर बढ़ने पर बढ़ती अवसर लागत को दर्शाता है।)",
+         "Restored a faithful Hindi translation of the English recap on increasing opportunity costs and imperfect resource substitutability."),
         ("If an individual leaves a job paying ₹50,000 per year to start a business, and incurs no other explicit costs besides buying ₹20,000 worth of supplies, what is the implicit cost of starting the business? [VERIFY]",
          "If an individual leaves a job paying ₹50,000 per year to start a business and purchases ₹20,000 worth of supplies, what is the implicit cost of starting the business? Assume the forgone salary is the only implicit cost; the supplies are an explicit cost. [VERIFY]",
          "Clarified that forgone salary is the implicit cost while the purchase of supplies is an explicit cost."),
