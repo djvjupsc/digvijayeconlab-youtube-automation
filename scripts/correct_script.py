@@ -8,9 +8,9 @@ import urllib.request
 from pathlib import Path
 
 try:
-    from .gemini_client import generate_content, MAX_GEMINI_ATTEMPTS, RETRYABLE_HTTP_STATUS
+    from .llm_provider import generate_content, get_api_key
 except ImportError:
-    from gemini_client import generate_content, MAX_GEMINI_ATTEMPTS, RETRYABLE_HTTP_STATUS
+    from llm_provider import generate_content, get_api_key
 
 try:
     from .quality_checks import sanitize_math_notation
@@ -38,7 +38,7 @@ RESPONSE_SCHEMA = {
 
 def call_gemini(api_key, payload):
     try:
-        return generate_content(API_URL, api_key, payload, label="Gemini correction", timeout=150)
+        return generate_content(API_URL, api_key, payload, label="Academic correction", timeout=150)
     except RuntimeError as exc:
         raise SystemExit(str(exc)) from exc
 
@@ -211,9 +211,10 @@ def main():
         raise SystemExit("Usage: correct_script.py SCRIPT_PATH REVIEW_PATH [SOURCE_NOTES]")
     script_path, review_path = Path(sys.argv[1]), Path(sys.argv[2])
     source_notes = load_optional_source_notes(sys.argv[3] if len(sys.argv) > 3 else None)
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        raise SystemExit("GEMINI_API_KEY is not configured.")
+    try:
+        api_key = get_api_key()
+    except RuntimeError as exc:
+        raise SystemExit(str(exc)) from exc
     if not script_path.is_file() or not review_path.is_file():
         raise SystemExit("The original script or academic review report was not found.")
 
