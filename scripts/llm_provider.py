@@ -10,7 +10,7 @@ import urllib.request
 
 RETRYABLE_HTTP_STATUS = {408, 429, 500, 502, 503, 504}
 MAX_ATTEMPTS = 3
-MAX_RATE_LIMIT_WAIT_SECONDS = 120
+MAX_RATE_LIMIT_WAIT_SECONDS = 15
 
 
 def _retry_delay_seconds(exc, detail, attempt=1):
