@@ -199,6 +199,11 @@ def apply_known_editorial_repairs(text):
         ("## Worked Example / Application (Hypothetical Sectoral Contribution Analysis)\n## कार्यशील उदाहरण / अनुप्रयोग (काल्पनिक क्षेत्रीय योगदान विश्लेषण)",
          "## Worked Example / Application: Hypothetical Sectoral Contribution Analysis / कार्यशील उदाहरण: काल्पनिक क्षेत्रीय योगदान विश्लेषण",
          "Consolidated the duplicated bilingual Worked Example headings into one section heading."),
+        # Hindi editorial normalization: correct the common spelling error for scarcity.
+        ("संसाधनों की दुर्लता", "संसाधनों की दुर्लभता",
+         "Corrected the Hindi spelling of scarcity (दुर्लभता)."),
+        ("असीमित मानवीय आवश्यकताओं", "असीमित मानवीय इच्छाओं",
+         "Used the more precise Hindi equivalent for unlimited human wants."),
         # Opportunity Cost pilot: restore complete bilingual recap parity and distinguish cost categories.
         ("(एक वस्तु के अधिक उत्पादन की अवसर लागत दूसरी वस्तु की छोड़ी जाने वाली मात्रा से मापी जाती है।)",
          "(एक वस्तु के अधिक उत्पादन की अवसर लागत दूसरी वस्तु की छोड़ी जाने वाली मात्रा से मापी जाती है। अवतल PPF बढ़ती अवसर लागत को दर्शाता है।)",
