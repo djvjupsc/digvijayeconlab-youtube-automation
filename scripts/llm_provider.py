@@ -108,7 +108,7 @@ def _generate_cloudflare(payload, label="LLM request", timeout=150):
     token = os.environ.get("CLOUDFLARE_API_TOKEN", "").strip()
     if not account_id or not token:
         raise RuntimeError("CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN are required for Cloudflare fallback.")
-    model = os.environ.get("CLOUDFLARE_FALLBACK_MODEL", "@cf/meta/llama-3.1-8b-instruct")
+    model = os.environ.get("CLOUDFLARE_FALLBACK_MODEL", "@cf/meta/llama-3.2-3b-instruct")
     request_data = json.dumps({**_to_openai_payload(payload), "model": model}).encode("utf-8")
     url = "https://api.cloudflare.com/client/v4/accounts/" + account_id + "/ai/v1/chat/completions"
     request = urllib.request.Request(
