@@ -18,6 +18,7 @@ class ProductionProviderWiringTests(unittest.TestCase):
         self.assertIn("Stop temporary FreeLLMAPI after generation", workflow)
         self.assertIn("LLM_FALLBACK_PROVIDER: ${{ steps.provider_preflight.outputs.fallback_chain }},gemini", workflow)
         self.assertIn("HF_TOKEN: ${{ secrets.HF_TOKEN }}", workflow)
+        self.assertIn("HF_INFERENCE_TOKEN: ${{ secrets.HF_INFERENCE_TOKEN }}", workflow)
         self.assertIn("CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}", workflow)
         self.assertIn("contents: write", workflow)
         self.assertIn("git push origin HEAD:main", workflow)

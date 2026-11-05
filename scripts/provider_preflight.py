@@ -30,7 +30,7 @@ def configured_independent_providers(environ=None):
     environ = os.environ if environ is None else environ
     account_id = environ.get("CLOUDFLARE_ACCOUNT_ID", "").strip()
     cloudflare_token = environ.get("CLOUDFLARE_API_TOKEN", "").strip()
-    hf_token = environ.get("HF_TOKEN", "").strip()
+    hf_token = environ.get("HF_INFERENCE_TOKEN", "").strip()
 
     providers = []
     warnings = []
@@ -47,7 +47,7 @@ def configured_independent_providers(environ=None):
         detail = " ".join(warnings)
         raise RuntimeError(
             "No independent fallback credentials are configured. Add Cloudflare Workers AI "
-            "credentials or a Hugging Face token with 'Make calls to Inference Providers' permission. "
+            "credentials or a HF_INFERENCE_TOKEN with 'Make calls to Inference Providers' permission. "
             + detail
         )
     return providers, warnings

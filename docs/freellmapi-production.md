@@ -28,7 +28,7 @@ Before a FreeLLMAPI production pack is claimed, `scripts/provider_preflight.py` 
 At runtime, if FreeLLMAPI cannot serve a request after its bounded retry policy, the adapter tries the configured fallback chain in order: Cloudflare Workers AI, Hugging Face Inference Providers, then direct Gemini.
 
 - **Cloudflare Workers AI** uses the optional `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` repository secrets and the OpenAI-compatible account endpoint. The default model is `@cf/meta/llama-3.2-3b-instruct` (the previous `@cf/meta/llama-3.1-8b-instruct` model was deprecated on May 30, 2026). Create a token with the minimum Workers AI permissions required by the Cloudflare API.
-- **Hugging Face** uses the existing `HF_TOKEN` secret and `https://router.huggingface.co/v1/chat/completions`. The default fallback model is `Qwen/Qwen3-4B-Instruct-2507:cheapest`. The fine-grained HF token must include the **Make calls to Inference Providers** permission. A general Hub read token alone is insufficient.
+- **Hugging Face** uses the dedicated `HF_INFERENCE_TOKEN` secret and `https://router.huggingface.co/v1/chat/completions`. Keep the existing `HF_TOKEN` separate for Chatterbox/Space access; do not overwrite it just to add inference permissions. The default fallback model is `Qwen/Qwen3-4B-Instruct-2507:cheapest`. Create a separate fine-grained token with the **Make calls to Inference Providers** permission and save it as `HF_INFERENCE_TOKEN` in GitHub Actions secrets. The live test previously showed that the existing `HF_TOKEN` lacks this permission (HTTP 403). A general Hub read token alone is insufficient.
 - **Gemini** remains the final endpoint fallback and shares the Google AI Studio credential/quota with FreeLLMAPI. It is not an independent quota pool.
 - Cloudflare Workers Free currently includes 10,000 Workers AI neurons per day. To keep that route at zero cost, the Cloudflare account must remain on the Free plan; Workers Paid charges $0.011 per 1,000 neurons above the daily free allocation. The repository cannot detect or override the account's billing plan, so do not upgrade or attach paid billing for this workflow. Hugging Face currently lists $0.10/month of Inference Provider credits for Free users, subject to change; additional usage requires purchased credits. Gemini free-tier limits are project/model-specific and capacity is not guaranteed. None of these providers guarantees enough free capacity for a 10-unit daily batch.
 - The workflow does not purchase credits or enable a paid plan. If free capacity is exhausted, the request should fail visibly and the batch remains incomplete. Do not add a paid billing method to bypass quotas.
@@ -54,6 +54,7 @@ Cloudflare credentials are optional. Without them, Cloudflare is skipped and the
 ## Required repository secrets
 
 - `GEMINI_API_KEY`: direct Gemini endpoint and final endpoint fallback.
+- `HF_INFERENCE_TOKEN`: fine-grained Hugging Face token with **Make calls to Inference Providers** permission. Keep it separate from `HF_TOKEN` used by Chatterbox/Space integrations.
 - `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`: optional Cloudflare Workers AI fallback credentials.
 - `GOOGLE_AI_STUDIO_API_KEY`: preferred upstream Google provider key for the temporary FreeLLMAPI instance. If absent, the workflow falls back to `GEMINI_API_KEY`.
 
