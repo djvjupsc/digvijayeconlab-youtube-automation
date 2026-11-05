@@ -82,6 +82,17 @@ jobs:
           python scripts/daily_production.py validate
           python scripts/topic_queue.py validate --queue config/topic_queue.json
 
+      - name: Verify independent providers before claiming production pack
+        if: inputs.llm_provider == 'freellmapi'
+        env:
+          LLM_PROVIDER: freellmapi
+          FREELLMAPI_API_KEY: preflight-placeholder-key
+          FREELLMAPI_BASE_URL: http://127.0.0.1:3999/v1
+          FREELLMAPI_MODEL: gemini-3.5-flash-lite
+          HF_FALLBACK_MODEL: Qwen/Qwen3-4B-Instruct-2507:cheapest
+          CLOUDFLARE_FALLBACK_MODEL: "@cf/meta/llama-3.2-3b-instruct"
+        run: python scripts/provider_preflight.py
+
       - name: Claim today's production pack
         id: prepare
         env:
