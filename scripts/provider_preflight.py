@@ -32,34 +32,36 @@ def configured_independent_providers(environ=None):
     cloudflare_token = environ.get("CLOUDFLARE_API_TOKEN", "").strip()
     hf_token = environ.get("HF_TOKEN", "").strip()
 
-    if bool(account_id) != bool(cloudflare_token):
-        raise RuntimeError(
-            "Cloudflare fallback is partially configured. Set both CLOUDFLARE_ACCOUNT_ID "
-            "and CLOUDFLARE_API_TOKEN, or remove the incomplete secret."
-        )
-
     providers = []
+    warnings = []
     if account_id and cloudflare_token:
         providers.append("cloudflare")
+    elif account_id or cloudflare_token:
+        warnings.append(
+            "Cloudflare skipped: both CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN are required."
+        )
     if hf_token:
         providers.append("huggingface")
+
     if not providers:
+        detail = " ".join(warnings)
         raise RuntimeError(
-            "No independent fallback is configured. Add Cloudflare Workers AI credentials "
-            "or a Hugging Face token with 'Make calls to Inference Providers' permission."
+            "No independent fallback credentials are configured. Add Cloudflare Workers AI "
+            "credentials or a Hugging Face token with 'Make calls to Inference Providers' permission. "
+            + detail
         )
-    return providers
+    return providers, warnings
 
 
 def run_preflight():
-    providers = configured_independent_providers()
+    providers, warnings = configured_independent_providers()
     os.environ.setdefault("LLM_PROVIDER", "freellmapi")
     os.environ.setdefault("FREELLMAPI_API_KEY", "provider-preflight-placeholder-key")
     os.environ.setdefault("FREELLMAPI_BASE_URL", "http://127.0.0.1:3999/v1")
 
     api_key = get_api_key()
     passed = []
-    failures = []
+    failures = list(warnings)
 
     for provider in providers:
         os.environ["LLM_FALLBACK_PROVIDER"] = provider
@@ -82,23 +84,27 @@ def run_preflight():
             print(f"LIVE_{provider.upper()}_PREFLIGHT_PASS")
             print(f"{provider} response length: {len(answer)}")
         except Exception as exc:
-            failures.append((provider, str(exc)))
+            failures.append(f"{provider}: {exc}")
             print(f"LIVE_{provider.upper()}_PREFLIGHT_FAIL: {exc}")
 
-    if failures:
-        details = "; ".join(f"{provider}: {message}" for provider, message in failures)
-        raise RuntimeError(
-            "At least one configured independent fallback failed its live preflight. "
-            "Correct the provider credentials/permissions before claiming a production pack. "
-            + details
-        )
     if not passed:
-        raise RuntimeError("No independent provider passed live preflight.")
+        details = "; ".join(failures) or "No provider returned a valid response."
+        raise RuntimeError(
+            "No independent provider passed live preflight. Correct credentials/permissions "
+            "before claiming a production pack. " + details
+        )
 
+    chain = ",".join(passed)
     print("LIVE_INDEPENDENT_PROVIDER_PREFLIGHT_PASS")
-    print("Verified independent providers:", ", ".join(passed))
+    print("Verified independent providers:", chain)
+    if failures:
+        print("WARNING: providers not enabled in this run:", "; ".join(failures))
+    output_path = os.environ.get("GITHUB_OUTPUT")
+    if output_path:
+        with open(output_path, "a", encoding="utf-8") as output:
+            output.write(f"fallback_chain={chain}\n")
+    os.environ["LLM_FALLBACK_PROVIDER"] = chain
     return passed
-
 
 def main():
     try:
