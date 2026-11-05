@@ -229,9 +229,9 @@ def apply_known_editorial_repairs(text):
     # Opportunity Cost pilot: standardize the Q10 bilingual explanation and Hindi terminology.
     # Normalize Q10's earlier combined heading regardless of line-ending or whitespace variation.
     q10_pattern = re.compile(
-        r"\\*\\*Explanation \\(Hindi/English\\):\\*\\*\\s*"
-        r"(?:-\\s*)?\\*\\*English:\\*\\*\\s*(.+?)\\s*"
-        r"(?:-\\s*)?\\*\\*Hindi:\\*\\*\\s*(.+?)(?=\\n\\n|\\n---|$)",
+        r"\*\*Explanation \(Hindi/English\):\*\*\s*"
+        r"(?:-\s*)?\*\*English:\*\*\s*(.+?)\s*"
+        r"(?:-\s*)?\*\*Hindi:\*\*\s*(.+?)(?=\n\n|\n---|$)",
         re.DOTALL,
     )
     def _split_q10_explanation(match):
@@ -244,7 +244,7 @@ def apply_known_editorial_repairs(text):
             hindi = ("PPF के भीतर स्थित बिंदु यह दर्शाता है कि कुछ संसाधन बेरोजगार हैं या उनका "
                      "कुशलतापूर्वक उपयोग नहीं हो रहा है; इसलिए अर्थव्यवस्था अपनी अधिकतम उत्पादन "
                      "क्षमता से कम उत्पादन कर रही है।")
-        return "**Explanation (English):** " + english + "\\n\\n**Explanation (Hindi):** " + hindi
+        return "**Explanation (English):** " + english + "\n\n**Explanation (Hindi):** " + hindi
     text, q10_count = q10_pattern.subn(_split_q10_explanation, text)
     if q10_count:
         changes.append("Standardized Q10 with separate English and Hindi explanation labels and clarified the Hindi PPF explanation.")
