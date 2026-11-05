@@ -2,12 +2,12 @@
 
 ## Scope
 
-The daily ten-unit workflow defaults to FreeLLMAPI and uses independent Cloudflare Workers AI and Hugging Face fallbacks before the direct Gemini endpoint. It remains manual-only until live reliability and full-pack validation are complete. The workflow does not publish videos or create public playlists unless separate opt-ins are selected.
+The daily ten-unit workflow defaults to FreeLLMAPI and uses a live-verified Cloudflare Workers AI Free-plan fallback before the direct Gemini endpoint. It remains manual-only until live reliability and full-pack validation are complete. The workflow does not publish videos or create public playlists unless separate opt-ins are selected.
 
 ## Run configuration
 
 1. Open **Actions → DigvijayEconLab daily ten-unit production pack → Run workflow**.
-2. The default is now `freellmapi`, which activates the independent fallback chain. Selecting `gemini` bypasses Cloudflare/Hugging Face fallback and uses only direct Gemini.
+2. The default is `freellmapi`, which activates the Cloudflare Free-plan preflight and fallback. Selecting `gemini` bypasses the independent provider and uses only direct Gemini.
 3. Keep **Create public playlists** and **Authorize private staging uploads** disabled unless separately intended.
 4. Inspect the complete artifact and human-review reports before any release.
 
