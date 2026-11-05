@@ -182,7 +182,6 @@ class FreeLLMAPIAdapterTests(unittest.TestCase):
         "FREELLMAPI_BASE_URL": "http://127.0.0.1:3999/v1",
         "CLOUDFLARE_ACCOUNT_ID": "test-account",
         "CLOUDFLARE_API_TOKEN": "temporary-cloudflare-token",
-        "CLOUDFLARE_FALLBACK_MODEL": "@cf/meta/llama-3.2-3b-instruct",
     })
     @patch("scripts.llm_provider.time.sleep")
     @patch("scripts.llm_provider.urllib.request.urlopen")
