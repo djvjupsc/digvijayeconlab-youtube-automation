@@ -18,7 +18,6 @@ class ProductionProviderWiringTests(unittest.TestCase):
         self.assertIn("Stop temporary FreeLLMAPI after generation", workflow)
         self.assertIn("LLM_FALLBACK_PROVIDER: ${{ steps.provider_preflight.outputs.fallback_chain }},gemini", workflow)
         self.assertIn("HF_TOKEN: ${{ secrets.HF_TOKEN }}", workflow)
-        self.assertIn("HF_INFERENCE_TOKEN: ${{ secrets.HF_INFERENCE_TOKEN }}", workflow)
         self.assertIn("CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}", workflow)
         self.assertIn("contents: write", workflow)
         self.assertIn("git push origin HEAD:main", workflow)
@@ -50,7 +49,8 @@ class ProductionProviderWiringTests(unittest.TestCase):
         self.assertIn("id: provider_preflight", workflow)
         self.assertIn("LLM_FALLBACK_PROVIDER=${{ steps.provider_preflight.outputs.fallback_chain }},gemini", workflow)
         preflight_script = (ROOT / "scripts/provider_preflight.py").read_text(encoding="utf-8")
-        self.assertIn("Make calls to Inference Providers", preflight_script)
+        self.assertIn("Free users have no included monthly Inference Provider credits", preflight_script)
+        self.assertNotIn("HF_INFERENCE_TOKEN: ${{ secrets.HF_INFERENCE_TOKEN }}", workflow)
         self.assertIn("LIVE_INDEPENDENT_PROVIDER_PREFLIGHT_PASS", preflight_script)
 
     def test_live_fallback_preflight_runs_before_node_build_and_dependency_install(self):
@@ -65,7 +65,7 @@ class ProductionProviderWiringTests(unittest.TestCase):
         self.assertLess(probe, freeapi_build)
         self.assertLess(probe, font_install)
         self.assertLess(probe, dependency_install)
-        self.assertIn("Make calls to Inference Providers", preflight_script)
+        self.assertIn("Free users have no included monthly Inference Provider credits", preflight_script)
 
 
 if __name__ == "__main__":
