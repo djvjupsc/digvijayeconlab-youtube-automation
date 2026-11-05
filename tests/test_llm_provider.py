@@ -95,5 +95,33 @@ class FreeLLMAPIAdapterTests(unittest.TestCase):
         self.assertEqual(llm_provider._retry_delay_seconds(error, "Soonest reset ~56s.", 2), 56)
 
 
+    @patch.dict(os.environ, {
+        "LLM_PROVIDER": "freellmapi",
+        "LLM_FALLBACK_PROVIDER": "gemini",
+        "FREELLMAPI_API_KEY": "temporary-unified-key",
+        "FREELLMAPI_BASE_URL": "http://127.0.0.1:3001/v1",
+        "GEMINI_API_KEY": "temporary-google-key",
+    })
+    @patch("scripts.gemini_client.generate_content", return_value={"candidates": [{"content": {"parts": [{"text": "Gemini fallback answer."}]}}]})
+    @patch("scripts.llm_provider.time.sleep")
+    @patch("scripts.llm_provider.urllib.request.urlopen")
+    def test_falls_back_to_direct_gemini_after_freellmapi_retries_fail(self, urlopen, _sleep, gemini):
+        unavailable = llm_provider.urllib.error.HTTPError(
+            "http://127.0.0.1:3001/v1/chat/completions",
+            503, "Unavailable", {}, io.BytesIO(b"temporary failure"),
+        )
+        urlopen.side_effect = unavailable
+        payload = {
+            "contents": [{"role": "user", "parts": [{"text": "Explain opportunity cost."}]}],
+            "generationConfig": {"temperature": 0.1, "maxOutputTokens": 100},
+        }
+        result = llm_provider.generate_content("https://gemini.invalid", None, payload, label="fallback test")
+        self.assertEqual(result["candidates"][0]["content"]["parts"][0]["text"], "Gemini fallback answer.")
+        self.assertEqual(urlopen.call_count, llm_provider.MAX_ATTEMPTS)
+        gemini.assert_called_once()
+        self.assertEqual(gemini.call_args.args[1], "temporary-google-key")
+
+
+
 if __name__ == "__main__":
     unittest.main()
