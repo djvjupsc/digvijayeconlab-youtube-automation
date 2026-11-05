@@ -103,6 +103,42 @@ def _normalize_openai_response(response):
     }
 
 
+def _generate_cloudflare(payload, label="LLM request", timeout=150):
+    """Call Cloudflare Workers AI through its OpenAI-compatible chat endpoint."""
+    account_id = os.environ.get("CLOUDFLARE_ACCOUNT_ID", "").strip()
+    token = os.environ.get("CLOUDFLARE_API_TOKEN", "").strip()
+    if not account_id or not token:
+        raise RuntimeError("CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN are required for Cloudflare fallback.")
+    model = os.environ.get("CLOUDFLARE_FALLBACK_MODEL", "@cf/meta/llama-3.1-8b-instruct")
+    request_data = json.dumps({**_to_openai_payload(payload), "model": model}).encode("utf-8")
+    url = "https://api.cloudflare.com/client/v4/accounts/" + account_id + "/ai/v1/chat/completions"
+    request = urllib.request.Request(
+        url, data=request_data,
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+        method="POST",
+    )
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        try:
+            with urllib.request.urlopen(request, timeout=timeout) as response:
+                body = json.loads(response.read().decode("utf-8"))
+                return _normalize_openai_response(body)
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="replace")[:1000]
+            if exc.code not in RETRYABLE_HTTP_STATUS or attempt == MAX_ATTEMPTS:
+                raise RuntimeError(f"{label} via Cloudflare Workers AI failed (HTTP {exc.code}): {detail}") from exc
+            delay = _retry_delay_seconds(exc, detail, attempt) if exc.code == 429 else min(30, 2 ** attempt)
+            if delay > MAX_RATE_LIMIT_WAIT_SECONDS:
+                raise RuntimeError(f"{label} via Cloudflare Workers AI rate limit exceeds wait ceiling ({delay}s).") from exc
+            print(f"{label}: Cloudflare Workers AI temporary HTTP {exc.code}; retrying in {delay}s.")
+            time.sleep(delay)
+        except (urllib.error.URLError, TimeoutError) as exc:
+            if attempt == MAX_ATTEMPTS:
+                raise RuntimeError(f"{label} via Cloudflare Workers AI connection failed: {exc}") from exc
+            delay = 2 ** attempt
+            print(f"{label}: Cloudflare Workers AI connection issue; retrying in {delay}s.")
+            time.sleep(delay)
+    raise RuntimeError(f"{label} via Cloudflare Workers AI failed without a response.")
+
 def _generate_huggingface(payload, label="LLM request", timeout=150):
     """Call the independent Hugging Face Inference Providers OpenAI-compatible router."""
     token = os.environ.get("HF_TOKEN")
@@ -141,8 +177,8 @@ def _generate_huggingface(payload, label="LLM request", timeout=150):
 def generate_content(api_url, api_key, payload, label="LLM request", timeout=150):
     """Use FreeLLMAPI first when selected; fall back to direct Gemini on adapter failure.
 
-    The fallback is an endpoint/runtime fallback using the same Google AI Studio
-    credential, not an independent provider or quota pool.
+    Fallback order is explicitly configured: Cloudflare Workers AI, Hugging Face,
+    then direct Gemini. Gemini shares the Google AI Studio quota with FreeLLMAPI.
     """
     provider = os.environ.get("LLM_PROVIDER", "gemini").strip().lower()
     try:
@@ -200,6 +236,12 @@ def generate_content(api_url, api_key, payload, label="LLM request", timeout=150
         last_error = primary_error
         for fallback in fallbacks:
             try:
+                if fallback == "cloudflare":
+                    if not os.environ.get("CLOUDFLARE_ACCOUNT_ID") or not os.environ.get("CLOUDFLARE_API_TOKEN"):
+                        print(f"{label}: Cloudflare fallback skipped because its optional credentials are not configured.")
+                        continue
+                    print(f"{label}: FreeLLMAPI unavailable; trying Cloudflare Workers AI fallback.")
+                    return _generate_cloudflare(payload, label=f"{label} Cloudflare fallback", timeout=timeout)
                 if fallback in {"huggingface", "hf"}:
                     print(f"{label}: FreeLLMAPI unavailable; trying Hugging Face Inference Providers fallback.")
                     return _generate_huggingface(payload, label=f"{label} Hugging Face fallback", timeout=timeout)
