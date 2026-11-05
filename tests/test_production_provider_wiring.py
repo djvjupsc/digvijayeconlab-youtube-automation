@@ -42,6 +42,19 @@ class ProductionProviderWiringTests(unittest.TestCase):
         self.assertIn("LLM_FALLBACK_PROVIDER: cloudflare,huggingface", workflow)
         self.assertIn("LIVE_INDEPENDENT_FALLBACK_PASS", workflow)
 
+    def test_live_fallback_preflight_runs_before_node_build_and_dependency_install(self):
+        workflow = (ROOT / ".github/workflows/freellmapi-smoke-test.yml").read_text(encoding="utf-8")
+        probe = workflow.index("Verify one live independent provider fallback request")
+        node = workflow.index("Set up Node.js")
+        freeapi_build = workflow.index("Download and build FreeLLMAPI")
+        font_install = workflow.index("Install Devanagari font and eSpeak test tools")
+        dependency_install = workflow.index("Install Python test dependencies")
+        self.assertLess(probe, node)
+        self.assertLess(probe, freeapi_build)
+        self.assertLess(probe, font_install)
+        self.assertLess(probe, dependency_install)
+        self.assertIn("Make calls to Inference Providers permission", workflow)
+
 
 if __name__ == "__main__":
     unittest.main()
