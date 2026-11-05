@@ -9,8 +9,10 @@ from pathlib import Path
 
 try:
     from .llm_provider import generate_content, get_api_key
+    from .gemini_client import MAX_GEMINI_ATTEMPTS, RETRYABLE_HTTP_STATUS
 except ImportError:
     from llm_provider import generate_content, get_api_key
+    from gemini_client import MAX_GEMINI_ATTEMPTS, RETRYABLE_HTTP_STATUS
 
 try:
     from .quality_checks import sanitize_math_notation
