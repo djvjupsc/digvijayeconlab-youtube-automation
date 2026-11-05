@@ -26,8 +26,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: npm
-          cache-dependency-path: freellmapi/package-lock.json
 
       - name: Download and build FreeLLMAPI
         run: |
@@ -47,17 +45,9 @@ jobs:
           export NODE_ENV=production
           export ENCRYPTION_KEY="$(node -e 'console.log(require("crypto").randomBytes(32).toString("hex"))')"
           export FREEAPI_DB_PATH="$RUNNER_TEMP/freellmapi.sqlite"
-          export FREEAPI_CONFIG_JSON="$(node -e '
-            const config = {
-              admin: { email: "ci-admin@localhost", password: process.env.CI_ADMIN_PASSWORD },
-              keys: [{ platform: "google", key: process.env.GOOGLE_AI_STUDIO_API_KEY, label: "GitHub Actions smoke test", enabled: true }],
-              models: [{ platform: "google", modelId: "gemini-3.5-flash-lite", displayName: "Gemini Flash Lite", fallbackEnabled: true }],
-              routing: { strategy: "balanced" }
-            };
-            process.stdout.write(JSON.stringify(config));
-          ' )"
           export CI_ADMIN_PASSWORD="$(node -e 'console.log(require("crypto").randomBytes(24).toString("base64url"))')"
-          # Rebuild config after creating the one-run admin password.
+          echo "::add-mask::$CI_ADMIN_PASSWORD"
+          echo "CI_ADMIN_PASSWORD=$CI_ADMIN_PASSWORD" >> "$GITHUB_ENV"
           export FREEAPI_CONFIG_JSON="$(node -e '
             const config = {
               admin: { email: "ci-admin@localhost", password: process.env.CI_ADMIN_PASSWORD },
@@ -82,8 +72,6 @@ jobs:
           exit 1
 
       - name: Authenticate and retrieve the temporary unified API key
-        env:
-          CI_ADMIN_PASSWORD: ${{ env.CI_ADMIN_PASSWORD }}
         run: |
           set -euo pipefail
           LOGIN="$(curl --silent --show-error --fail \
