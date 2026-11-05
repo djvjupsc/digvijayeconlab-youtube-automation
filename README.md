@@ -6,6 +6,8 @@ Cloud-based educational content production for DigvijayEconLab.
 
 The **daily ten-unit production workflow is currently manual-only**. Its 08:00 Asia/Kolkata schedule is intentionally disabled until the complete ten-unit run, provider quotas, voice path and state persistence have passed a production-readiness run. Each successful daily pack prepares material for the following publication date:
 
+See [Free-first production mode](docs/free-production-mode.md) for the current provider chain, no-charge limits, Cloudflare secret setup, F-Droid requirements and production release gates.
+
 - 10 bilingual full-lesson script packages: one lesson from every UGC NET Economics unit.
 - One bilingual 9:16 YouTube Short MP4 draft.
 - Ten original 16:9 (1280 × 720) branded YouTube thumbnail images, one per unit.
