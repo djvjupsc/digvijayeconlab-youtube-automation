@@ -127,7 +127,7 @@ class FreeLLMAPIAdapterTests(unittest.TestCase):
         "LLM_FALLBACK_PROVIDER": "huggingface,gemini",
         "FREELLMAPI_API_KEY": "temporary-unified-key",
         "FREELLMAPI_BASE_URL": "http://127.0.0.1:3001/v1",
-        "HF_TOKEN": "temporary-hf-token",
+        "HF_INFERENCE_TOKEN": "temporary-hf-token",
         "HF_FALLBACK_MODEL": "Qwen/Qwen3-4B-Instruct-2507:cheapest",
     })
     @patch("scripts.llm_provider.time.sleep")
@@ -156,7 +156,7 @@ class FreeLLMAPIAdapterTests(unittest.TestCase):
         body = json.loads(request.data.decode("utf-8"))
         self.assertEqual(body["model"], "Qwen/Qwen3-4B-Instruct-2507:cheapest")
 
-    @patch.dict(os.environ, {"HF_TOKEN": "temporary-hf-token"})
+    @patch.dict(os.environ, {"HF_INFERENCE_TOKEN": "temporary-hf-token"})
     @patch("scripts.llm_provider.urllib.request.urlopen")
     def test_huggingface_fallback_honors_retry_after(self, urlopen):
         limited = llm_provider.urllib.error.HTTPError(
@@ -182,7 +182,6 @@ class FreeLLMAPIAdapterTests(unittest.TestCase):
         "FREELLMAPI_BASE_URL": "http://127.0.0.1:3999/v1",
         "CLOUDFLARE_ACCOUNT_ID": "test-account",
         "CLOUDFLARE_API_TOKEN": "temporary-cloudflare-token",
-        "CLOUDFLARE_FALLBACK_MODEL": "@cf/meta/llama-3.1-8b-instruct",
     })
     @patch("scripts.llm_provider.time.sleep")
     @patch("scripts.llm_provider.urllib.request.urlopen")
@@ -208,7 +207,7 @@ class FreeLLMAPIAdapterTests(unittest.TestCase):
         self.assertEqual(request.get_header("Authorization"), "Bearer temporary-cloudflare-token")
         self.assertEqual(
             json.loads(request.data.decode("utf-8"))["model"],
-            "@cf/meta/llama-3.1-8b-instruct",
+            "@cf/meta/llama-3.2-3b-instruct",
         )
         self.assertEqual(urlopen.call_count, llm_provider.MAX_ATTEMPTS + 1)
 

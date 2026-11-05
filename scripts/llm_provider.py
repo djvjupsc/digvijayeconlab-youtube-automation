@@ -108,7 +108,7 @@ def _generate_cloudflare(payload, label="LLM request", timeout=150):
     token = os.environ.get("CLOUDFLARE_API_TOKEN", "").strip()
     if not account_id or not token:
         raise RuntimeError("CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN are required for Cloudflare fallback.")
-    model = os.environ.get("CLOUDFLARE_FALLBACK_MODEL", "@cf/meta/llama-3.1-8b-instruct")
+    model = os.environ.get("CLOUDFLARE_FALLBACK_MODEL", "@cf/meta/llama-3.2-3b-instruct")
     request_data = json.dumps({**_to_openai_payload(payload), "model": model}).encode("utf-8")
     url = "https://api.cloudflare.com/client/v4/accounts/" + account_id + "/ai/v1/chat/completions"
     request = urllib.request.Request(
@@ -140,9 +140,9 @@ def _generate_cloudflare(payload, label="LLM request", timeout=150):
 
 def _generate_huggingface(payload, label="LLM request", timeout=150):
     """Call the independent Hugging Face Inference Providers OpenAI-compatible router."""
-    token = os.environ.get("HF_TOKEN")
+    token = os.environ.get("HF_INFERENCE_TOKEN")
     if not token:
-        raise RuntimeError("HF_TOKEN is required for the Hugging Face fallback.")
+        raise RuntimeError("HF_INFERENCE_TOKEN is required for the Hugging Face fallback.")
     model = os.environ.get("HF_FALLBACK_MODEL", "Qwen/Qwen3-4B-Instruct-2507:cheapest")
     request_data = json.dumps({**_to_openai_payload(payload), "model": model}).encode("utf-8")
     request = urllib.request.Request(
