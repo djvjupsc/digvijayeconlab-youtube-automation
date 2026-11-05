@@ -11,6 +11,33 @@ import urllib.request
 
 RETRYABLE_HTTP_STATUS = {408, 429, 500, 502, 503, 504}
 MAX_ATTEMPTS = 3
+MAX_RATE_LIMIT_WAIT_SECONDS = 120
+
+
+def _retry_delay_seconds(exc, detail):
+    """Honor the provider's exact cooldown timestamp when it supplies one."""
+    retry_after = exc.headers.get("Retry-After") if exc.headers else None
+    if retry_after:
+        try:
+            return max(1, int(retry_after))
+        except (TypeError, ValueError):
+            pass
+
+    try:
+        body = json.loads(detail)
+        error = body.get("error", body) if isinstance(body, dict) else {}
+        retry_at_ms = error.get("retryAtMs") if isinstance(error, dict) else None
+        if isinstance(retry_at_ms, (int, float)):
+            return max(1, int((retry_at_ms - time.time() * 1000 + 999) // 1000))
+    except (json.JSONDecodeError, TypeError, ValueError):
+        pass
+
+    import re
+    reset_match = re.search(r"reset\\s*~\\s*(\\d+)\\s*s", detail, re.IGNORECASE)
+    if reset_match:
+        return max(1, int(reset_match.group(1)))
+
+    return min(30, 2 ** 1)
 
 
 def get_api_key():
@@ -107,11 +134,12 @@ def generate_content(api_url, api_key, payload, label="LLM request", timeout=150
             detail = exc.read().decode("utf-8", errors="replace")[:1000]
             if exc.code not in RETRYABLE_HTTP_STATUS or attempt == MAX_ATTEMPTS:
                 raise RuntimeError(f"{label} via FreeLLMAPI failed (HTTP {exc.code}): {detail}") from exc
-            retry_after = exc.headers.get("Retry-After") if exc.headers else None
-            try:
-                delay = min(30, max(1, int(retry_after))) if retry_after else 2 ** attempt
-            except (TypeError, ValueError):
-                delay = 2 ** attempt
+            delay = _retry_delay_seconds(exc, detail) if exc.code == 429 else min(30, 2 ** attempt)
+            if delay > MAX_RATE_LIMIT_WAIT_SECONDS:
+                raise RuntimeError(
+                    f"{label} via FreeLLMAPI is rate-limited for {delay}s, exceeding the "
+                    f"configured wait ceiling of {MAX_RATE_LIMIT_WAIT_SECONDS}s: {detail}"
+                ) from exc
             print(f"{label}: FreeLLMAPI temporary HTTP {exc.code}; retrying in {delay}s.")
             time.sleep(delay)
         except (urllib.error.URLError, TimeoutError) as exc:
