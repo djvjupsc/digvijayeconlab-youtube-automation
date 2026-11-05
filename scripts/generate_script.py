@@ -7,9 +7,9 @@ import urllib.request
 from pathlib import Path
 
 try:
-    from .gemini_client import generate_content
+    from .llm_provider import generate_content, get_api_key
 except ImportError:
-    from gemini_client import generate_content
+    from llm_provider import generate_content, get_api_key
 
 try:
     from .source_notes import resolve_source_notes_argument
@@ -31,9 +31,10 @@ def main():
 
     topic, language, content_format = sys.argv[1:4]
     source_notes = resolve_source_notes_argument(sys.argv[4] if len(sys.argv) > 4 else None)
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        raise SystemExit("GEMINI_API_KEY is not configured. Add it as a GitHub Actions secret.")
+    try:
+        api_key = get_api_key()
+    except RuntimeError as exc:
+        raise SystemExit(str(exc)) from exc
 
     allowed_languages = {"Hindi", "English", "Bilingual"}
     allowed_formats = {"Concept Explainer", "MCQ Set", "Previous-Year-Question Analysis"}
@@ -108,7 +109,7 @@ English and Hindi explanations for each substantive teaching point. Include sour
         "generationConfig": {"temperature": 0.4, "maxOutputTokens": 8192},
     }
     try:
-        result = generate_content(API_URL, api_key, payload, label="Gemini script generation", timeout=120)
+        result = generate_content(API_URL, api_key, payload, label="Script generation", timeout=120)
     except RuntimeError as exc:
         raise SystemExit(str(exc)) from exc
 
