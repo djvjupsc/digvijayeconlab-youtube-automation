@@ -103,6 +103,41 @@ def _normalize_openai_response(response):
     }
 
 
+def _generate_huggingface(payload, label="LLM request", timeout=150):
+    """Call the independent Hugging Face Inference Providers OpenAI-compatible router."""
+    token = os.environ.get("HF_TOKEN")
+    if not token:
+        raise RuntimeError("HF_TOKEN is required for the Hugging Face fallback.")
+    model = os.environ.get("HF_FALLBACK_MODEL", "Qwen/Qwen3-4B-Instruct-2507:cheapest")
+    request_data = json.dumps({**_to_openai_payload(payload), "model": model}).encode("utf-8")
+    request = urllib.request.Request(
+        "https://router.huggingface.co/v1/chat/completions",
+        data=request_data,
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+        method="POST",
+    )
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        try:
+            with urllib.request.urlopen(request, timeout=timeout) as response:
+                return _normalize_openai_response(json.loads(response.read().decode("utf-8")))
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="replace")[:1000]
+            if exc.code not in RETRYABLE_HTTP_STATUS or attempt == MAX_ATTEMPTS:
+                raise RuntimeError(f"{label} via Hugging Face failed (HTTP {exc.code}): {detail}") from exc
+            delay = _retry_delay_seconds(exc, detail, attempt) if exc.code == 429 else min(30, 2 ** attempt)
+            if delay > MAX_RATE_LIMIT_WAIT_SECONDS:
+                raise RuntimeError(f"{label} via Hugging Face rate limit exceeds wait ceiling ({delay}s).") from exc
+            print(f"{label}: Hugging Face temporary HTTP {exc.code}; retrying in {delay}s.")
+            time.sleep(delay)
+        except (urllib.error.URLError, TimeoutError) as exc:
+            if attempt == MAX_ATTEMPTS:
+                raise RuntimeError(f"{label} via Hugging Face connection failed: {exc}") from exc
+            delay = 2 ** attempt
+            print(f"{label}: Hugging Face connection issue; retrying in {delay}s.")
+            time.sleep(delay)
+    raise RuntimeError(f"{label} via Hugging Face failed without a response.")
+
+
 def generate_content(api_url, api_key, payload, label="LLM request", timeout=150):
     """Use FreeLLMAPI first when selected; fall back to direct Gemini on adapter failure.
 
@@ -156,15 +191,27 @@ def generate_content(api_url, api_key, payload, label="LLM request", timeout=150
                 delay = 2 ** attempt
                 print(f"{label}: FreeLLMAPI connection issue; retrying in {delay}s.")
                 time.sleep(delay)
-    except RuntimeError as exc:
-        fallback = os.environ.get("LLM_FALLBACK_PROVIDER", "gemini").strip().lower()
-        fallback_key = os.environ.get("GEMINI_API_KEY")
-        if fallback != "gemini" or not fallback_key:
-            raise
-        print(
-            f"{label}: FreeLLMAPI unavailable; using direct Gemini endpoint as configured fallback. "
-            "This uses the same Google AI Studio credential and quota."
-        )
-        return gemini_generate(api_url, fallback_key, payload, label=f"{label} Gemini fallback", timeout=timeout)
+    except RuntimeError as primary_error:
+        fallbacks = [
+            item.strip().lower()
+            for item in os.environ.get("LLM_FALLBACK_PROVIDER", "gemini").split(",")
+            if item.strip()
+        ]
+        last_error = primary_error
+        for fallback in fallbacks:
+            try:
+                if fallback in {"huggingface", "hf"}:
+                    print(f"{label}: FreeLLMAPI unavailable; trying Hugging Face Inference Providers fallback.")
+                    return _generate_huggingface(payload, label=f"{label} Hugging Face fallback", timeout=timeout)
+                if fallback == "gemini":
+                    fallback_key = os.environ.get("GEMINI_API_KEY")
+                    if not fallback_key:
+                        continue
+                    print(f"{label}: trying direct Gemini fallback (shares Google AI Studio quota).")
+                    return gemini_generate(api_url, fallback_key, payload, label=f"{label} Gemini fallback", timeout=timeout)
+            except RuntimeError as fallback_error:
+                last_error = fallback_error
+                print(f"{label}: configured {fallback} fallback failed: {fallback_error}")
+        raise last_error
 
     raise RuntimeError(f"{label} via FreeLLMAPI failed without a response.")
