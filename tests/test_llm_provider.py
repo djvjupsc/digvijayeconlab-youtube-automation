@@ -182,7 +182,7 @@ class FreeLLMAPIAdapterTests(unittest.TestCase):
         "FREELLMAPI_BASE_URL": "http://127.0.0.1:3999/v1",
         "CLOUDFLARE_ACCOUNT_ID": "test-account",
         "CLOUDFLARE_API_TOKEN": "temporary-cloudflare-token",
-        "CLOUDFLARE_FALLBACK_MODEL": "@cf/meta/llama-3.1-8b-instruct",
+        "CLOUDFLARE_FALLBACK_MODEL": "@cf/meta/llama-3.2-3b-instruct",
     })
     @patch("scripts.llm_provider.time.sleep")
     @patch("scripts.llm_provider.urllib.request.urlopen")
@@ -208,7 +208,7 @@ class FreeLLMAPIAdapterTests(unittest.TestCase):
         self.assertEqual(request.get_header("Authorization"), "Bearer temporary-cloudflare-token")
         self.assertEqual(
             json.loads(request.data.decode("utf-8"))["model"],
-            "@cf/meta/llama-3.1-8b-instruct",
+            "@cf/meta/llama-3.2-3b-instruct",
         )
         self.assertEqual(urlopen.call_count, llm_provider.MAX_ATTEMPTS + 1)
 
