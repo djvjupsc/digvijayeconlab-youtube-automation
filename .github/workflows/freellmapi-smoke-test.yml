@@ -121,10 +121,10 @@ jobs:
           FREELLMAPI_BASE_URL: http://127.0.0.1:3001/v1
           FREELLMAPI_MODEL: gemini-3.5-flash-lite
           SCRIPT_UNIT: FreeLLMAPI integration validation
-          SCRIPT_LANGUAGE: English
+          SCRIPT_LANGUAGE: Bilingual
           SCRIPT_FORMAT: MCQ Set
         run: |
-          python scripts/generate_script.py "Opportunity Cost" English "MCQ Set"
+          python scripts/generate_script.py "Opportunity Cost" Bilingual "MCQ Set" docs/source-notes/opportunity-cost.md
           test -s output/scripts/opportunity-cost.md
 
       - name: Run first academic review through FreeLLMAPI
@@ -133,10 +133,10 @@ jobs:
           FREELLMAPI_BASE_URL: http://127.0.0.1:3001/v1
           FREELLMAPI_MODEL: gemini-3.5-flash-lite
           SCRIPT_UNIT: FreeLLMAPI integration validation
-          SCRIPT_LANGUAGE: English
+          SCRIPT_LANGUAGE: Bilingual
           SCRIPT_FORMAT: MCQ Set
         run: |
-          python scripts/review_script.py output/scripts/opportunity-cost.md
+          python scripts/review_script.py output/scripts/opportunity-cost.md docs/source-notes/opportunity-cost.md
           test -s output/reviews/opportunity-cost-quality-review.md
 
       - name: Run structured correction through FreeLLMAPI
@@ -147,7 +147,8 @@ jobs:
         run: |
           python scripts/correct_script.py \
             output/scripts/opportunity-cost.md \
-            output/reviews/opportunity-cost-quality-review.md
+            output/reviews/opportunity-cost-quality-review.md \
+            docs/source-notes/opportunity-cost.md
           test -s output/corrected_scripts/opportunity-cost.md
           test -s output/corrections/opportunity-cost-correction-log.md
 
@@ -157,11 +158,11 @@ jobs:
           FREELLMAPI_BASE_URL: http://127.0.0.1:3001/v1
           FREELLMAPI_MODEL: gemini-3.5-flash-lite
           SCRIPT_UNIT: FreeLLMAPI integration validation
-          SCRIPT_LANGUAGE: English
+          SCRIPT_LANGUAGE: Bilingual
           SCRIPT_FORMAT: MCQ Set
           REVIEW_STAGE: post-correction
         run: |
-          python scripts/review_script.py output/corrected_scripts/opportunity-cost.md
+          python scripts/review_script.py output/corrected_scripts/opportunity-cost.md docs/source-notes/opportunity-cost.md
           test -s output/reviews/opportunity-cost-quality-review.md
       - name: Preserve test drafts for human inspection
         if: always()
