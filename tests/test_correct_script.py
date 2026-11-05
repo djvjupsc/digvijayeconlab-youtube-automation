@@ -179,7 +179,7 @@ class StructuredCorrectionTests(unittest.TestCase):
 
 
     def test_repairs_opportunity_cost_q10_bilingual_labels_and_forgone_translation(self):
-        source = "\\n".join([
+        source = "\n".join([
             "**Explanation (Hindi/English):** ",
             "- **English:** A point inside the PPF indicates that the economy is producing less than its maximum potential due to unemployment or resource misallocation.",
             "- **Hindi:** PPF के अंदर एक बिंदु इंगित करता है कि बेरोजगारी या संसाधन दुर्विनियोजन के कारण अर्थव्यवस्था अपनी अधिकतम क्षमता से कम उत्पादन कर रही है।",
