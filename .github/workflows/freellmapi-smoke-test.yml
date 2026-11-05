@@ -1,6 +1,9 @@
 name: FreeLLMAPI integration smoke test
 
 on:
+  push:
+    branches:
+      - test/freellmapi-integration
   workflow_dispatch:
 
 permissions:
