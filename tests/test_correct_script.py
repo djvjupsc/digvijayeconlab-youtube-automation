@@ -163,7 +163,7 @@ class StructuredCorrectionTests(unittest.TestCase):
             "**Verification Status:** Standard economic principles verified against general curriculum guidelines for MPPSC Assistant Professor Economics. Numerical illustrations are marked [VERIFY] where specific parameter values are assumed for problem-solving practice.",
         ])
         repaired, changes = apply_known_editorial_repairs(source)
-        self.assertIn("अवतल PPF बढ़ती अवसर लागत को दर्शाता है।", repaired)
+        self.assertIn("नतोदर PPF संसाधनों की अपूर्ण प्रतिस्थाप्यता", repaired)
         self.assertIn("असीमित मानवीय इच्छाओं", repaired)
         self.assertIn("संसाधनों की दुर्लभता", repaired)
         self.assertIn("forgone salary is the only implicit cost", repaired)
