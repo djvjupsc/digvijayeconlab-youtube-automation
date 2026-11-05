@@ -34,35 +34,16 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Verify one live independent provider fallback request
+      - name: Verify every configured independent provider before FreeLLMAPI setup
         env:
           LLM_PROVIDER: freellmapi
           FREELLMAPI_API_KEY: preflight-placeholder-key
           FREELLMAPI_BASE_URL: http://127.0.0.1:3999/v1
           FREELLMAPI_MODEL: gemini-3.5-flash-lite
-          LLM_FALLBACK_PROVIDER: cloudflare,huggingface
           HF_FALLBACK_MODEL: Qwen/Qwen3-4B-Instruct-2507:cheapest
-          CLOUDFLARE_FALLBACK_MODEL: "@cf/meta/llama-3.1-8b-instruct"
-        run: |
-          set -euo pipefail
-          test -n "${HF_TOKEN:-}" || { echo "Missing HF_TOKEN secret. Add a fine-grained Hugging Face token with Make calls to Inference Providers permission, or configure Cloudflare fallback secrets."; exit 1; }
-          python - <<'PY'
-          from scripts.llm_provider import generate_content, get_api_key
+          CLOUDFLARE_FALLBACK_MODEL: "@cf/meta/llama-3.2-3b-instruct"
+        run: python scripts/provider_preflight.py
 
-          payload = {
-              "systemInstruction": {"parts": [{"text": "You are a concise bilingual Economics tutor. Do not invent facts."}]},
-              "contents": [{"role": "user", "parts": [{"text": "In one short sentence each, define opportunity cost in English and Hindi."}]}],
-              "generationConfig": {"temperature": 0.1, "maxOutputTokens": 96},
-          }
-          result = generate_content("unused", get_api_key(), payload, label="Live independent fallback probe", timeout=45)
-          candidates = result.get("candidates", [])
-          answer = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "") if candidates else ""
-          if len(answer.strip()) < 20:
-              raise SystemExit("Independent provider returned an empty or implausibly short answer.")
-          print("LIVE_INDEPENDENT_FALLBACK_PASS")
-          print("Returned response length:", len(answer))
-          print("Response preview:", answer[:350].replace("\\n", " "))
-          PY
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
