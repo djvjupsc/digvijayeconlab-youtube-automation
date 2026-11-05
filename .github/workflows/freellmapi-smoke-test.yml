@@ -97,6 +97,13 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install Devanagari font and eSpeak test tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends fontconfig fonts-noto-core espeak-ng
+          fc-cache -f
+          fc-match -f '%{family}\\n%{file}\\n' 'Noto Sans Devanagari:lang=hi'
+
       - name: Install Python test dependencies
         run: |
           python -m pip install --upgrade pip
