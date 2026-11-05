@@ -27,7 +27,7 @@ class ProviderPreflightTests(unittest.TestCase):
         providers, warnings = provider_preflight.configured_independent_providers({
             "CLOUDFLARE_ACCOUNT_ID": "account-only",
             "CLOUDFLARE_API_TOKEN": "",
-            "HF_TOKEN": "hf-token",
+            "HF_INFERENCE_TOKEN": "hf-token",
         })
         self.assertEqual(providers, ["huggingface"])
         self.assertTrue(any("Cloudflare skipped" in item for item in warnings))
@@ -36,7 +36,7 @@ class ProviderPreflightTests(unittest.TestCase):
         providers, warnings = provider_preflight.configured_independent_providers({
             "CLOUDFLARE_ACCOUNT_ID": "account",
             "CLOUDFLARE_API_TOKEN": "token",
-            "HF_TOKEN": "hf-token",
+            "HF_INFERENCE_TOKEN": "hf-token",
         })
         self.assertEqual(providers, ["cloudflare", "huggingface"])
         self.assertFalse(warnings)
@@ -47,7 +47,7 @@ class ProviderPreflightTests(unittest.TestCase):
         "FREELLMAPI_BASE_URL": "http://127.0.0.1:3999/v1",
         "CLOUDFLARE_ACCOUNT_ID": "account",
         "CLOUDFLARE_API_TOKEN": "cloudflare-token",
-        "HF_TOKEN": "hf-token",
+        "HF_INFERENCE_TOKEN": "hf-token",
     }, clear=True)
     @patch("scripts.provider_preflight.get_api_key", return_value="placeholder")
     @patch("scripts.provider_preflight.generate_content", return_value=GOOD_RESPONSE)
@@ -66,7 +66,7 @@ class ProviderPreflightTests(unittest.TestCase):
         "FREELLMAPI_BASE_URL": "http://127.0.0.1:3999/v1",
         "CLOUDFLARE_ACCOUNT_ID": "account",
         "CLOUDFLARE_API_TOKEN": "cloudflare-token",
-        "HF_TOKEN": "hf-token",
+        "HF_INFERENCE_TOKEN": "hf-token",
     }, clear=True)
     @patch("scripts.provider_preflight.get_api_key", return_value="placeholder")
     @patch("scripts.provider_preflight.generate_content")
@@ -88,7 +88,7 @@ class ProviderPreflightTests(unittest.TestCase):
         "LLM_PROVIDER": "freellmapi",
         "FREELLMAPI_API_KEY": "placeholder",
         "FREELLMAPI_BASE_URL": "http://127.0.0.1:3999/v1",
-        "HF_TOKEN": "hf-token",
+        "HF_INFERENCE_TOKEN": "hf-token",
     }, clear=True)
     @patch("scripts.provider_preflight.get_api_key", return_value="placeholder")
     @patch("scripts.provider_preflight.generate_content", side_effect=RuntimeError("HTTP 403 permission denied"))
