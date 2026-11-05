@@ -10,13 +10,13 @@ on:
         type: boolean
         default: false
       llm_provider:
-        description: "AI provider for all lesson and daily asset generation (FreeLLMAPI requires the Google AI Studio secret)"
+        description: "Primary AI route. FreeLLMAPI enables independent Cloudflare/Hugging Face fallbacks; requires the Google AI Studio secret."
         required: true
         type: choice
         options:
           - gemini
           - freellmapi
-        default: gemini
+        default: freellmapi
       resume_from_run_id:
         description: "Optional previous failed workflow run ID; reuse only lesson packages with matching topics and a passing academic gate"
         required: false
@@ -44,7 +44,7 @@ concurrency:
 
 permissions:
   actions: read
-  contents: read
+  contents: write
 
 jobs:
   daily-production:
@@ -53,6 +53,8 @@ jobs:
     timeout-minutes: 180
     env:
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
     steps:
       - name: Check out main
         uses: actions/checkout@v4
@@ -164,7 +166,7 @@ jobs:
           echo "FREELLMAPI_API_KEY=$UNIFIED_KEY" >> "$GITHUB_ENV"
           echo "FREELLMAPI_BASE_URL=http://127.0.0.1:3001/v1" >> "$GITHUB_ENV"
           echo "FREELLMAPI_MODEL=gemini-3.5-flash-lite" >> "$GITHUB_ENV"
-          echo "LLM_FALLBACK_PROVIDER=gemini" >> "$GITHUB_ENV"
+          echo "LLM_FALLBACK_PROVIDER=cloudflare,huggingface,gemini" >> "$GITHUB_ENV"
 
       - name: Create or verify ten public YouTube playlists
         if: steps.prepare.outputs.claimed == 'true' && inputs.create_public_playlists == true
@@ -190,7 +192,7 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: gemini-3.5-flash-lite
           LLM_PROVIDER: ${{ inputs.llm_provider }}
-          LLM_FALLBACK_PROVIDER: huggingface,gemini
+          LLM_FALLBACK_PROVIDER: cloudflare,huggingface,gemini
           FREELLMAPI_BASE_URL: http://127.0.0.1:3001/v1
           FREELLMAPI_MODEL: gemini-3.5-flash-lite
           CHATTERBOX_ENABLED: ${{ vars.CHATTERBOX_ENABLED }}
@@ -303,4 +305,17 @@ jobs:
           python scripts/daily_production.py finish \
             --run-id "$GITHUB_RUN_ID" \
             --job-status "$PACK_JOB_STATUS"
-          echo "Daily state is run-local; no commit or push is attempted."
+          # Persist rotation/idempotency state for the next run. Only this JSON file is committed.
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add config/daily_production_state.json
+          if git diff --cached --quiet; then
+            echo "No production state change to persist."
+            exit 0
+          fi
+          git commit -m "chore: persist daily production state [skip ci]"
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
+          echo "Daily production state persisted to main."
