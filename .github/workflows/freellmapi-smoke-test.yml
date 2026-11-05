@@ -92,6 +92,68 @@ jobs:
           echo "FREELLMAPI_UNIFIED_KEY=$UNIFIED_KEY" >> "$GITHUB_ENV"
           echo "Temporary unified key retrieved and masked; it will not be printed."
 
+      - name: Set up Python for the Economics pipeline
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run offline regression tests
+        run: |
+          python -m compileall -q scripts tests
+          python -m unittest discover -s tests -v
+
+      - name: Generate one Economics MCQ draft through FreeLLMAPI
+        env:
+          LLM_PROVIDER: freellmapi
+          FREELLMAPI_API_KEY: ${{ env.FREELLMAPI_UNIFIED_KEY }}
+          FREELLMAPI_BASE_URL: http://127.0.0.1:3001/v1
+          FREELLMAPI_MODEL: gemini-3.5-flash-lite
+          SCRIPT_UNIT: FreeLLMAPI integration validation
+          SCRIPT_LANGUAGE: English
+          SCRIPT_FORMAT: MCQ Set
+        run: |
+          python scripts/generate_script.py "Opportunity Cost" English "MCQ Set"
+          test -s output/scripts/opportunity-cost.md
+
+      - name: Run first academic review through FreeLLMAPI
+        env:
+          LLM_PROVIDER: freellmapi
+          FREELLMAPI_API_KEY: ${{ env.FREELLMAPI_UNIFIED_KEY }}
+          FREELLMAPI_BASE_URL: http://127.0.0.1:3001/v1
+          FREELLMAPI_MODEL: gemini-3.5-flash-lite
+          SCRIPT_UNIT: FreeLLMAPI integration validation
+          SCRIPT_LANGUAGE: English
+          SCRIPT_FORMAT: MCQ Set
+        run: |
+          python scripts/review_script.py output/scripts/opportunity-cost.md
+          test -s output/reviews/opportunity-cost-quality-review.md
+
+      - name: Run structured correction through FreeLLMAPI
+        env:
+          LLM_PROVIDER: freellmapi
+          FREELLMAPI_API_KEY: ${{ env.FREELLMAPI_UNIFIED_KEY }}
+          FREELLMAPI_BASE_URL: http://127.0.0.1:3001/v1
+          FREELLMAPI_MODEL: gemini-3.5-flash-lite
+        run: |
+          python scripts/correct_script.py \
+            output/scripts/opportunity-cost.md \
+            output/reviews/opportunity-cost-quality-review.md
+          test -s output/corrected_scripts/opportunity-cost.md
+          test -s output/corrections/opportunity-cost-correction-log.md
+
+      - name: Run second academic review through FreeLLMAPI
+        env:
+          LLM_PROVIDER: freellmapi
+          FREELLMAPI_API_KEY: ${{ env.FREELLMAPI_UNIFIED_KEY }}
+          FREELLMAPI_BASE_URL: http://127.0.0.1:3001/v1
+          FREELLMAPI_MODEL: gemini-3.5-flash-lite
+          SCRIPT_UNIT: FreeLLMAPI integration validation
+          SCRIPT_LANGUAGE: English
+          SCRIPT_FORMAT: MCQ Set
+          REVIEW_STAGE: post-correction
+        run: |
+          python scripts/review_script.py output/corrected_scripts/opportunity-cost.md
+          test -s output/reviews/opportunity-cost-quality-review.md
       - name: Send one minimal OpenAI-compatible Economics prompt
         run: |
           set -euo pipefail
