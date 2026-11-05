@@ -212,6 +212,22 @@ class FreeLLMAPIAdapterTests(unittest.TestCase):
         )
         self.assertEqual(urlopen.call_count, llm_provider.MAX_ATTEMPTS + 1)
 
+    @patch.dict(os.environ, {
+        "HF_TOKEN": "private-dataset-token",
+        "HF_INFERENCE_TOKEN": "inference-only-token",
+    })
+    @patch("scripts.llm_provider.urllib.request.urlopen")
+    def test_prefers_dedicated_inference_token_over_private_dataset_token(self, urlopen):
+        success = io.BytesIO(json.dumps({
+            "choices": [{"message": {"content": "Provider token selected."}, "finish_reason": "stop"}]
+        }).encode("utf-8"))
+        urlopen.return_value.__enter__.return_value = success
+        llm_provider._generate_huggingface(
+            {"contents": [{"role": "user", "parts": [{"text": "test"}]}]}
+        )
+        request = urlopen.call_args.args[0]
+        self.assertEqual(request.get_header("Authorization"), "Bearer inference-only-token")
+
 
 if __name__ == "__main__":
     unittest.main()
