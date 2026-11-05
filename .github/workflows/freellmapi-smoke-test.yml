@@ -34,6 +34,7 @@ jobs:
         run: |
           git clone --depth 1 https://github.com/tashfeenahmed/freellmapi.git freellmapi
           cd freellmapi
+          test "$(git rev-parse HEAD)" = "fb07845faf7cf986ea9f3692e055076035dd8739" || { echo "Unexpected FreeLLMAPI source revision."; exit 1; }
           npm ci
           npm run build
 
