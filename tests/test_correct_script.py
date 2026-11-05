@@ -154,7 +154,7 @@ class StructuredCorrectionTests(unittest.TestCase):
 
 
     def test_repairs_opportunity_cost_bilingual_parity_cost_types_and_source_claim(self):
-        source = "\\n".join([
+        source = "\n".join([
             "(एक वस्तु के अधिक उत्पादन की अवसर लागत दूसरी वस्तु की छोड़ी जाने वाली मात्रा से मापी जाती है।)",
             "असीमित मानवीय आवश्यकताओं और संसाधनों की दुर्लता के कारण चयन करना पड़ता है।",
             "If an individual leaves a job paying ₹50,000 per year to start a business, and incurs no other explicit costs besides buying ₹20,000 worth of supplies, what is the implicit cost of starting the business? [VERIFY]",
