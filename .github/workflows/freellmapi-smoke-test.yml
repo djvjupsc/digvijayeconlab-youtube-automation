@@ -126,7 +126,6 @@ jobs:
           SCRIPT_UNIT: FreeLLMAPI integration validation
           SCRIPT_LANGUAGE: Bilingual
           SCRIPT_FORMAT: MCQ Set
-          LLM_FALLBACK_PROVIDER: huggingface,gemini
         run: |
           python scripts/generate_script.py "Opportunity Cost" Bilingual "MCQ Set" docs/source-notes/opportunity-cost.md
           test -s output/scripts/opportunity-cost.md
