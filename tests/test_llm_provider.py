@@ -175,5 +175,43 @@ class FreeLLMAPIAdapterTests(unittest.TestCase):
         sleep.assert_called_once_with(7)
 
 
+    @patch.dict(os.environ, {
+        "LLM_PROVIDER": "freellmapi",
+        "LLM_FALLBACK_PROVIDER": "cloudflare,huggingface",
+        "FREELLMAPI_API_KEY": "temporary-unified-key",
+        "FREELLMAPI_BASE_URL": "http://127.0.0.1:3999/v1",
+        "CLOUDFLARE_ACCOUNT_ID": "test-account",
+        "CLOUDFLARE_API_TOKEN": "temporary-cloudflare-token",
+        "CLOUDFLARE_FALLBACK_MODEL": "@cf/meta/llama-3.1-8b-instruct",
+    })
+    @patch("scripts.llm_provider.time.sleep")
+    @patch("scripts.llm_provider.urllib.request.urlopen")
+    def test_uses_cloudflare_workers_ai_as_first_independent_fallback(self, urlopen, _sleep):
+        unavailable = llm_provider.urllib.error.URLError("local FreeLLMAPI endpoint unavailable")
+        success = io.BytesIO(json.dumps({
+            "choices": [{"message": {"content": "Opportunity cost is the next-best alternative forgone."},
+                         "finish_reason": "stop"}]
+        }).encode("utf-8"))
+        urlopen.side_effect = [unavailable] * llm_provider.MAX_ATTEMPTS + [success]
+        payload = {
+            "systemInstruction": {"parts": [{"text": "Be concise."}]},
+            "contents": [{"role": "user", "parts": [{"text": "Define opportunity cost."}]}],
+            "generationConfig": {"temperature": 0.1, "maxOutputTokens": 64},
+        }
+        result = llm_provider.generate_content("unused", None, payload, label="Cloudflare fallback test")
+        self.assertIn("next-best alternative", result["candidates"][0]["content"]["parts"][0]["text"])
+        request = urlopen.call_args.args[0]
+        self.assertEqual(
+            request.full_url,
+            "https://api.cloudflare.com/client/v4/accounts/test-account/ai/v1/chat/completions",
+        )
+        self.assertEqual(request.get_header("Authorization"), "Bearer temporary-cloudflare-token")
+        self.assertEqual(
+            json.loads(request.data.decode("utf-8"))["model"],
+            "@cf/meta/llama-3.1-8b-instruct",
+        )
+        self.assertEqual(urlopen.call_count, llm_provider.MAX_ATTEMPTS + 1)
+
+
 if __name__ == "__main__":
     unittest.main()
