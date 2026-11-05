@@ -20,6 +20,7 @@ jobs:
     timeout-minutes: 20
     env:
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      HF_INFERENCE_TOKEN: ${{ secrets.HF_INFERENCE_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
     steps:
@@ -45,7 +46,7 @@ jobs:
           CLOUDFLARE_FALLBACK_MODEL: "@cf/meta/llama-3.1-8b-instruct"
         run: |
           set -euo pipefail
-          test -n "${HF_TOKEN:-}" || { echo "Missing HF_TOKEN secret. Add a fine-grained Hugging Face token with Make calls to Inference Providers permission, or configure Cloudflare fallback secrets."; exit 1; }
+          test -n "${HF_INFERENCE_TOKEN:-${CLOUDFLARE_API_TOKEN:-}}" || { echo "Missing independent provider credentials. Add HF_INFERENCE_TOKEN with Make calls to Inference Providers permission, or configure Cloudflare fallback secrets. Keep HF_TOKEN unchanged for private Chatterbox voice-reference access."; exit 1; }
           python - <<'PY'
           from scripts.llm_provider import generate_content, get_api_key
 
