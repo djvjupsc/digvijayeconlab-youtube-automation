@@ -140,9 +140,9 @@ def _generate_cloudflare(payload, label="LLM request", timeout=150):
 
 def _generate_huggingface(payload, label="LLM request", timeout=150):
     """Call the independent Hugging Face Inference Providers OpenAI-compatible router."""
-    token = os.environ.get("HF_TOKEN")
+    token = os.environ.get("HF_INFERENCE_TOKEN") or os.environ.get("HF_TOKEN")
     if not token:
-        raise RuntimeError("HF_TOKEN is required for the Hugging Face fallback.")
+        raise RuntimeError("HF_INFERENCE_TOKEN is required for the Hugging Face fallback (HF_TOKEN is accepted as a backward-compatible fallback).")
     model = os.environ.get("HF_FALLBACK_MODEL", "Qwen/Qwen3-4B-Instruct-2507:cheapest")
     request_data = json.dumps({**_to_openai_payload(payload), "model": model}).encode("utf-8")
     request = urllib.request.Request(
