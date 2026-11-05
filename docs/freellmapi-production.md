@@ -2,7 +2,7 @@
 
 ## Scope
 
-The daily ten-unit workflow supports an explicit, opt-in FreeLLMAPI mode. Gemini remains the default. The workflow does not publish videos or create public playlists unless the existing separate opt-ins are selected.
+The daily ten-unit workflow defaults to FreeLLMAPI and uses independent Cloudflare Workers AI and Hugging Face fallbacks before the direct Gemini endpoint. It remains manual-only until live reliability and full-pack validation are complete. The workflow does not publish videos or create public playlists unless separate opt-ins are selected.
 
 ## Run configuration
 
@@ -23,21 +23,28 @@ The FreeLLMAPI source is pinned to upstream commit `fb07845faf7cf986ea9f3692e055
 
 ## Fallback behavior
 
-If FreeLLMAPI cannot serve a request after its bounded retry policy, the adapter tries the configured fallback chain in order: Cloudflare Workers AI, Hugging Face Inference Providers, then direct Gemini.
+Before a FreeLLMAPI production pack is claimed, `scripts/provider_preflight.py` tests every configured independent provider using a small bilingual Economics request. The daily workflow stops before claiming work if any configured provider fails. The smoke workflow runs the same preflight before building FreeLLMAPI. The probe deliberately forces the FreeLLMAPI endpoint unavailable so it verifies the independent route, not the Google-backed primary route.
 
-- **Cloudflare Workers AI** uses the optional `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` repository secrets and the OpenAI-compatible account endpoint. The default model is `@cf/meta/llama-3.1-8b-instruct`. Create a token with the minimum `Workers AI - Read` and `Workers AI - Edit` permissions.
-- **Hugging Face** uses the existing `HF_TOKEN` secret and `https://router.huggingface.co/v1/chat/completions`. The default fallback model is `Qwen/Qwen3-4B-Instruct-2507:cheapest`.
+At runtime, if FreeLLMAPI cannot serve a request after its bounded retry policy, the adapter tries the configured fallback chain in order: Cloudflare Workers AI, Hugging Face Inference Providers, then direct Gemini.
+
+- **Cloudflare Workers AI** uses the optional `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` repository secrets and the OpenAI-compatible account endpoint. The default model is `@cf/meta/llama-3.2-3b-instruct` (the previous `@cf/meta/llama-3.1-8b-instruct` model was deprecated on May 30, 2026). Create a token with the minimum Workers AI permissions required by the Cloudflare API.
+- **Hugging Face** uses the existing `HF_TOKEN` secret and `https://router.huggingface.co/v1/chat/completions`. The default fallback model is `Qwen/Qwen3-4B-Instruct-2507:cheapest`. The fine-grained HF token must include the **Make calls to Inference Providers** permission. A general Hub read token alone is insufficient.
 - **Gemini** remains the final endpoint fallback and shares the Google AI Studio credential/quota with FreeLLMAPI. It is not an independent quota pool.
 - Cloudflare's Free plan currently includes 10,000 Workers AI neurons per day; requests beyond that free allocation fail on the Free plan. Hugging Face currently lists $0.10/month of Inference Provider credits for Free users, subject to change. Gemini free-tier rate limits are model- and project-specific. None of these providers guarantees enough free capacity for a 10-unit daily batch.
 - The workflow does not purchase credits or enable a paid plan. If free capacity is exhausted, the request should fail visibly and the batch remains incomplete. Do not add a paid billing method to bypass quotas.
 - Retries are bounded and respect provider retry hints. The pipeline stops with an explicit error if all configured providers fail.
 
-Cloudflare credentials are optional. Without them, Cloudflare is skipped and the adapter proceeds to Hugging Face. The production and smoke workflows pass the existing `HF_TOKEN` secret and optional Cloudflare secrets to the runner.
+Cloudflare credentials are optional. Without them, Cloudflare is skipped and the adapter proceeds to Hugging Face. The preflight checks all configured provider credentials individually; if a configured token is invalid, fix its permission or remove the incomplete/unused secret before running production.
+
+## Android and narration dependencies
+
+- No additional F-Droid application is required for GitHub Actions. GitHub-hosted Ubuntu runners install the required tools and start FreeLLMAPI locally on the runner; a FreeLLMAPI server on the Android phone's `127.0.0.1` is not reachable from GitHub-hosted runners.
+- Chatterbox/ZeroGPU availability is quota-limited. If the free Space quota is exhausted, the current workflow can render eSpeak preview narration only. That preview is not the owner's voice and is not upload-eligible; the publishing gate must remain closed until an approved narration path succeeds.
 
 ## Cost and publication safeguards
 
 - No billing setup or paid service is enabled by this workflow.
-- GitHub Actions usage remains subject to the repository's included Actions quota. If that quota is exhausted, the run may be blocked; no paid overage is authorized by this configuration.
+- GitHub Actions usage remains subject to the repository's included Actions quota. For a private repository on GitHub Free, the published allowance is 2,000 minutes/month and 500 MB storage; other plans have different allowances. A full production run can consume a material share of that monthly budget. Keep Actions budget/overage controls configured to stop rather than purchase extra usage.
 - FreeLLMAPI is not exposed to the public internet and is not hosted persistently.
 - The daily workflow defaults to FreeLLMAPI so the independent fallback chain is active. The workflow remains manual-only until a full production-readiness run passes.
 - Public playlist creation and private staging uploads remain separate, explicit workflow inputs and default to false.
