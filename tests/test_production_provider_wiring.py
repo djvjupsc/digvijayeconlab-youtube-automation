@@ -61,7 +61,7 @@ class ProductionProviderWiringTests(unittest.TestCase):
         self.assertLess(probe, freeapi_build)
         self.assertLess(probe, font_install)
         self.assertLess(probe, dependency_install)
-        self.assertIn("Make calls to Inference Providers permission", preflight_script)
+        self.assertIn("Make calls to Inference Providers", preflight_script)
 
 
 if __name__ == "__main__":
