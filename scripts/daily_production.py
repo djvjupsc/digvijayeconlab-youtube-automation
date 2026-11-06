@@ -306,6 +306,16 @@ def process_units(units, base_env, previous_manifest=None, output_root=None):
     return successes, failures
 
 
+
+def validate_provider_credentials(base_env):
+    """Fail early only when the credential for the selected route is absent."""
+    provider = base_env.get("LLM_PROVIDER", "gemini").strip().lower()
+    credential_name = "FREELLMAPI_API_KEY" if provider == "freellmapi" else "GEMINI_API_KEY"
+    if not base_env.get(credential_name):
+        raise RuntimeError(f"{credential_name} is required when LLM_PROVIDER={provider}.")
+    return True
+
+
 def process(args):
     manifest = load_json(args.manifest)
     if len(manifest.get("units", [])) != 10:
@@ -339,8 +349,7 @@ def process(args):
             directory.mkdir(parents=True, exist_ok=True)
 
     base_env = os.environ.copy()
-    if not base_env.get("GEMINI_API_KEY"):
-        raise RuntimeError("GEMINI_API_KEY is missing from GitHub Actions secrets.")
+    validate_provider_credentials(base_env)
     base_env.setdefault("GEMINI_MODEL", "gemini-3.1-flash-lite")
 
     successes, failures = process_units(manifest["units"], base_env, previous_manifest=previous_manifest)
