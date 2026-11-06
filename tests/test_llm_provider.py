@@ -56,7 +56,8 @@ class FreeLLMAPIAdapterTests(unittest.TestCase):
 
 
     @patch.dict(os.environ, {"LLM_PROVIDER": "freellmapi", "FREELLMAPI_API_KEY": "temporary-test-key",
-                             "FREELLMAPI_BASE_URL": "http://127.0.0.1:3001/v1"})
+                             "FREELLMAPI_BASE_URL": "http://127.0.0.1:3001/v1",
+                              "LLM_FALLBACK_PROVIDER": ""})
     @patch("scripts.llm_provider.time.sleep")
     @patch("scripts.llm_provider.time.time", return_value=1000.0)
     @patch("scripts.llm_provider.urllib.request.urlopen")
