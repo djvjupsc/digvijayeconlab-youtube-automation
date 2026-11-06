@@ -20,6 +20,12 @@ OpenStax, *Principles of Economics 2e*, section 12.1, discusses pollution as a n
 
 Source: https://openstax.org/books/principles-of-economics-2e/pages/12-1-the-economics-of-pollution
 
+## Adverse selection — original source
+
+George A. Akerlof, “The Market for ‘Lemons’: Quality Uncertainty and the Market Mechanism,” *The Quarterly Journal of Economics*, Vol. 84, No. 3 (August 1970), pp. 488–500, DOI: 10.2307/1879431. The article uses used automobiles to illustrate how quality uncertainty and asymmetric information can affect market outcomes.
+
+Source: https://doi.org/10.2307/1879431
+
 ## Editorial safeguards
 
 - Do not equate every publicly funded service with a pure public good.
