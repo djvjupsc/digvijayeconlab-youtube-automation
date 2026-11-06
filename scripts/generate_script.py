@@ -58,6 +58,52 @@ def topic_specific_requirements(topic: str) -> str:
     return ""
 
 
+def apply_topic_specific_structure(topic: str, content: str) -> str:
+    """Enforce small, transparent topic-specific handoff requirements after generation."""
+    normalized = (topic or "").casefold()
+    if "economic growth in india: pattern and structure" in normalized:
+        if not re.search(r"(?im)^#{1,6}\s+.*learning objectives", content):
+            objectives = """## Learning Objectives / अधिगम उद्देश्य
+
+After this lesson, learners will be able to:
+- Distinguish real GDP growth from nominal GDP values and GVA measures.
+- अलग-अलग मापों के रूप में वास्तविक GDP वृद्धि, नाममात्र GDP मूल्य और GVA में अंतर करना।
+- Interpret sectoral output shares separately from sectoral employment shares.
+- क्षेत्रीय उत्पादन हिस्सेदारी और क्षेत्रीय रोजगार हिस्सेदारी की अलग-अलग व्याख्या करना।
+- Identify the 2022–23 national-accounts base year and state the period and estimate vintage attached to each statistic.
+- 2022–23 के राष्ट्रीय लेखा आधार वर्ष की पहचान करना तथा प्रत्येक आँकड़े की अवधि और अनुमान-विंटेज बताना।
+
+"""
+            title_lines = content.splitlines(keepends=True)
+            insert_at = 0
+            while insert_at < len(title_lines) and (title_lines[insert_at].startswith("# ") or not title_lines[insert_at].strip()):
+                insert_at += 1
+            title_lines.insert(insert_at, "\n" + objectives)
+            content = "".join(title_lines)
+
+    if "international trade: basic concepts" in normalized:
+        marker_text = "[VERIFY: add a standard textbook citation for the definition of International Economics]"
+        if "international economics studies the economic interactions between countries" in content.casefold() and marker_text not in content:
+            content = re.sub(
+                r"(?i)(International Economics studies the economic interactions between countries)",
+                marker_text + r" \1",
+                content,
+                count=1,
+            )
+        required_syllabus = "Independent verification of MPPSC syllabus alignment is still required."
+        if required_syllabus not in content:
+            if re.search(r"(?im)^##\s+.*(?:source|verification)", content):
+                content = re.sub(
+                    r"(?im)(^##\s+.*(?:source|verification).*?$)",
+                    r"\1\n\n" + required_syllabus,
+                    content,
+                    count=1,
+                )
+            else:
+                content += "\n\n## Source and Verification Notes\n\n" + required_syllabus + "\n"
+    return content
+
+
 def main():
     if len(sys.argv) < 4:
         raise SystemExit("Usage: generate_script.py TOPIC LANGUAGE FORMAT [SOURCE_NOTES]")
@@ -179,6 +225,7 @@ English and Hindi explanations for each substantive teaching point. Include sour
     unit_prefix = os.environ.get("SCRIPT_FILENAME_PREFIX", "").strip()
     filename_topic = f"{unit_prefix} {topic}" if unit_prefix else topic
     output_path = output_dir / clean_filename(filename_topic)
+    content = apply_topic_specific_structure(topic, content)
     output_path.write_text(content.strip() + "\n", encoding="utf-8")
     print(f"Draft generated: {output_path}")
     print("Status: DRAFT ONLY — human fact-check and approval required.")
