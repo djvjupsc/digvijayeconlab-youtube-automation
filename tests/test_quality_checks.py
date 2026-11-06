@@ -277,7 +277,7 @@ An illustrative example.
             )
         source += "## Source and Verification Notes\nSources listed here.\n"
         self.assertEqual(count_mcq_sections(source), (5, 5, 5))
-        findings = analyze_script(source, "MCQ Set", "English")
+        findings = analyze_script(source, "Concept Explainer", "English")
         self.assertNotIn("MCQ_COUNT_BELOW_MINIMUM", {item["code"] for item in findings})
 
     def test_numbered_lesson_sections_are_not_counted_as_mcqs(self):
