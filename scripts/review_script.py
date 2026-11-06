@@ -21,7 +21,7 @@ try:
 except ImportError:
     from source_notes import load_optional_source_notes
 
-MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
+MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
 API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
 
 
