@@ -19,6 +19,12 @@ The Survey separately reports services GVA growth of 9.3% in H1 FY2025–26 and 
 
 Source: https://www.indiabudget.gov.in/economicsurvey/doc/echapter.pdf
 
+## Employment structure: use a separate labour-force measure
+
+The MoSPI *Periodic Labour Force Survey (PLFS), Annual Report 2025* reports that agriculture accounted for 43.0% of workers in usual status in 2025, down from 44.8% in 2024. The same PIB release notes manufacturing's employment share rose from 11.6% to 12.1% over that comparison. These are employment shares, not shares of GDP or GVA.
+
+Source: Press Information Bureau, MoSPI, *PLFS Annual Report 2025*, released 27 March 2026: https://www.pib.gov.in/PressReleasePage.aspx?PRID=2246009&lang=2&reg=48&regThe=
+
 ## Make in India
 
 The Press Information Bureau states that Make in India was announced on 15 August 2014 and formally launched on 25 September 2014. Its stated objectives include facilitating investment, fostering innovation, building infrastructure, and positioning India as a hub for manufacturing, design and innovation.
