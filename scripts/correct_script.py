@@ -634,6 +634,27 @@ Source: Government of India, Economic Survey 2025–26, Tables I.1 and I.2b; MoS
 """
             changes.append("Added the latest PLFS 2025 employment data and official references.")
 
+    # Ensure selected bibliographic references are present in the lesson itself,
+    # not only in the artifact's separate source-note file.
+    if "theory of consumer behaviour" in normalized and "MIT OpenCourseWare" not in text:
+        text = text.rstrip() + """
+
+## Selected References / सुझाए गए स्रोत
+- OpenStax, *Principles of Economics 2e*, Sections 6.2 and 16.1: https://openstax.org/books/principles-of-economics-2e/pages/6-2-how-changes-in-income-and-prices-affect-consumption-choices
+- MIT OpenCourseWare, *Principles of Microeconomics*, consumer choice and Giffen-good discussion: https://ocw.mit.edu/ans7870/14/14.01SC/MIT14_01SCF11_rttext.pdf
+- SATHEE (IIT Kanpur), *Theory of Consumer Behaviour*: https://sathee.iitk.ac.in/sathee-ssc/student-corner/ncert-books/class-12/economics/introductory-to-microeconomics/chapter-02-theory-of-consumer-behaviour/
+"""
+        changes.append("Added traceable consumer-theory references directly to the corrected lesson.")
+
+    if "market failure and remedial measures" in normalized and "10.2307/1879431" not in text:
+        text = text.rstrip() + """
+
+## Selected References / सुझाए गए स्रोत
+- OpenStax, *Principles of Economics 2e*, Sections 12.1, 13.3 and 16.1: https://openstax.org/books/principles-of-economics-2e/pages/13-3-public-goods
+- George A. Akerlof, “The Market for ‘Lemons’: Quality Uncertainty and the Market Mechanism,” *The Quarterly Journal of Economics*, 84(3), 1970, pp. 488–500: https://doi.org/10.2307/1879431
+"""
+        changes.append("Added traceable market-failure and Akerlof source references directly to the corrected lesson.")
+
     # Remove the stale marker-restoration appendix only when every remaining
     # verification marker was resolved by this topic's supplied source notes and edits.
     if not VERIFY_MARKER_PATTERN.search(text):
