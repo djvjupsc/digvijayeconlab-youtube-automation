@@ -174,10 +174,10 @@ def _generate_huggingface(payload, label="LLM request", timeout=150):
 
 
 def generate_content(api_url, api_key, payload, label="LLM request", timeout=150):
-    """Use FreeLLMAPI first when selected; fall back to direct Gemini on adapter failure.
+    """Use FreeLLMAPI first; then Cloudflare, then same-quota direct Gemini.
 
-    Fallback order is explicitly configured: Cloudflare Workers AI, Hugging Face,
-    then direct Gemini. Gemini shares the Google AI Studio quota with FreeLLMAPI.
+    Hugging Face routed inference is intentionally skipped in strict zero-cost mode.
+    Direct Gemini shares the Google AI Studio quota with FreeLLMAPI.
     """
     provider = os.environ.get("LLM_PROVIDER", "gemini").strip().lower()
     try:
