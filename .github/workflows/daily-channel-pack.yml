@@ -152,7 +152,8 @@ jobs:
           # NODE_ENV=production is needed by the server at runtime, but npm otherwise omits
           # devDependencies. FreeLLMAPI's strict TypeScript build requires its @types packages.
           npm ci --include=dev
-          npm run build
+          npm run build:server
+          test -f server/dist/index.js || { echo "FreeLLMAPI server build did not produce server/dist/index.js."; exit 1; }
           nohup node server/dist/index.js > "$RUNNER_TEMP/freellmapi-production.log" 2>&1 &
           echo "$!" > "$RUNNER_TEMP/freellmapi-production.pid"
           for attempt in $(seq 1 60); do
