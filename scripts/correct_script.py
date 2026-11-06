@@ -771,7 +771,7 @@ D) Mining / खनन
         if qcount:
             changes.append("Replaced open-ended current GDP claims and unsupported service-led-growth MCQ with date- and metric-specific official-data questions.")
         text = text.replace(
-            "*   **Secondary Sector:** Growth has been moderate; the \\"Make in India\\" initiative aims to boost this sector's share.",
+            "*   **Secondary Sector:** Growth has been moderate; the \"Make in India\" initiative aims to boost this sector's share.",
             "*   **Secondary Sector:** The Make in India initiative seeks to facilitate investment, foster innovation, build infrastructure and strengthen India's manufacturing ecosystem; its stated objectives should not be presented as achieved sector-share outcomes.",
         )
         text = text.replace(
