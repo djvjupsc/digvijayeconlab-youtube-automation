@@ -709,7 +709,7 @@ Source: Government of India, Economic Survey 2025–26, Tables I.1 and I.2b; MoS
         replace(old_hi,new_hi,"Added a bilingual, unit-consistent explanation of the output-per-labour-hour calculation.")
         text = text.replace(
             "The Ricardian model is a production-side explanation: comparative advantage follows from relative opportunity costs or relative unit-labour requirements.",
-            "The Ricardian model is a production-side explanation: comparative advantage follows from relative opportunity costs or relative unit-labour requirements. It does not rely on Hicks/Slutsky consumer-demand decomposition.",
+            "The Ricardian model is a production-side explanation: comparative advantage follows from relative opportunity costs or relative unit-labour requirements. Consumer utility and price/income-effect decompositions are outside this production-side explanation.",
         )
 
     if "market failure and remedial measures" in normalized:
