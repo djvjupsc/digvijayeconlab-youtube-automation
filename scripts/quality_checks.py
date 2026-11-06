@@ -75,18 +75,18 @@ def count_mcq_sections(text):
     """
     scoped_text = text
     practice_heading = re.search(
-        r"(?im)^#{1,6}\\s+.*(?:practice\\s+mcqs|अभ्यास\\s+प्रश्न|बहुविकल्पीय\\s+प्रश्न).*?$",
+        r"(?im)^#{1,6}\s+.*(?:practice\s+mcqs|अभ्यास\s+प्रश्न|बहुविकल्पीय\s+प्रश्न).*?$",
         text,
     )
     if practice_heading:
         section_start = practice_heading.end()
-        next_heading = re.search(r"(?m)^#{1,6}\\s+", text[section_start:])
+        next_heading = re.search(r"(?m)^#{1,6}\s+", text[section_start:])
         scoped_text = text[section_start:section_start + next_heading.start()] if next_heading else text[section_start:]
 
     matches = list(QUESTION_HEADING_PATTERN.finditer(scoped_text))
     # Numbered list questions such as '1. **Question text**' are valid MCQ labels.
     numbered_pattern = re.compile(
-        r"(?m)^\\s*(?P<number>0*[1-9]\\d*)[.)]\\s+(?=\\*\\*|[A-Z¿¡अ-ह])"
+        r"(?m)^\s*(?P<number>0*[1-9]\d*)[.)]\s+(?=\*\*|[A-Z¿¡अ-ह])"
     )
     matches.extend(numbered_pattern.finditer(scoped_text))
     matches.sort(key=lambda match: match.start())
@@ -107,7 +107,6 @@ def count_mcq_sections(text):
     answer_count = sum(1 for section in sections if ANSWER_LINE_PATTERN.search(section))
     explanation_count = sum(1 for section in sections if EXPLANATION_LINE_PATTERN.search(section))
     return len(sections), answer_count, explanation_count
-
 
 def _issue(code, severity, message, snippet="", blocking=None):
     if blocking is None:
