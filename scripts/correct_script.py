@@ -456,8 +456,8 @@ Source: Government of India, Economic Survey 2025–26, Table I.2b and Chapter V
             "",
         )
         text = re.sub(
-            r"(?im)(\*\*Free-rider problem(?:\s*\([^)]*\))?:\*\*[^.\\n]*\\.)\\s*\\[VERIFY\\]",
-            r"\\1",
+            r"(?im)(\*\*Free-rider problem(?:\s*\([^)]*\))?:\*\*[^.\n]*\.)\s*\[VERIFY\]",
+            r"\1",
             text,
         )
         text = re.sub(r"(?m)^\s*[-*]\s*\[VERIFY\]\s*$", "", text)
