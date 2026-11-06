@@ -37,7 +37,7 @@ class FreeLLMAPIAdapterTests(unittest.TestCase):
 
     @patch.dict(os.environ, {"LLM_PROVIDER": "freellmapi", "FREELLMAPI_API_KEY": "temporary-test-key",
                              "FREELLMAPI_BASE_URL": "http://127.0.0.1:3001/v1",
-                             "FREELLMAPI_MODEL": "gemini-3.5-flash-lite"})
+                             "FREELLMAPI_MODEL": "gemini-3.1-flash-lite"})
     @patch("scripts.llm_provider.urllib.request.urlopen")
     def test_posts_openai_request_with_bearer_key(self, urlopen):
         body = json.dumps({"choices": [{"message": {"content": "Opportunity cost is the next best alternative forgone."},
