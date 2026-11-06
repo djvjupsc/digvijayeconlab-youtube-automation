@@ -414,8 +414,9 @@ Source: Government of India, Economic Survey 2025–26, Table I.2b and Chapter V
 - SATHEE (IIT Kanpur), *Theory of Consumer Behaviour*: https://sathee.iitk.ac.in/sathee-ssc/student-corner/ncert-books/class-12/economics/introductory-to-microeconomics/chapter-02-theory-of-consumer-behaviour/
 """
             changes.append("Added traceable references for consumer choice, Giffen-good conditions and the historical caveat.")
-        # A source-backed marker on the free-standing Giffen explanation is resolvable here.
+        # These draft markers point to claims resolved by the supplied consumer-theory sources above.
         text = re.sub(r"(Giffen goods violate the law of demand; as price rises, quantity demanded rises\.)\s*\[VERIFY\]", r"\1", text)
+        text = re.sub(r"(?m)^\s*[-*]\s*\[VERIFY\]\s*$", "", text)
 
     if "international trade: basic concepts" in normalized:
         # Catch the exact issue as quoted by the reviewer even when embedded after a bullet.
@@ -537,12 +538,22 @@ Source: Government of India, Economic Survey 2025–26, Tables I.1 and I.2b; MoS
             "*   [VERIFY] दावों का उपयोग वहां किया गया है जहां विशिष्ट नीति तिथियां या वर्तमान जीडीपी प्रतिशत प्रॉम्प्ट में प्रदान नहीं किए गए हैं और उन्हें भारत के नवीनतम आर्थिक सर्वेक्षण के संदर्भ की आवश्यकता है।",
             "*   सेवा क्षेत्र की हिस्सेदारी के साथ उसका माप, अवधि और अनुमान-विंटेज दिया गया है; इसे GVA की हिस्सेदारी, रोजगार की हिस्सेदारी या वास्तविक वृद्धि दर नहीं कहना चाहिए।",
         )
+        text = re.sub(r"(?m)^\\s*[-*]\\s*\\[VERIFY\\]\\s*$", "", text)
+        text = text.replace(
+            "**Primary Sector:** Traditionally the largest employer, but its share in GDP has declined over decades.",
+            "**Primary Sector:** Agriculture accounted for 43.0% of workers in usual status in PLFS 2025, compared with 44.8% in 2024; these employment shares are not GDP/GVA shares.",
+        )
+        text = text.replace(
+            "**प्राथमिक क्षेत्र:** पारंपरिक रूप से सबसे बड़ा नियोक्ता, लेकिन दशकों से जीडीपी में इसका हिस्सा कम हुआ है।",
+            "**प्राथमिक क्षेत्र:** PLFS 2025 के अनुसार सामान्य स्थिति के कामगारों में कृषि की हिस्सेदारी 2025 में 43.0% और 2024 में 44.8% थी; ये रोजगार की हिस्सेदारियाँ हैं, GDP/GVA की नहीं।",
+        )
         if "https://www.indiabudget.gov.in/economicsurvey/doc/echapter.pdf" not in text:
             text = text.rstrip() + """
 
 ## Selected Official References / आधिकारिक संदर्भ
 - Government of India, *Economic Survey 2025–26*, Tables I.1 and I.2b: https://www.indiabudget.gov.in/economicsurvey/doc/echapter.pdf
 - MoSPI, *National Accounts Statistics — 2026*, base year 2022–23: https://www.pib.gov.in/PressReleasePage.aspx?PRID=2304948&lang=2&reg=48
+- MoSPI/PIB, *PLFS Annual Report 2025*: https://www.pib.gov.in/PressReleasePage.aspx?PRID=2246009&lang=2&reg=48
 - Press Information Bureau, Make in India launch, 25 September 2014: https://www.pib.gov.in/newsite/PrintRelease.aspx?lang=2&reg=48&relid=110017
 """
             changes.append("Added dated official sources and corrected the Indian sector-structure example and Make in India question.")
