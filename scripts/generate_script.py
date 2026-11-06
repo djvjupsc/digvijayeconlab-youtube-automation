@@ -25,6 +25,37 @@ def clean_filename(value: str) -> str:
     return (slug[:60] or "economics-script") + ".md"
 
 
+def topic_specific_requirements(topic: str) -> str:
+    """Return evidence-bounded instructions for the exact topic being generated."""
+    normalized = (topic or "").casefold()
+    if "theory of consumer behaviour" in normalized:
+        return """- Treat perfect information as a possible model-specific assumption, not a universal assumption of the law of demand.
+- Explain that the income effect operates through purchasing power/real income; distinguish normal and inferior goods.
+- A Giffen good must be inferior and have an income effect large enough to outweigh the substitution effect. Do not imply this is common.
+- Do not state that Alfred Marshall discussed or named Giffen goods in a specific 1895 edition unless the supplied source notes directly verify that precise historical attribution. The familiar Irish potato illustration is contested and is not conclusive empirical proof.
+- Keep Hicks/Slutsky decomposition within the consumer-choice discussion; distinguish Giffen goods from Veblen/status goods."""
+    if "international trade: basic concepts" in normalized:
+        return """- Explain comparative advantage as a production-side concept based on relative opportunity cost (or relative unit-labour requirements). Do not connect the Ricardian model to Hicks/Slutsky consumer-demand decomposition.
+- Distinguish the general concave PPF (increasing marginal opportunity cost) from the simplest Ricardian model with constant unit-labour requirements (linear PPF and constant opportunity cost).
+- State whether a table reports output per worker/hour or labour required per unit; compute opportunity costs consistently and label all units."""
+    if "market failure and remedial measures" in normalized:
+        return """- Define a pure public good by both non-excludability and non-rivalry; do not equate government financing with public-good status.
+- Distinguish imperfect from asymmetric information, and distinguish adverse selection (hidden information/characteristics) from moral hazard (hidden action/incentive change after agreement).
+- Define externalities as effects on third parties outside the transaction. For negative production externalities, distinguish MPC from MSC and state the model assumptions.
+- Use the supplied references; label all numerical illustrations hypothetical."""
+    if "components of money supply" in normalized:
+        return """- Preserve the RBI distinctions between traditional M1–M4 and the separate NM1–NM3 aggregates exactly as stated in the supplied RBI notes.
+- Include a separate, populated section headed '## Worked Example / Application' with a bilingual arithmetic example. For illustration only, use currency with public ₹500 crore, demand deposits ₹300 crore, other RBI deposits ₹10 crore, post-office savings deposits ₹20 crore, bank time deposits ₹700 crore, and all post-office savings-bank deposits (excluding NSCs) ₹35 crore. Show M1=₹810 crore, M2=₹830 crore, M3=₹1,510 crore and M4=₹1,545 crore by applying the RBI formulas. State repeatedly that these figures are hypothetical, not observed data. Explain that M2, M3 and M4 are alternative aggregates, not values to be added together.
+- Translate 'time deposits' as 'सावधि जमा' consistently."""
+    if "economic growth in india: pattern and structure" in normalized:
+        return """- Identify the statistical source vintage: MoSPI's National Accounts Statistics 2026 uses base year 2022–23; do not mix it with the superseded 2011–12 series without an explicit bridge.
+- You may quote the Economic Survey 2025–26 figure 53.6% only as the services share of nominal GDP in H1 FY2025–26 (the H1 FY2024–25 comparator is 52.6%). The Survey's FY2025–26 FAE figure is 51.1%. Do not label 53.6% as an annual figure or a GVA share.
+- The Survey separately reports services GVA growth of 9.3% in H1 FY2025–26 versus 7.0% in H1 FY2024–25. Keep growth rate and share concepts separate.
+- Make in India was announced on 15 August 2014 and formally launched on 25 September 2014; do not repeat undated or retired manufacturing-share targets as current policy.
+- Qualify claims about 'service-led growth'; distinguish output/GVA shares from employment shares and avoid unsupported long-run sectoral percentages."""
+    return ""
+
+
 def main():
     if len(sys.argv) < 4:
         raise SystemExit("Usage: generate_script.py TOPIC LANGUAGE FORMAT [SOURCE_NOTES]")
@@ -104,6 +135,7 @@ practice questions, and source/verification notes."""
         )
 
     unit_context = os.environ.get("SCRIPT_UNIT", "")
+    topic_requirements = topic_specific_requirements(topic)
     user_prompt = f"""Brand: DigvijayEconLab\nUnit: {unit_context or "Not specified"}
 Audience: MPPSC Assistant Professor Economics aspirants
 Topic: {topic}
@@ -111,6 +143,8 @@ Language: {language}
 Format: {content_format}
 Format-specific requirements:
 {format_requirements}
+Topic-specific requirements:
+{topic_requirements if topic_requirements else "[No additional topic-specific instructions.]"}
 Source notes supplied by the user:
 {source_notes if source_notes.strip() else "[No source notes supplied. Avoid unsupported factual claims and mark verification gaps.]"}
 Target: a useful, classroom-ready first draft. For bilingual output, provide corresponding
