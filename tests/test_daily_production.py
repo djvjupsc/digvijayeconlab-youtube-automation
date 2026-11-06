@@ -101,6 +101,16 @@ class DailyProductionPlanTests(unittest.TestCase):
         )
         self.assertEqual(manifest["units"][0]["source_notes"], "")
 
+    def test_configured_topic_source_note_files_exist(self):
+        import json
+        from pathlib import Path
+        plan_path = Path("config/unit_content_plan.json")
+        plan = json.loads(plan_path.read_text(encoding="utf-8"))
+        for unit in plan["units"]:
+            for topic, note_path in unit.get("source_notes_by_topic", {}).items():
+                self.assertIn(topic, unit["topics"])
+                self.assertTrue(Path(note_path).is_file(), f"Missing configured source note: {note_path}")
+
     def test_topic_specific_source_notes_do_not_leak_to_other_rotating_topics(self):
         from datetime import date
         plan = {**self.plan, "units": [dict(item) for item in self.plan["units"]]}
