@@ -341,7 +341,7 @@ def process(args):
     base_env = os.environ.copy()
     if not base_env.get("GEMINI_API_KEY"):
         raise RuntimeError("GEMINI_API_KEY is missing from GitHub Actions secrets.")
-    base_env.setdefault("GEMINI_MODEL", "gemini-3.5-flash-lite")
+    base_env.setdefault("GEMINI_MODEL", "gemini-3.1-flash-lite")
 
     successes, failures = process_units(manifest["units"], base_env, previous_manifest=previous_manifest)
     manifest["lesson_quality"] = {
