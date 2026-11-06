@@ -34,7 +34,7 @@ class StructuredCorrectionTests(unittest.TestCase):
         self.assertNotIn("Hicks/Slutsky", repaired)
         self.assertNotIn("हिक्स/स्लुट्स्की", repaired)
         self.assertIn("production-side explanation", repaired)
-        self.assertIn("simple Ricardian model", repaired)
+        self.assertIn("simplest Ricardian model", repaired)
         self.assertIn("सरल रिकार्डियन मॉडल", repaired)
         self.assertGreaterEqual(len(changes), 4)
 
