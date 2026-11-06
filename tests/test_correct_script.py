@@ -155,6 +155,101 @@ M1 formula example.
         )
         self.assertGreaterEqual(len(changes), 1)
 
+    def test_consumer_source_markers_and_nominal_real_income_explanation_are_resolved(self):
+        source = """### Key Assumptions
+3.  **Perfect Information:** Consumers know prices and quality. [VERIFY] (पूर्ण जानकारी: उपभोक्ताओं को कीमतों और गुणवत्ता की जानकारी होती है।)
+**Q1. Which effect explains why a consumer buys more of a normal good when its price falls, assuming nominal income is constant?**
+Explanation: For normal goods, when price falls, the good becomes relatively cheaper (Substitution) and real income rises (Income), both increasing demand.
+(व्याख्या: जब कीमत गिरती है, तो वस्तु अपेक्षाकृत सस्ती हो जाती है (प्रतिस्थापन) और वास्तविक आय बढ़ जाती है (आय), जिससे मांग बढ़ती है।)
+**Q2. A Giffen good is a type of inferior good where:**
+Explanation: Giffen goods violate the law of demand; as price rises, quantity demanded rises. [VERIFY]
+*   The historical attribution of the Irish potato famine as empirical proof for Giffen goods is debated in literature; this text treats it as a theoretical construct. [VERIFY]
+"""
+        repaired, changes = apply_topic_specific_repairs(source, "Theory of Consumer Behaviour")
+        self.assertNotIn("[VERIFY]", repaired)
+        self.assertNotIn("Perfect Information:** Consumers know", repaired)
+        self.assertNotIn("(1895)", repaired)
+        self.assertIn("Nominal (money) income is held constant", repaired)
+        self.assertIn("real purchasing power rises", repaired)
+        self.assertIn("not as settled proof", repaired)
+        self.assertIn("MIT OpenCourseWare", repaired)
+        self.assertGreaterEqual(len(changes), 1)
+
+    def test_trade_example_explains_output_productivity_and_transport_assumption(self):
+        source = """### Key Assumptions
+*   No transport costs [VERIFY].
+### Comparative Advantage
+*   **Comparative Advantage (David Ricardo):** A country should specialize in producing goods where its opportunity cost is lower. This framework relies on the standard neoclassical Hicks/Slutsky approach for analyzing individual demand decomposition, though it does not explain demand entirely across all theoretical approaches.
+*   **तुलनात्मक लाभ (डेविड रिकार्डो):** एक देश को उन वस्तुओं के उत्पादन में विशेषज्ञता हासिल करनी चाहिए जहाँ उसकी अवसर लागत कम है। यह ढांचा व्यक्तिगत मांग अपघटन के विश्लेषण के लिए मानक नवशास्त्रीय हिक्स/स्लुट्स्की दृष्टिकोण पर निर्भर करता है, हालाँकि यह सभी सैद्धांतिक दृष्टिकोणों में मांग की पूरी व्याख्या नहीं करता है।
+*   Country A has an absolute advantage in both. However, Country A's opportunity cost for 1 unit of Wine is 2 units of Cloth (10/5).
+*   Country B has a comparative advantage in Wine.
+*   **विश्लेषण:** देश A को दोनों में निरपेक्ष लाभ है। हालाँकि, देश A के लिए 1 इकाई वाइन की अवसर लागत 2 इकाई कपड़ा है। देश B के लिए 1 इकाई वाइन की अवसर लागत 0.5 इकाई कपड़ा है। इसलिए, देश B को वाइन में तुलनात्मक लाभ है।
+"""
+        repaired, changes = apply_topic_specific_repairs(
+            source, "International Trade: Basic Concepts and Analytical Tools"
+        )
+        self.assertNotIn("[VERIFY]", repaired)
+        self.assertIn("model abstracts from transport costs", repaired)
+        self.assertNotIn("Hicks/Slutsky", repaired)
+        self.assertIn("output per labour-hour", repaired)
+        self.assertIn("opportunity cost of one wine is 2 cloth", repaired)
+        self.assertIn("opportunity cost of one wine is 0.5 cloth", repaired)
+        self.assertIn("प्रति श्रम-घंटे उत्पादन", repaired)
+        self.assertIn("1817", repaired)
+        self.assertGreaterEqual(len(changes), 1)
+
+    def test_market_failure_resolves_footer_and_pigouvian_tax_uses_marginal_damage(self):
+        source = """## Worked Example: Negative Externality
+| Quantity (Units) | Private Cost (₹) | External Cost (₹) | Social Cost (₹) |
+| :--- | ---: | ---: | ---: |
+| 10 | 100 | 20 | 120 |
+| 20 | 200 | 40 | 240 |
+**Explanation:** The market price only reflects Private Cost. To correct this, the government may impose a Pigouvian Tax equal to the External Cost to force the firm to internalize the cost.
+## Source and Verification Notes
+*   **Data/Claims:** All numerical examples (e.g., the steel factory table) are hypothetical. No real-world economic data or specific policy dates have been cited. [VERIFY] all definitions against standard textbooks like Musgrave or Stiglitz.
+"""
+        repaired, changes = apply_topic_specific_repairs(
+            source, "Market Failure and Remedial Measures: Asymmetric Information, Public Goods and Externality"
+        )
+        self.assertNotIn("[VERIFY]", repaired)
+        self.assertIn("Total Private Cost", repaired)
+        self.assertIn("marginal external damage at the socially efficient output", repaired)
+        self.assertNotIn("Pigouvian Tax equal to the External Cost", repaired)
+        self.assertIn("10.2307/1879431", repaired)
+        self.assertIn("OpenStax", repaired)
+        self.assertGreaterEqual(len(changes), 1)
+
+    def test_indian_growth_mcqs_use_dated_gdp_and_employment_measures(self):
+        source = """## Practice MCQs
+**Q1. Which sector currently contributes the highest share to India's GDP?**
+A) Agriculture
+B) Manufacturing
+C) Services
+D) Mining
+**Correct Answer: C**
+*Explanation: In the modern Indian economy, the service sector accounts for more than 50% of the GDP.*
+*व्याख्या: आधुनिक भारतीय अर्थव्यवस्था में, सेवा क्षेत्र का जीडीपी में 50% से अधिक का योगदान है।*
+**Q2. What is the primary characteristic of India’s structural transformation?**
+A) Rapid industrialization
+B) Service-led growth
+C) Stagnation in all sectors
+D) Decline in service sector
+**Correct Answer: B**
+*Explanation: India skipped the traditional manufacturing-heavy phase, moving directly to a service-oriented economy.*
+*व्याख्या: भारत ने पारंपरिक विनिर्माण-प्रधान चरण को छोड़ दिया और सीधे सेवा-उन्मुख अर्थव्यवस्था की ओर बढ़ गया।*
+**Q3. The Primary sector in India typically includes:**
+"""
+        repaired, changes = apply_topic_specific_repairs(
+            source, "Economic Growth in India: Pattern and Structure"
+        )
+        self.assertIn("largest share of nominal GDP in H1 FY2025–26", repaired)
+        self.assertIn("Correct Answer: C", repaired)
+        self.assertIn("PLFS Annual Report 2025", repaired)
+        self.assertIn("Correct Answer: A", repaired)
+        self.assertIn("43.0%", repaired)
+        self.assertNotIn("skipped the traditional manufacturing-heavy phase", repaired)
+        self.assertGreaterEqual(len(changes), 1)
+
     def test_valid_structured_response_is_accepted(self):
         original = "# Original"
         payload = {
