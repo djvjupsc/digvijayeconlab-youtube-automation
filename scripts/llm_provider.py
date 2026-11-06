@@ -69,7 +69,7 @@ def _to_openai_payload(payload):
 
     generation = payload.get("generationConfig", {})
     request = {
-        "model": os.environ.get("FREELLMAPI_MODEL", "gemini-3.5-flash-lite"),
+        "model": os.environ.get("FREELLMAPI_MODEL", "gemini-3.1-flash-lite"),
         "messages": messages,
         "temperature": generation.get("temperature", 0.2),
         "max_tokens": generation.get("maxOutputTokens", 4096),
