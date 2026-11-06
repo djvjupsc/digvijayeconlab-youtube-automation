@@ -11,6 +11,14 @@ Source: https://openstax.org/books/principles-of-economics-2e/pages/33-1-absolut
 OpenStax defines comparative advantage as producing a good at a lower cost in terms of other goods, i.e. a lower opportunity cost.
 Source: https://openstax.org/books/principles-of-economics-2e/pages/2-key-terms
 
+## Ricardo's original publication date
+
+Cambridge University Press identifies David Ricardo's *On the Principles of Political Economy, and Taxation* as originally published in 1817. The Library of Economics and Liberty edition separately identifies the first publication date as 1817 and notes that the online text is its 1821 third edition. Therefore, write "first published in 1817"; do not imply that every edition is dated 1817.
+
+Sources:
+- Cambridge University Press: https://www.cambridge.org/core/books/on-the-principles-of-political-economy-and-taxation/5C17BF2152379956950601EFE05AE14F
+- Library of Economics and Liberty (edition note): https://www.econlib.org/library/Ricardo/ricP.html
+
 ## Model scope and production possibilities
 
 - The simple Ricardian model is a production-side account of comparative advantage, based on relative unit-labour requirements / relative opportunity costs. Hicks–Slutsky income and substitution effects belong to consumer-demand analysis and must not be inserted as an explanation of Ricardian comparative advantage.
