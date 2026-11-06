@@ -263,6 +263,134 @@ def apply_known_editorial_repairs(text):
     return text, changes
 
 
+def apply_topic_specific_repairs(text, topic):
+    """Apply narrow, source-bounded repairs for known defects in selected topics."""
+    normalized = (topic or "").casefold()
+    changes = []
+
+    def replace(old, new, description):
+        nonlocal text
+        if old in text:
+            text = text.replace(old, new)
+            changes.append(description)
+
+    if "theory of consumer behaviour" in normalized:
+        replace(
+            "3.  **Perfect Information:** Consumers are assumed to have full knowledge of prices and product quality in standard neoclassical models. (पूर्ण जानकारी: मानक नव-शास्त्रीय मॉडलों में यह माना जाता है कि उपभोक्ताओं को कीमतों और उत्पाद की गुणवत्ता की पूर्ण जानकारी होती है।)",
+            "3.  **Model-Specific Information Assumptions:** Some consumer-choice models specify particular information assumptions; perfect information is not a universal assumption of the law of demand. (मॉडल-विशिष्ट सूचना संबंधी मान्यताएँ: कुछ उपभोक्ता-चयन मॉडल विशिष्ट सूचना संबंधी मान्यताएँ रखते हैं; पूर्ण जानकारी मांग के नियम की सार्वभौमिक मान्यता नहीं है।)",
+            "Qualified perfect-information assumptions and separated them from the general law of demand.",
+        )
+        replace(
+            "Alfred Marshall discussed these in his *Principles of Economics* (1895).",
+            "The familiar Irish potato illustration is historically contested and should not be presented as settled empirical proof; a precise author, book or edition attribution is not asserted here without a direct historical source.",
+            "Removed an unsupported precise Marshall/1895 attribution while retaining the historical-evidence caveat.",
+        )
+        replace(
+            "अल्फ्रेड मार्शल ने अपनी पुस्तक *प्रिंसिपल्स ऑफ इकोनॉमिक्स* (1895) में इनकी चर्चा की थी।",
+            "आयरिश आलू का प्रचलित उदाहरण ऐतिहासिक रूप से विवादित है और इसे निर्णायक अनुभवजन्य प्रमाण के रूप में प्रस्तुत नहीं करना चाहिए; प्रत्यक्ष ऐतिहासिक स्रोत के बिना किसी लेखक, पुस्तक या संस्करण का सटीक श्रेय यहाँ नहीं दिया गया है।",
+            "Removed the unverified Hindi Marshall/1895 attribution and preserved the historical caveat.",
+        )
+
+    if "international trade: basic concepts" in normalized:
+        replace(
+            "This framework relies on the standard neoclassical Hicks/Slutsky approach for analyzing individual demand decomposition, though it does not explain demand entirely across all theoretical approaches.",
+            "The Ricardian model is a production-side explanation: comparative advantage follows from relative opportunity costs or relative unit-labour requirements.",
+            "Removed an irrelevant Hicks/Slutsky consumer-demand statement from the Ricardian trade explanation.",
+        )
+        replace(
+            "यह ढांचा व्यक्तिगत मांग अपघटन के विश्लेषण के लिए मानक नवशास्त्रीय हिक्स/स्लुट्स्की दृष्टिकोण पर निर्भर करता है, हालाँकि यह सभी सैद्धांतिक दृष्टिकोणों में मांग की पूरी व्याख्या नहीं करता है।",
+            "रिकार्डियन मॉडल उत्पादन-पक्ष की व्याख्या है: तुलनात्मक लाभ सापेक्ष अवसर लागत या सापेक्ष प्रति-इकाई श्रम आवश्यकताओं से निर्धारित होता है।",
+            "Removed the misapplied Hindi Hicks/Slutsky sentence from comparative advantage.",
+        )
+        replace(
+            "A concave PPF reflects increasing opportunity costs.",
+            "A concave PPF reflects increasing marginal opportunity costs in the general case. In the simplest Ricardian model with constant unit-labour requirements, the PPF is linear and opportunity costs are constant.",
+            "Distinguished the general concave PPF from the simple constant-cost Ricardian model.",
+        )
+        replace(
+            "एक अवतल (Concave) PPF बढ़ती अवसर लागत को दर्शाता है।",
+            "सामान्य स्थिति में अवतल (Concave) PPF बढ़ती सीमांत अवसर लागत को दर्शाता है। स्थिर प्रति-इकाई श्रम आवश्यकताओं वाले सरल रिकार्डियन मॉडल में PPF रैखिक होता है और अवसर लागत स्थिर रहती है।",
+            "Added the Hindi distinction between the general concave PPF and the simple Ricardian model.",
+        )
+
+    if "components of money supply" in normalized:
+        if not re.search(r"(?im)^#{1,6}\\s+.*worked\\s+example", text):
+            section = """
+
+## Worked Example / Application — Traditional M1–M4 / कार्यगत उदाहरण — पारंपरिक M1–M4
+
+**English (hypothetical figures only):** Assume, solely for this illustration, currency with the public = ₹500 crore, demand deposits with the banking system = ₹300 crore, and other deposits with the RBI = ₹10 crore.
+- M1 = 500 + 300 + 10 = **₹810 crore**.
+- If post-office savings-bank deposits = ₹20 crore, M2 = M1 + 20 = **₹830 crore**.
+- If time deposits with the banking system = ₹700 crore, M3 = M1 + 700 = **₹1,510 crore**.
+- If all post-office savings-bank deposits excluding National Savings Certificates = ₹35 crore, M4 = M3 + 35 = **₹1,545 crore**.
+
+These are invented teaching figures, not observed RBI data. M2, M3 and M4 are alternative aggregate measures; they must not be added together. The definitions above, not these hypothetical values, determine the formulas.
+
+**हिंदी (केवल काल्पनिक संख्याएँ):** केवल समझाने के लिए मान लें कि जनता के पास मुद्रा ₹500 करोड़, बैंकिंग प्रणाली में मांग जमा ₹300 करोड़ और RBI के पास अन्य जमा ₹10 करोड़ हैं।
+- M1 = 500 + 300 + 10 = **₹810 करोड़**।
+- यदि डाकघर बचत बैंक जमा ₹20 करोड़ हैं, तो M2 = M1 + 20 = **₹830 करोड़**।
+- यदि बैंकिंग प्रणाली में सावधि जमा ₹700 करोड़ हैं, तो M3 = M1 + 700 = **₹1,510 करोड़**।
+- यदि राष्ट्रीय बचत प्रमाणपत्रों को छोड़कर डाकघर बचत बैंकों की सभी जमा ₹35 करोड़ हैं, तो M4 = M3 + 35 = **₹1,545 करोड़**।
+
+ये केवल शिक्षण हेतु बनाई गई काल्पनिक संख्याएँ हैं, RBI के वास्तविक आँकड़े नहीं। M2, M3 और M4 वैकल्पिक मौद्रिक समुच्चय हैं; इन्हें आपस में जोड़ना नहीं चाहिए।
+"""
+            text = text.rstrip() + section
+            changes.append("Added a bilingual hypothetical M1–M4 calculation using the RBI definitions.")
+        replace(
+            "Net Time Deposits",
+            "Time Deposits",
+            "Standardized the traditional money-supply term as time deposits (सावधि जमा).",
+        )
+        replace(
+            "शुद्ध सावधि जमा",
+            "सावधि जमा",
+            "Standardized the Hindi money-supply term as सावधि जमा.",
+        )
+
+    if "economic growth in india: pattern and structure" in normalized:
+        old_paragraph = "Historically, India’s growth has been characterized by a \"service-led\" transition. While the classical development model suggests that economies transition from Agriculture to Manufacturing and then to Services, many economists argue that India has experienced a unique growth trajectory by shifting significantly from Agriculture to Services."
+        new_paragraph = "India's structural transformation should be assessed separately by output, value added and employment. Services have become a major source of output and GVA growth, while agriculture remains important for employment and industry remains central to productive capacity. A single 'direct shift' narrative does not describe every sector, period or indicator."
+        replace(old_paragraph, new_paragraph, "Qualified the broad 'unique service-led transition' narrative and separated output, GVA and employment.")
+        old_hindi = "ऐतिहासिक रूप से, भारत का विकास \"सेवा-नेतृत्व वाली\" संक्रमण प्रक्रिया से पहचाना गया है। जहाँ शास्त्रीय विकास मॉडल यह सुझाव देता है कि अर्थव्यवस्थाएं कृषि से विनिर्माण और फिर सेवाओं की ओर बढ़ती हैं, वहीं कई अर्थशास्त्रियों का तर्क है कि भारत ने कृषि से सीधे सेवाओं की ओर एक महत्वपूर्ण बदलाव के माध्यम से एक अद्वितीय विकास पथ का अनुभव किया है।"
+        new_hindi = "भारत के संरचनात्मक परिवर्तन का आकलन उत्पादन, मूल्य वर्धन और रोजगार के आधार पर अलग-अलग करना चाहिए। सेवाएँ उत्पादन और GVA वृद्धि का एक प्रमुख स्रोत बनी हैं, जबकि कृषि रोजगार के लिए महत्त्वपूर्ण है और उद्योग उत्पादक क्षमता के लिए केंद्रीय है। केवल 'कृषि से सीधे सेवाओं की ओर बदलाव' का एक कथन हर क्षेत्र, अवधि या संकेतक का पूरा चित्र प्रस्तुत नहीं करता।"
+        replace(old_hindi, new_hindi, "Qualified the Hindi structural-transformation narrative and distinguished output, GVA and employment.")
+        old_example = re.compile(
+            r"(?ms)^## Worked Example: Sectoral Shift / कार्य उदाहरण: क्षेत्रीय बदलाव\\s*.*?(?=^## |\\Z)"
+        )
+        new_example = """## Worked Example: Reading a Dated Data Snapshot / दिनांकित आँकड़ों को समझना
+
+**Source-based data (not a hypothetical table):** The Economic Survey 2025–26, Table I.2b, reports the services share of **nominal GDP** as 52.6% in H1 FY2024–25 and 53.6% in H1 FY2025–26; its FY2025–26 FAE value is 51.1%. These periods and estimate vintages are not interchangeable.
+
+| Measure | H1 FY2024–25 | H1 FY2025–26 | FY2025–26 FAE |
+| :--- | ---: | ---: | ---: |
+| Services share of nominal GDP (%) | 52.6 | 53.6 | 51.1 |
+
+Separately, the Survey reports services GVA growth of 7.0% in H1 FY2024–25 and 9.3% in H1 FY2025–26. A GDP share is not a GVA share, and a nominal share is not a real growth rate. MoSPI's National Accounts Statistics 2026 uses base year 2022–23.
+
+**स्रोत-आधारित आँकड़े:** Economic Survey 2025–26 की Table I.2b के अनुसार **नाममात्र GDP** में सेवा क्षेत्र की हिस्सेदारी H1 FY2024–25 में 52.6% और H1 FY2025–26 में 53.6% थी; FY2025–26 के FAE में यह 51.1% दी गई है। ये अलग-अलग अवधि और अनुमान-विंटेज हैं।
+
+| माप | H1 FY2024–25 | H1 FY2025–26 | FY2025–26 FAE |
+| :--- | ---: | ---: | ---: |
+| नाममात्र GDP में सेवा क्षेत्र की हिस्सेदारी (%) | 52.6 | 53.6 | 51.1 |
+
+अलग से, सर्वेक्षण H1 FY2024–25 में सेवा GVA वृद्धि 7.0% और H1 FY2025–26 में 9.3% बताता है। GDP में हिस्सेदारी, GVA में हिस्सेदारी नहीं होती; नाममात्र हिस्सेदारी, वास्तविक वृद्धि दर नहीं होती। MoSPI के National Accounts Statistics 2026 में आधार वर्ष 2022–23 है।
+
+Source: Government of India, Economic Survey 2025–26, Table I.2b and Chapter VII; MoSPI, National Accounts Statistics 2026 (base year 2022–23).
+"""
+        if "Approx. Historical" in text:
+            text, count = old_example.subn(new_example + "\\n", text, count=1)
+            if count:
+                changes.append("Replaced the undated illustrative Indian sector-share table with a dated Economic Survey nominal-GDP snapshot and separated GVA growth.")
+        replace(
+            "The Ministry's (MoSPI) National Accounts Statistics publication follows the new base year 2022-23.",
+            "MoSPI's National Accounts Statistics 2026 uses base year 2022–23; this is the current series cited in these notes.",
+            "Aligned the national-accounts base-year statement with the dated MoSPI 2026 publication.",
+        )
+
+    return text, changes
+
+
 def main():
     if len(sys.argv) < 3:
         raise SystemExit("Usage: correct_script.py SCRIPT_PATH REVIEW_PATH [SOURCE_NOTES]")
@@ -277,16 +405,24 @@ def main():
 
     script = script_path.read_text(encoding="utf-8")
     review = review_path.read_text(encoding="utf-8")
+    topic = os.environ.get("SCRIPT_TOPIC", "")
+    topic_guidance = ""
+    normalized_topic = topic.casefold()
+    if "theory of consumer behaviour" in normalized_topic:
+        topic_guidance = "Correct perfect information as model-specific rather than a universal demand-law assumption. Do not assert a precise Marshall/1895 attribution without direct historical evidence. Preserve the Giffen condition and historical caveat."
+    elif "international trade: basic concepts" in normalized_topic:
+        topic_guidance = "Remove Hicks/Slutsky from Ricardian comparative advantage. Explain relative opportunity cost and distinguish linear constant-cost Ricardian PPF from the general concave increasing-cost PPF."
+    elif "market failure and remedial measures" in normalized_topic:
+        topic_guidance = "Use source notes for public-good criteria, asymmetric information and externality definitions. Preserve the distinctions between these concepts."
+    elif "components of money supply" in normalized_topic:
+        topic_guidance = "Use RBI source definitions exactly. Ensure a populated bilingual Worked Example / Application computes M1, M2, M3 and M4 from explicitly hypothetical figures."
+    elif "economic growth in india: pattern and structure" in normalized_topic:
+        topic_guidance = "Replace undated illustrative sector shares with the dated Economic Survey data in source notes. Distinguish nominal GDP shares from GVA shares and growth rates; identify H1/FY periods and MoSPI base year 2022–23."
     system_prompt = """You are a careful academic script editor for DigvijayEconLab,
 serving MPPSC Assistant Professor Economics aspirants.
 Resolve every Critical and High-Priority issue explicitly identified in the academic review.
-For the Law of Demand individual-demand explanation, qualify the income/substitution
-decomposition as the standard neoclassical Hicks/Slutsky framework; avoid saying it
-explains demand entirely across all theoretical approaches. Preserve the distinction
-between individual and market demand.
-For Giffen-goods bilingual parity, ensure the Hindi version includes the same historical
-details as the English version, including Alfred Marshall's Principles of Economics (1895)
-and the fact that attribution and the traditional Irish potato example are debated.
+Apply Hicks/Slutsky income and substitution decomposition only when editing consumer-choice material such as the Law of Demand. Never apply it to Ricardian comparative advantage or other production-side trade theory. Preserve the distinction between individual and market demand.
+For Giffen-goods bilingual parity, retain the caveat that the familiar Irish potato illustration is historically contested and is not settled empirical proof. Do not assert a specific Alfred Marshall book/edition/year attribution unless the supplied source notes directly establish that exact historical detail.
 Use this natural Hindi wording where suitable: "हालांकि, इस उदाहरण के ऐतिहासिक श्रेय और इसकी अनुभवजन्य पुष्टि को लेकर विद्वानों में बहस है।"
 Correct the exact recurring Hindi editorial defects from the Law of Demand review:
 - Change "मांग का नियम की मान्यताएं" to "मांग के नियम की मान्यताएँ".
@@ -328,7 +464,10 @@ Return only a JSON object matching the supplied response schema:
 - unresolved_items: array of strings for every item needing human/source verification
 If no safe corrections can be made, return the original script unchanged and explain
 that in correction_log. Do not include Markdown fences or commentary outside JSON."""
-    user_prompt = f"""SOURCE NOTES:
+    user_prompt = f"""UNIT TOPIC: {topic or "[not specified]"}
+TOPIC-SPECIFIC EDITORIAL GUIDANCE:
+{topic_guidance or "[No additional topic-specific guidance.]"}
+SOURCE NOTES:
 {source_notes if source_notes.strip() else "[No source notes supplied. Factual claims cannot be independently verified.]"}
 ORIGINAL SCRIPT:
 {script}
@@ -378,6 +517,10 @@ Apply safe, evidence-grounded corrections. Preserve all material content and the
         changes.extend(notation_changes)
         corrected, editorial_changes = apply_known_editorial_repairs(corrected)
         changes.extend(editorial_changes)
+        corrected, topic_changes = apply_topic_specific_repairs(
+            corrected, os.environ.get("SCRIPT_TOPIC", "")
+        )
+        changes.extend(topic_changes)
 
     corrected_dir, report_dir = Path("output/corrected_scripts"), Path("output/corrections")
     corrected_dir.mkdir(parents=True, exist_ok=True)
