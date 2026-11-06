@@ -26,6 +26,11 @@ Sources:
 - When a table gives output per worker/hour, compute opportunity costs from the output possibilities. When it gives labour required per unit, compute the opportunity cost from the labour requirements. Do not mix these representations.
 - Label countries, goods, units and time/resource constraints. All numerical examples not taken from a cited data source must be explicitly hypothetical.
 
+
+## Explicit simplification used in the lesson example
+
+For the numerical two-country, two-good teaching example, state explicitly that transport costs are assumed to be zero **for model simplicity**. This is a simplifying assumption of that example, not a claim that real international trade has no freight, insurance, border or other trade costs. Do not leave this as an unresolved verification claim; retain the caveat that actual trade costs can be positive.
+
 ## Human verification
 
 The OpenStax chapter is an introductory teaching reference. A reviewer should check model assumptions, all reciprocal calculations, the bilingual parity of each worked example, and any broader claims about trade policy or contemporary trade data against current primary sources before publication.
