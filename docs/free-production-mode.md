@@ -33,7 +33,7 @@ When `LLM_PROVIDER=freellmapi`, the adapter tries:
 
 The normal ten-unit workflow now defaults to `freellmapi`. Choosing `gemini` explicitly bypasses independent fallbacks and calls Gemini directly.
 
-Cloudflare credentials are optional GitHub repository secrets:
+Cloudflare credentials are required GitHub repository secrets for the default FreeLLMAPI production route (the direct Gemini route does not run this preflight):
 - `CLOUDFLARE_ACCOUNT_ID`
 - `CLOUDFLARE_API_TOKEN`
 
@@ -43,7 +43,7 @@ Create a narrowly scoped token using Cloudflare's **Workers AI - Read** and **Wo
 
 Hugging Face routed inference is intentionally not configured in the strict zero-cost path. Keep `HF_TOKEN` only for Chatterbox/Space and other explicitly supported assets; do not add an inference token or purchase credits for this workflow.
 
-**Cloudflare Workers AI (recommended optional independent fallback):**
+**Cloudflare Workers AI (required independent fallback for the default FreeLLMAPI route):**
 1. In the Cloudflare dashboard, open **Workers & Pages → AI → Workers AI → Use REST API**.
 2. Create a Workers AI API token, or create a custom token with only **Workers AI - Read** and **Workers AI - Edit**.
 3. Copy the Account ID from that page.
@@ -52,7 +52,7 @@ Hugging Face routed inference is intentionally not configured in the strict zero
 
 The smoke test now checks the independent provider before installing the heavier video/voice test dependencies or building FreeLLMAPI. It makes one short request and fails early with a visible reason if credentials are not configured.
 
-The smoke workflow includes one deliberately short live fallback probe. It makes the local FreeLLMAPI endpoint unavailable for that single test call, then tests Cloudflare first (when configured) and Hugging Face next. It does not use Gemini as part of this probe.
+The smoke workflow includes one deliberately short live fallback probe. It makes the local FreeLLMAPI endpoint unavailable for that single test call and verifies Cloudflare Workers AI only. Hugging Face routed inference is not used; direct Gemini is not part of this independent-provider probe.
 
 ## Voice and video
 
