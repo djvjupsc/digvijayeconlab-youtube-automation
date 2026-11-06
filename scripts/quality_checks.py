@@ -68,24 +68,41 @@ EXPLANATION_LINE_PATTERN = re.compile(
 
 
 def count_mcq_sections(text):
-    """Count MCQ items, coalescing adjacent English/Hindi headings for the same question."""
-    matches = list(QUESTION_HEADING_PATTERN.finditer(text))
+    """Count MCQs in the practice section, including numbered-list and Q1/MCQ 1 styles.
+
+    Scope plain numbered-list recognition to the Practice MCQs section so numbered
+    lesson headings (for example, '1. Core Concept') are never counted as questions.
+    """
+    scoped_text = text
+    practice_heading = re.search(
+        r"(?im)^#{1,6}\\s+.*(?:practice\\s+mcqs|अभ्यास\\s+प्रश्न|बहुविकल्पीय\\s+प्रश्न).*?$",
+        text,
+    )
+    if practice_heading:
+        section_start = practice_heading.end()
+        next_heading = re.search(r"(?m)^#{1,6}\\s+", text[section_start:])
+        scoped_text = text[section_start:section_start + next_heading.start()] if next_heading else text[section_start:]
+
+    matches = list(QUESTION_HEADING_PATTERN.finditer(scoped_text))
+    # Numbered list questions such as '1. **Question text**' are valid MCQ labels.
+    numbered_pattern = re.compile(
+        r"(?m)^\\s*(?P<number>0*[1-9]\\d*)[.)]\\s+(?=\\*\\*|[A-Z¿¡अ-ह])"
+    )
+    matches.extend(numbered_pattern.finditer(scoped_text))
+    matches.sort(key=lambda match: match.start())
+
     sections = []
     current_start = None
     current_number = None
-
     for match in matches:
         number = int(match.group("number"))
         if current_start is None:
-            current_start = match.start()
-            current_number = number
+            current_start, current_number = match.start(), number
         elif number != current_number:
-            sections.append(text[current_start:match.start()])
-            current_start = match.start()
-            current_number = number
-
+            sections.append(scoped_text[current_start:match.start()])
+            current_start, current_number = match.start(), number
     if current_start is not None:
-        sections.append(text[current_start:])
+        sections.append(scoped_text[current_start:])
 
     answer_count = sum(1 for section in sections if ANSWER_LINE_PATTERN.search(section))
     explanation_count = sum(1 for section in sections if EXPLANATION_LINE_PATTERN.search(section))
