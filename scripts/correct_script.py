@@ -797,7 +797,7 @@ D) Mining / खनन
     if "international trade: basic concepts" in normalized:
         # Replace the complete original worked-example bullets, not just their sentence fragments.
         opportunity_cost_pattern = re.compile(
-            r"(?ms)^\\s*\\*\\s*Country A has an absolute advantage in both\\..*?^\\s*\\*\\s*Country B has a comparative advantage in Wine\\.\\s*$"
+            r"(?ms)^\s*\*\s*Country A has an absolute advantage in both\..*?^\s*\*\s*Country B has a comparative advantage in Wine\.\s*$"
         )
         opportunity_cost_text = """*   **Opportunity-cost calculation (output per labour-hour):** This table reports productivity, not labour-hours required per unit. In one hour, Country A can produce 10 cloth or 5 wine. One wine therefore uses 1/5 hour, which could instead produce 2 cloth; A's opportunity cost of one wine is 2 cloth. In one hour, Country B can produce 2 cloth or 4 wine. One wine uses 1/4 hour, which could instead produce 0.5 cloth; B's opportunity cost of one wine is 0.5 cloth. B therefore has a comparative advantage in wine, while A has a comparative advantage in cloth."""
         text, n = opportunity_cost_pattern.subn(opportunity_cost_text,text,count=1)
@@ -819,7 +819,7 @@ D) Mining / खनन
             "No real-world economic data or specific policy dates are cited; core definitions are referenced to OpenStax Sections 12.1, 13.3 and 16.1 and Akerlof (1970).",
         )
         text = re.sub(
-            r"(?m)^\\s*\\*\\s*\\*\\*Data/Claims:\\*\\* All numerical examples are hypothetical\\. \\[VERIFY\\] all definitions against standard textbooks like Musgrave or Stiglitz\\.",
+            r"(?m)^\s*\*\s*\*\*Data/Claims:\*\* All numerical examples are hypothetical\. \[VERIFY\] all definitions against standard textbooks like Musgrave or Stiglitz\.",
             "*   **Data/Claims:** All numerical examples are hypothetical. Core definitions are referenced to OpenStax Sections 12.1, 13.3 and 16.1 and Akerlof (1970).",
             text,
         )
