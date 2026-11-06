@@ -248,7 +248,7 @@ def generate_content(api_url, api_key, payload, label="LLM request", timeout=150
                     )
                     continue
                 if fallback == "gemini":
-                    fallback_key = os.environ.get("GEMINI_API_KEY")
+                    fallback_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_AI_STUDIO_API_KEY")
                     if not fallback_key:
                         continue
                     print(f"{label}: trying direct Gemini fallback (shares Google AI Studio quota).")
