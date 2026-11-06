@@ -60,6 +60,21 @@ def validate_plan(plan):
         normalized = [re.sub(r"[^a-z0-9]+", "", topic.casefold()) for topic in topics]
         if len(set(normalized)) != len(normalized):
             raise ValueError(f"Unit {expected} contains duplicate topics.")
+        source_notes_by_topic = unit.get("source_notes_by_topic", {})
+        if not isinstance(source_notes_by_topic, dict):
+            raise ValueError(f"Unit {expected} source_notes_by_topic must be an object.")
+        unknown_note_topics = set(source_notes_by_topic) - set(topics)
+        if unknown_note_topics:
+            raise ValueError(
+                f"Unit {expected} has source notes for unknown topic(s): "
+                + ", ".join(sorted(unknown_note_topics))
+            )
+        if any(not isinstance(path, str) or not path.strip() for path in source_notes_by_topic.values()):
+            raise ValueError(f"Unit {expected} has an empty/non-text source-notes path.")
+        if unit.get("source_notes") and (
+            not isinstance(unit["source_notes"], str) or not unit["source_notes"].strip()
+        ):
+            raise ValueError(f"Unit {expected} legacy source_notes must be a non-empty path.")
     return True
 
 
@@ -69,16 +84,19 @@ def build_manifest(plan, state, run_date, run_id):
     unit_items = []
     for unit in plan["units"]:
         topic_index = day_index % len(unit["topics"])
+        topic = unit["topics"][topic_index]
+        source_notes_by_topic = unit.get("source_notes_by_topic", {})
+        source_notes = source_notes_by_topic.get(topic, unit.get("source_notes", ""))
         unit_items.append({
             "unit": unit["unit"],
             "unit_id": unit["id"],
             "unit_name": unit["name"],
             "playlist_title": unit["playlist_title"],
             "topic_index": topic_index,
-            "topic": unit["topics"][topic_index],
+            "topic": topic,
             "language": "Bilingual",
             "content_format": "Concept Explainer",
-            "source_notes": unit.get("source_notes", ""),
+            "source_notes": source_notes,
         })
     focus = unit_items[day_index % len(unit_items)]
     return {

@@ -3,12 +3,158 @@ import unittest
 
 from scripts.correct_script import (
     apply_known_editorial_repairs,
+    apply_topic_specific_repairs,
     parse_structured_response,
     preserve_original_verification_markers,
 )
 
 
 class StructuredCorrectionTests(unittest.TestCase):
+    def test_consumer_topic_repairs_remove_unverified_marshall_attribution_and_universal_information_assumption(self):
+        source = (
+            "3.  **Perfect Information:** Consumers are assumed to have full knowledge of prices and product quality in standard neoclassical models. (पूर्ण जानकारी: मानक नव-शास्त्रीय मॉडलों में यह माना जाता है कि उपभोक्ताओं को कीमतों और उत्पाद की गुणवत्ता की पूर्ण जानकारी होती है।)\\n"
+            "Alfred Marshall discussed these in his *Principles of Economics* (1895).\\n"
+            "अल्फ्रेड मार्शल ने अपनी पुस्तक *प्रिंसिपल्स ऑफ इकोनॉमिक्स* (1895) में इनकी चर्चा की थी।"
+        )
+        repaired, changes = apply_topic_specific_repairs(source, "Theory of Consumer Behaviour")
+        self.assertIn("not a universal assumption of the law of demand", repaired)
+        self.assertNotIn("Alfred Marshall discussed", repaired)
+        self.assertNotIn("अल्फ्रेड मार्शल ने", repaired)
+        self.assertIn("historically contested", repaired)
+        self.assertGreaterEqual(len(changes), 3)
+
+    def test_trade_topic_repairs_do_not_apply_hicks_slutsky_to_ricardian_trade(self):
+        source = (
+            "This framework relies on the standard neoclassical Hicks/Slutsky approach for analyzing individual demand decomposition, though it does not explain demand entirely across all theoretical approaches.\\n"
+            "यह ढांचा व्यक्तिगत मांग अपघटन के विश्लेषण के लिए मानक नवशास्त्रीय हिक्स/स्लुट्स्की दृष्टिकोण पर निर्भर करता है, हालाँकि यह सभी सैद्धांतिक दृष्टिकोणों में मांग की पूरी व्याख्या नहीं करता है।\\n"
+            "A concave PPF reflects increasing opportunity costs.\\n"
+            "एक अवतल (Concave) PPF बढ़ती अवसर लागत को दर्शाता है।"
+        )
+        repaired, changes = apply_topic_specific_repairs(source, "International Trade: Basic Concepts and Analytical Tools")
+        self.assertNotIn("Hicks/Slutsky", repaired)
+        self.assertNotIn("हिक्स/स्लुट्स्की", repaired)
+        self.assertIn("production-side explanation", repaired)
+        self.assertIn("simplest Ricardian model", repaired)
+        self.assertIn("सरल रिकार्डियन मॉडल", repaired)
+        self.assertGreaterEqual(len(changes), 4)
+
+    def test_money_supply_topic_gets_bilingual_hypothetical_worked_example(self):
+        repaired, changes = apply_topic_specific_repairs(
+            "## Components Schedule\\nM1 to M4 definitions.",
+            "Components of Money Supply",
+        )
+        self.assertIn("## Worked Example / Application", repaired)
+        self.assertIn("M1 = 500 + 300 + 10 = **₹810 crore**", repaired)
+        self.assertIn("M4 = M3 + 35 = **₹1,545 crore**", repaired)
+        self.assertIn("ये केवल शिक्षण हेतु बनाई गई काल्पनिक संख्याएँ हैं", repaired)
+        self.assertIn("सावधि जमा", repaired)
+        self.assertEqual(len(changes), 1)
+
+    def test_indian_growth_replaces_undated_illustrative_table_with_dated_source_data(self):
+        source = """## Worked Example: Sectoral Shift / कार्य उदाहरण: क्षेत्रीय बदलाव
+*Note: The following values are illustrative of structural trends in the Indian economy.*
+| Sector / क्षेत्र | GVA Share (Approx. Historical) / GVA हिस्सा (लगभग ऐतिहासिक) |
+| :--- | :--- |
+| Agriculture / कृषि | ~18% |
+| Industry / उद्योग | ~28% |
+| Services / सेवाएँ | ~54% |
+
+## Recap
+Some text.
+"""
+        repaired, changes = apply_topic_specific_repairs(
+            source, "Economic Growth in India: Pattern and Structure"
+        )
+        self.assertNotIn("Approx. Historical", repaired)
+        self.assertIn("53.6%", repaired)
+        self.assertIn("nominal GDP", repaired)
+        self.assertIn("H1 FY2025–26", repaired)
+        self.assertIn("GVA growth of 7.0%", repaired)
+        self.assertIn("आधार वर्ष 2022–23", repaired)
+        self.assertGreaterEqual(len(changes), 1)
+
+    def test_repairs_actual_consumer_draft_information_line_and_historical_attribution(self):
+        source = """3.  **Perfect Information:** Consumers know prices and quality. [VERIFY] (पूर्ण जानकारी: उपभोक्ताओं को कीमतों और गुणवत्ता की जानकारी होती है।)
+**Giffen goods** are inferior goods where the income effect is so strong that it outweighs the substitution effect, causing the quantity demanded to rise as price increases. Alfred Marshall discussed these in his *Principles of Economics* (1895).
+**गिफ्फेन वस्तुएँ** ऐसी हीन वस्तुएँ हैं। अल्फ्रेड मार्शल ने अपनी पुस्तक *प्रिंसिपल्स ऑफ इकोनॉमिक्स* (1895) में इनकी चर्चा की थी।
+*   The historical attribution of the Irish potato famine as empirical proof for Giffen goods is debated in literature; this text treats it as a theoretical construct.
+
+## Original Verification Markers Retained for Human Sign-off
+- [VERIFY]
+- [VERIFY]
+"""
+        repaired, changes = apply_topic_specific_repairs(source, "Theory of Consumer Behaviour")
+        self.assertNotIn("Perfect Information:** Consumers know", repaired)
+        self.assertIn("not a universal assumption of the law of demand", repaired)
+        self.assertNotIn("Alfred Marshall discussed", repaired)
+        self.assertNotIn("(1895)", repaired)
+        self.assertIn("MIT OpenCourseWare", repaired)
+        self.assertNotIn("[VERIFY]", repaired)
+        self.assertNotIn("Original Verification Markers Retained", repaired)
+        self.assertGreaterEqual(len(changes), 2)
+
+    def test_repairs_actual_unit10_year1_year10_table_and_employment_share(self):
+        source = """## Structural Transformation
+Historically, India’s growth has been characterized by a "service-led" transition. Unlike the classical development model where economies transition from Agriculture to Manufacturing and then to Services, India experienced a significant jump from Agriculture to Services.
+ऐतिहासिक रूप से, भारत का विकास "सेवा-नेतृत्व वाली" संक्रमण प्रक्रिया से पहचाना गया है। शास्त्रीय विकास मॉडल के विपरीत, जहाँ अर्थव्यवस्थाएं कृषि से विनिर्माण और फिर सेवाओं की ओर बढ़ती हैं, भारत ने कृषि से सीधे सेवाओं की ओर एक महत्वपूर्ण छलांग लगाई है।
+### Sectoral Contribution (Hypothetical Trends)
+*   **Primary Sector:** Traditionally the largest employer, but its share in GDP has declined over decades.
+**प्राथमिक क्षेत्र:** पारंपरिक रूप से सबसे बड़ा नियोक्ता, लेकिन दशकों से जीडीपी में इसका हिस्सा कम हुआ है।
+## Worked Example: Sectoral Shift / कार्य उदाहरण: क्षेत्रीय बदलाव
+*Note: The following values are hypothetical for illustrative purposes.*
+| Sector / क्षेत्र | GDP Share (Year 1) / जीडीपी हिस्सा (वर्ष 1) | GDP Share (Year 10) / जीडीपी हिस्सा (वर्ष 10) |
+| :--- | ---: | ---: |
+| Agriculture / कृषि | 40% | 15% |
+| Industry / उद्योग | 25% | 28% |
+| Services / सेवाएँ | 35% | 57% |
+## Recap
+*   The Service sector has emerged as the primary engine of growth.
+"""
+        repaired, changes = apply_topic_specific_repairs(
+            source, "Economic Growth in India: Pattern and Structure"
+        )
+        self.assertNotIn("significant jump from Agriculture to Services", repaired)
+        self.assertIn("43.0%", repaired)
+        self.assertIn("44.8%", repaired)
+        self.assertIn("53.6%", repaired)
+        self.assertIn("nominal GDP", repaired)
+        self.assertNotIn("GDP Share (Year 1)", repaired)
+        self.assertIn("PLFS Annual Report 2025", repaired)
+        self.assertGreaterEqual(len(changes), 2)
+
+    def test_repairs_actual_unit6_free_rider_marker_and_adds_akerlof_source(self):
+        source = """## Public Goods
+*   **Free-rider problem:** Individuals consume without paying, leading to under-provision by the market. [VERIFY]
+## Source and Verification Notes
+[HUMAN VERIFY: All definitions against standard textbooks like Musgrave or Stiglitz.]
+## Original Verification Markers Retained for Human Sign-off
+- [VERIFY]
+"""
+        repaired, changes = apply_topic_specific_repairs(
+            source,
+            "Market Failure and Remedial Measures: Asymmetric Information, Public Goods and Externality",
+        )
+        self.assertNotIn("[VERIFY]", repaired)
+        self.assertNotIn("HUMAN VERIFY", repaired)
+        self.assertIn("10.2307/1879431", repaired)
+        self.assertIn("OpenStax", repaired)
+        self.assertNotIn("Original Verification Markers Retained", repaired)
+        self.assertGreaterEqual(len(changes), 1)
+
+    def test_moves_money_supply_worked_example_before_recap(self):
+        source = """## Recap
+M1–M4.
+
+## Worked Example / Application — Traditional M1–M4
+M1 formula example.
+"""
+        repaired, changes = apply_topic_specific_repairs(source, "Components of Money Supply")
+        self.assertLess(
+            repaired.index("## Worked Example / Application"),
+            repaired.index("## Recap"),
+        )
+        self.assertGreaterEqual(len(changes), 1)
+
     def test_valid_structured_response_is_accepted(self):
         original = "# Original"
         payload = {
