@@ -379,7 +379,7 @@ Separately, the Survey reports services GVA growth of 7.0% in H1 FY2024–25 and
 Source: Government of India, Economic Survey 2025–26, Table I.2b and Chapter VII; MoSPI, National Accounts Statistics 2026 (base year 2022–23).
 """
         if "Approx. Historical" in text:
-            text, count = old_example.subn(new_example + "\\n", text, count=1)
+            text, count = old_example.subn(new_example + "\n", text, count=1)
             if count:
                 changes.append("Replaced the undated illustrative Indian sector-share table with a dated Economic Survey nominal-GDP snapshot and separated GVA growth.")
         replace(
