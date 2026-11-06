@@ -91,13 +91,38 @@ class DailyProductionPlanTests(unittest.TestCase):
     def test_manifest_carries_unit_specific_source_notes_path(self):
         from datetime import date
         plan = {**self.plan, "units": [dict(item) for item in self.plan["units"]]}
-        plan["units"][6]["source_notes"] = "config/source_notes/unit-07-components-of-money-supply.md"
+        plan["units"][6]["source_notes_by_topic"] = {
+            "Topic 7 A": "config/source_notes/unit-07-components-of-money-supply.md"
+        }
         manifest = build_manifest(plan, {"completed_days": 0}, date(2026, 11, 4), "run")
         self.assertEqual(
             manifest["units"][6]["source_notes"],
             "config/source_notes/unit-07-components-of-money-supply.md",
         )
         self.assertEqual(manifest["units"][0]["source_notes"], "")
+
+    def test_topic_specific_source_notes_do_not_leak_to_other_rotating_topics(self):
+        from datetime import date
+        plan = {**self.plan, "units": [dict(item) for item in self.plan["units"]]}
+        plan["units"][0]["source_notes_by_topic"] = {
+            "Topic 1 A": "config/source_notes/unit-01-topic-a.md"
+        }
+        first = build_manifest(plan, {"completed_days": 0}, date(2026, 11, 4), "run-a")
+        second = build_manifest(plan, {"completed_days": 1}, date(2026, 11, 5), "run-b")
+        self.assertEqual(first["units"][0]["source_notes"], "config/source_notes/unit-01-topic-a.md")
+        self.assertEqual(second["units"][0]["source_notes"], "")
+
+    def test_rejects_source_notes_for_unknown_topic(self):
+        plan = {**self.plan, "units": [dict(item) for item in self.plan["units"]]}
+        plan["units"][0]["source_notes_by_topic"] = {"Not in plan": "notes.md"}
+        with self.assertRaisesRegex(ValueError, "unknown topic"):
+            validate_plan(plan)
+
+    def test_rejects_non_object_topic_source_notes(self):
+        plan = {**self.plan, "units": [dict(item) for item in self.plan["units"]]}
+        plan["units"][0]["source_notes_by_topic"] = ["notes.md"]
+        with self.assertRaisesRegex(ValueError, "must be an object"):
+            validate_plan(plan)
 
     def test_short_focus_rotates_across_units(self):
         from datetime import date
