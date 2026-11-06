@@ -179,5 +179,38 @@ class FreeLLMAPIAdapterTests(unittest.TestCase):
         self.assertEqual(urlopen.call_count, llm_provider.MAX_ATTEMPTS + 1)
 
 
+class OmniRouteAdapterTests(unittest.TestCase):
+    @patch.dict(os.environ, {
+        "LLM_PROVIDER": "omniroute",
+        "OMNIROUTE_API_KEY": "local-test-key",
+        "OMNIROUTE_BASE_URL": "http://127.0.0.1:20128/v1",
+        "OMNIROUTE_MODEL": "auto",
+    })
+    @patch("scripts.llm_provider.urllib.request.urlopen")
+    def test_posts_to_local_omniroute_with_auto_model_and_bearer_key(self, urlopen):
+        body = json.dumps({
+            "model": "provider/model",
+            "choices": [{"message": {"content": "Opportunity cost is the next-best alternative forgone."},
+                         "finish_reason": "stop"}],
+        }).encode()
+        urlopen.return_value.__enter__.return_value.read.return_value = body
+        payload = {
+            "systemInstruction": {"parts": [{"text": "Be accurate."}]},
+            "contents": [{"role": "user", "parts": [{"text": "Define opportunity cost."}]}],
+            "generationConfig": {"temperature": 0.1, "maxOutputTokens": 100},
+        }
+        result = llm_provider.generate_content("unused", None, payload, label="OmniRoute test", timeout=5)
+        self.assertIn("next-best alternative", result["candidates"][0]["content"]["parts"][0]["text"])
+        request = urlopen.call_args.args[0]
+        self.assertEqual(request.full_url, "http://127.0.0.1:20128/v1/chat/completions")
+        self.assertEqual(request.get_header("Authorization"), "Bearer local-test-key")
+        self.assertEqual(json.loads(request.data.decode("utf-8"))["model"], "auto")
+
+    @patch.dict(os.environ, {"LLM_PROVIDER": "omniroute"}, clear=True)
+    def test_requires_local_omniroute_api_key(self):
+        with self.assertRaisesRegex(RuntimeError, "OMNIROUTE_API_KEY is required"):
+            llm_provider.get_api_key()
+
+
 if __name__ == "__main__":
     unittest.main()
