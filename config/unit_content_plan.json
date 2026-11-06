@@ -26,7 +26,10 @@
         "Efficiency Criteria: Pareto-Optimality, Kaldor-Hicks and Wealth Maximization",
         "Welfare Economics: Fundamental Theorems and Social Welfare Function",
         "Asymmetric Information: Adverse Selection and Moral Hazard"
-      ]
+      ],
+      "source_notes_by_topic": {
+        "Theory of Consumer Behaviour": "config/source_notes/unit-01-theory-of-consumer-behaviour.md"
+      }
     },
     {
       "unit": 2,
@@ -99,7 +102,10 @@
         "Tariff and Non-Tariff Barriers to Trade; Dumping",
         "GATT, WTO, Regional Trade Blocs and Trade Policy Issues",
         "IMF and World Bank"
-      ]
+      ],
+      "source_notes_by_topic": {
+        "International Trade: Basic Concepts and Analytical Tools": "config/source_notes/unit-05-international-trade-basic-concepts.md"
+      }
     },
     {
       "unit": 6,
@@ -115,7 +121,10 @@
         "Public Expenditure",
         "Public Debt and Its Management",
         "Public Budget, Budget Multiplier and Fiscal Policy Implications"
-      ]
+      ],
+      "source_notes_by_topic": {
+        "Market Failure and Remedial Measures: Asymmetric Information, Public Goods and Externality": "config/source_notes/unit-06-market-failure.md"
+      }
     },
     {
       "unit": 7,
@@ -131,7 +140,9 @@
         "Non-Banking Financial Institutions",
         "Capital Market and Its Regulation"
       ],
-      "source_notes": "config/source_notes/unit-07-components-of-money-supply.md"
+      "source_notes_by_topic": {
+        "Components of Money Supply": "config/source_notes/unit-07-components-of-money-supply.md"
+      }
     },
     {
       "unit": 8,
@@ -185,7 +196,10 @@
         "Infrastructure Development: Physical and Social Infrastructure; Public-Private Partnerships",
         "Reforms in Land, Labour and Capital Markets",
         "Centre-State Financial Relations, Finance Commissions of India, FRBM, Poverty, Inequality and Unemployment"
-      ]
+      ],
+      "source_notes_by_topic": {
+        "Economic Growth in India: Pattern and Structure": "config/source_notes/unit-10-economic-growth-india.md"
+      }
     }
   ]
 }
