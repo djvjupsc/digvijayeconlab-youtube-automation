@@ -3,12 +3,76 @@ import unittest
 
 from scripts.correct_script import (
     apply_known_editorial_repairs,
+    apply_topic_specific_repairs,
     parse_structured_response,
     preserve_original_verification_markers,
 )
 
 
 class StructuredCorrectionTests(unittest.TestCase):
+    def test_consumer_topic_repairs_remove_unverified_marshall_attribution_and_universal_information_assumption(self):
+        source = (
+            "3.  **Perfect Information:** Consumers are assumed to have full knowledge of prices and product quality in standard neoclassical models. (पूर्ण जानकारी: मानक नव-शास्त्रीय मॉडलों में यह माना जाता है कि उपभोक्ताओं को कीमतों और उत्पाद की गुणवत्ता की पूर्ण जानकारी होती है।)\\n"
+            "Alfred Marshall discussed these in his *Principles of Economics* (1895).\\n"
+            "अल्फ्रेड मार्शल ने अपनी पुस्तक *प्रिंसिपल्स ऑफ इकोनॉमिक्स* (1895) में इनकी चर्चा की थी।"
+        )
+        repaired, changes = apply_topic_specific_repairs(source, "Theory of Consumer Behaviour")
+        self.assertIn("not a universal assumption of the law of demand", repaired)
+        self.assertNotIn("Alfred Marshall discussed", repaired)
+        self.assertNotIn("अल्फ्रेड मार्शल ने", repaired)
+        self.assertIn("historically contested", repaired)
+        self.assertGreaterEqual(len(changes), 3)
+
+    def test_trade_topic_repairs_do_not_apply_hicks_slutsky_to_ricardian_trade(self):
+        source = (
+            "This framework relies on the standard neoclassical Hicks/Slutsky approach for analyzing individual demand decomposition, though it does not explain demand entirely across all theoretical approaches.\\n"
+            "यह ढांचा व्यक्तिगत मांग अपघटन के विश्लेषण के लिए मानक नवशास्त्रीय हिक्स/स्लुट्स्की दृष्टिकोण पर निर्भर करता है, हालाँकि यह सभी सैद्धांतिक दृष्टिकोणों में मांग की पूरी व्याख्या नहीं करता है।\\n"
+            "A concave PPF reflects increasing opportunity costs.\\n"
+            "एक अवतल (Concave) PPF बढ़ती अवसर लागत को दर्शाता है।"
+        )
+        repaired, changes = apply_topic_specific_repairs(source, "International Trade: Basic Concepts and Analytical Tools")
+        self.assertNotIn("Hicks/Slutsky", repaired)
+        self.assertNotIn("हिक्स/स्लुट्स्की", repaired)
+        self.assertIn("production-side explanation", repaired)
+        self.assertIn("simple Ricardian model", repaired)
+        self.assertIn("सरल रिकार्डियन मॉडल", repaired)
+        self.assertGreaterEqual(len(changes), 4)
+
+    def test_money_supply_topic_gets_bilingual_hypothetical_worked_example(self):
+        repaired, changes = apply_topic_specific_repairs(
+            "## Components Schedule\\nM1 to M4 definitions.",
+            "Components of Money Supply",
+        )
+        self.assertIn("## Worked Example / Application", repaired)
+        self.assertIn("M1 = 500 + 300 + 10 = **₹810 crore**", repaired)
+        self.assertIn("M4 = M3 + 35 = **₹1,545 crore**", repaired)
+        self.assertIn("ये केवल शिक्षण हेतु बनाई गई काल्पनिक संख्याएँ हैं", repaired)
+        self.assertIn("सावधि जमा", repaired)
+        self.assertEqual(len(changes), 1)
+
+    def test_indian_growth_replaces_undated_illustrative_table_with_dated_source_data(self):
+        source = """## Worked Example: Sectoral Shift / कार्य उदाहरण: क्षेत्रीय बदलाव
+*Note: The following values are illustrative of structural trends in the Indian economy.*
+| Sector / क्षेत्र | GVA Share (Approx. Historical) / GVA हिस्सा (लगभग ऐतिहासिक) |
+| :--- | :--- |
+| Agriculture / कृषि | ~18% |
+| Industry / उद्योग | ~28% |
+| Services / सेवाएँ | ~54% |
+
+## Recap
+Some text.
+"""
+        repaired, changes = apply_topic_specific_repairs(
+            source, "Economic Growth in India: Pattern and Structure"
+        )
+        self.assertNotIn("Approx. Historical", repaired)
+        self.assertIn("53.6%", repaired)
+        self.assertIn("nominal GDP", repaired)
+        self.assertIn("H1 FY2025–26", repaired)
+        self.assertIn("GVA growth of 7.0%", repaired)
+        self.assertIn("आधार वर्ष 2022–23", repaired)
+        self.assertGreaterEqual(len(changes), 1)
+
     def test_valid_structured_response_is_accepted(self):
         original = "# Original"
         payload = {
