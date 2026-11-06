@@ -538,7 +538,7 @@ Source: Government of India, Economic Survey 2025–26, Tables I.1 and I.2b; MoS
             "*   [VERIFY] दावों का उपयोग वहां किया गया है जहां विशिष्ट नीति तिथियां या वर्तमान जीडीपी प्रतिशत प्रॉम्प्ट में प्रदान नहीं किए गए हैं और उन्हें भारत के नवीनतम आर्थिक सर्वेक्षण के संदर्भ की आवश्यकता है।",
             "*   सेवा क्षेत्र की हिस्सेदारी के साथ उसका माप, अवधि और अनुमान-विंटेज दिया गया है; इसे GVA की हिस्सेदारी, रोजगार की हिस्सेदारी या वास्तविक वृद्धि दर नहीं कहना चाहिए।",
         )
-        text = re.sub(r"(?m)^\\s*[-*]\\s*\\[VERIFY\\]\\s*$", "", text)
+        text = re.sub(r"(?m)^\s*[-*]\s*\[VERIFY\]\s*$", "", text)
         text = text.replace(
             "**Primary Sector:** Traditionally the largest employer, but its share in GDP has declined over decades.",
             "**Primary Sector:** Agriculture accounted for 43.0% of workers in usual status in PLFS 2025, compared with 44.8% in 2024; these employment shares are not GDP/GVA shares.",
