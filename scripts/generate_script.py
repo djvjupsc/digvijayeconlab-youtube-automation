@@ -37,7 +37,9 @@ def topic_specific_requirements(topic: str) -> str:
     if "international trade: basic concepts" in normalized:
         return """- Explain comparative advantage as a production-side concept based on relative opportunity cost (or relative unit-labour requirements). Do not connect the Ricardian model to Hicks/Slutsky consumer-demand decomposition.
 - Distinguish the general concave PPF (increasing marginal opportunity cost) from the simplest Ricardian model with constant unit-labour requirements (linear PPF and constant opportunity cost).
-- State whether a table reports output per worker/hour or labour required per unit; compute opportunity costs consistently and label all units. For the supplied productivity table, derive opportunity cost step by step (one hour: A makes 10 cloth or 5 wine; B makes 2 cloth or 4 wine), in English and Hindi. Label zero transport costs as an explicit simplification for the teaching model, not a real-world claim."""
+- State whether a table reports output per worker/hour or labour required per unit; compute opportunity costs consistently and label all units. For the supplied productivity table, derive opportunity cost step by step (one hour: A makes 10 cloth or 5 wine; B makes 2 cloth or 4 wine), in English and Hindi. Label zero transport costs as an explicit simplification for the teaching model, not a real-world claim.
+- Mark the introductory field definition with [VERIFY: add a standard textbook citation for the definition of International Economics] rather than presenting an uncited field definition as independently verified.
+- In Source and Verification Notes, include this exact standalone sentence: "Independent verification of MPPSC syllabus alignment is still required." Keep at least five numbered practice MCQs under a heading containing "Practice MCQs", with four options and explicit Correct Answer and Explanation labels for each."""
     if "market failure and remedial measures" in normalized:
         return """- Define a pure public good by both non-excludability and non-rivalry; do not equate government financing with public-good status.
 - Distinguish imperfect from asymmetric information, and distinguish adverse selection (hidden information/characteristics) from moral hazard (hidden action/incentive change after agreement).
@@ -52,8 +54,56 @@ def topic_specific_requirements(topic: str) -> str:
 - You may quote the Economic Survey 2025–26 figure 53.6% only as the services share of nominal GDP in H1 FY2025–26 (the H1 FY2024–25 comparator is 52.6%). The Survey's FY2025–26 FAE figure is 51.1%. Do not label 53.6% as an annual figure or a GVA share.
 - The Survey separately reports services GVA growth of 9.3% in H1 FY2025–26 versus 7.0% in H1 FY2024–25. Keep growth rate and share concepts separate.
 - Make in India was announced on 15 August 2014 and formally launched on 25 September 2014; do not repeat undated or retired manufacturing-share targets as current policy.
-- Qualify claims about 'service-led growth'; distinguish output/GVA shares from employment shares and avoid unsupported long-run sectoral percentages."""
+- Qualify claims about 'service-led growth'; distinguish output/GVA shares from employment shares and avoid unsupported long-run sectoral percentages.
+- MUST include a populated section immediately after the title headed exactly "## Learning Objectives / अधिगम उद्देश्य" (or "## Learning Objectives"). Include at least three bilingual, measurable objectives covering: real GDP vs nominal GDP/GVA; interpreting sectoral output shares separately from employment shares; and identifying the 2022–23 national-accounts base year and dated source vintages.
+- Do not omit or merge Learning Objectives into Core Concept. Keep the objectives heading visible so deterministic validation can detect it."""
     return ""
+
+
+def apply_topic_specific_structure(topic: str, content: str) -> str:
+    """Enforce small, transparent topic-specific handoff requirements after generation."""
+    normalized = (topic or "").casefold()
+    if "economic growth in india: pattern and structure" in normalized:
+        if not re.search(r"(?im)^#{1,6}\s+.*learning objectives", content):
+            objectives = """## Learning Objectives / अधिगम उद्देश्य
+
+After this lesson, learners will be able to:
+- Distinguish real GDP growth from nominal GDP values and GVA measures.
+- अलग-अलग मापों के रूप में वास्तविक GDP वृद्धि, नाममात्र GDP मूल्य और GVA में अंतर करना।
+- Interpret sectoral output shares separately from sectoral employment shares.
+- क्षेत्रीय उत्पादन हिस्सेदारी और क्षेत्रीय रोजगार हिस्सेदारी की अलग-अलग व्याख्या करना।
+- Identify the 2022–23 national-accounts base year and state the period and estimate vintage attached to each statistic.
+- 2022–23 के राष्ट्रीय लेखा आधार वर्ष की पहचान करना तथा प्रत्येक आँकड़े की अवधि और अनुमान-विंटेज बताना।
+
+"""
+            title_lines = content.splitlines(keepends=True)
+            insert_at = 0
+            while insert_at < len(title_lines) and (title_lines[insert_at].startswith("# ") or not title_lines[insert_at].strip()):
+                insert_at += 1
+            title_lines.insert(insert_at, "\n" + objectives)
+            content = "".join(title_lines)
+
+    if "international trade: basic concepts" in normalized:
+        marker_text = "[VERIFY: add a standard textbook citation for the definition of International Economics]"
+        if "international economics studies the economic interactions between countries" in content.casefold() and marker_text not in content:
+            content = re.sub(
+                r"(?i)(International Economics studies the economic interactions between countries)",
+                marker_text + r" \1",
+                content,
+                count=1,
+            )
+        required_syllabus = "Independent verification of MPPSC syllabus alignment is still required."
+        if required_syllabus not in content:
+            if re.search(r"(?im)^##\s+.*(?:source|verification)", content):
+                content = re.sub(
+                    r"(?im)(^##\s+.*(?:source|verification).*?$)",
+                    r"\1\n\n" + required_syllabus,
+                    content,
+                    count=1,
+                )
+            else:
+                content += "\n\n## Source and Verification Notes\n\n" + required_syllabus + "\n"
+    return content
 
 
 def main():
@@ -177,6 +227,7 @@ English and Hindi explanations for each substantive teaching point. Include sour
     unit_prefix = os.environ.get("SCRIPT_FILENAME_PREFIX", "").strip()
     filename_topic = f"{unit_prefix} {topic}" if unit_prefix else topic
     output_path = output_dir / clean_filename(filename_topic)
+    content = apply_topic_specific_structure(topic, content)
     output_path.write_text(content.strip() + "\n", encoding="utf-8")
     print(f"Draft generated: {output_path}")
     print("Status: DRAFT ONLY — human fact-check and approval required.")

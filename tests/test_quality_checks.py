@@ -259,5 +259,35 @@ Price and quantity demanded move in opposite directions, other things equal.
         findings = analyze_script(source, "MCQ Set", "Bilingual")
         self.assertNotIn("MIXED_SCRIPT_TOKEN", {item["code"] for item in findings})
 
+
+    def test_counts_numbered_list_mcqs_inside_practice_section(self):
+        from scripts.quality_checks import count_mcq_sections, analyze_script
+        source = """## 1. Introduction
+This is a lesson section, not an MCQ.
+## 2. Worked Example
+An illustrative example.
+## Practice MCQs / अभ्यास प्रश्न
+"""
+        for number in range(1, 6):
+            source += (
+                f"{number}. **Question {number}?**\n"
+                "A) Option A\nB) Option B\nC) Option C\nD) Option D\n"
+                "**Correct Answer: B**\n"
+                "*Explanation: This is the rationale.*\n\n"
+            )
+        source += "## Source and Verification Notes\nSources listed here.\n"
+        self.assertEqual(count_mcq_sections(source), (5, 5, 5))
+        findings = analyze_script(source, "Concept Explainer", "English")
+        self.assertNotIn("MCQ_COUNT_BELOW_MINIMUM", {item["code"] for item in findings})
+
+    def test_numbered_lesson_sections_are_not_counted_as_mcqs(self):
+        from scripts.quality_checks import count_mcq_sections
+        source = """## 1. Introduction
+## 2. Definition
+## 3. Worked Example
+## 4. Recap
+"""
+        self.assertEqual(count_mcq_sections(source), (0, 0, 0))
+
 if __name__ == "__main__":
     unittest.main()
