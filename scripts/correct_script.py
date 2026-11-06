@@ -558,6 +558,75 @@ Source: Government of India, Economic Survey 2025–26, Tables I.1 and I.2b; MoS
                 text = text[:match.start()].rstrip() + "\n\n" + example + "\n\n" + text[match.start():]
                 changes.append("Moved the M1–M4 worked example into the teaching sequence before the recap.")
 
+    # Final pass aligned to the literal variants found in the retained production artifact.
+    if "economic growth in india: pattern and structure" in normalized:
+        text = re.sub(
+            r"(?m)^Historically, India’s growth has been characterized by a .*?Agriculture to Services\.\s*$",
+            "India's structural transformation has been uneven across output, value added and employment. Services account for the largest share of nominal GDP in the cited H1 FY2025–26 snapshot, but this does not mean that India bypassed industrial development or that sectoral employment shares follow the same pattern.",
+            text,
+        )
+        text = re.sub(
+            r"(?m)^ऐतिहासिक रूप से, भारत का विकास .*?सेवाओं की ओर एक महत्वपूर्ण छलांग लगाई है।\s*$",
+            "भारत का संरचनात्मक रूपांतरण उत्पादन, मूल्य वर्धन और रोजगार के संदर्भ में अलग-अलग और असमान रहा है। उद्धृत H1 FY2025–26 आँकड़ों में नाममात्र GDP में सेवा क्षेत्र की हिस्सेदारी सबसे अधिक है; इससे यह निष्कर्ष नहीं निकलता कि भारत ने औद्योगिक विकास को छोड़ दिया या रोजगार की क्षेत्रीय हिस्सेदारी भी उसी अनुपात में बदली।",
+            text,
+        )
+        text = text.replace(
+            "**Primary Sector:** Traditionally the largest employer, but its share in GDP has declined over decades.",
+            "**Primary Sector:** Agriculture remains the largest employment sector in the PLFS 2025 snapshot (43.0% of workers in 2025, compared with 44.8% in 2024); employment shares and GDP/GVA shares are different measures.",
+        )
+        text = text.replace(
+            "**प्राथमिक क्षेत्र:** पारंपरिक रूप से सबसे बड़ा नियोक्ता, लेकिन दशकों से जीडीपी में इसका हिस्सा कम हुआ है।",
+            "**प्राथमिक क्षेत्र:** PLFS 2025 के अनुसार कृषि 2025 में सबसे बड़ा रोजगार क्षेत्र था (43.0% कामगार, जबकि 2024 में 44.8%); रोजगार की हिस्सेदारी और GDP/GVA की हिस्सेदारी अलग-अलग माप हैं।",
+        )
+        if re.search(r"(?m)^## Worked Example: Sectoral Shift", text):
+            pattern = re.compile(r"(?ms)^## Worked Example: Sectoral Shift.*?(?=^## |\Z)")
+            replacement = """## Worked Example: Reading a Dated Data Snapshot / दिनांकित आँकड़ों को समझना
+
+**Source-based data (not a hypothetical table):** Economic Survey 2025–26, Table I.2b, reports services' share of **nominal GDP** as 52.6% in H1 FY2024–25 and 53.6% in H1 FY2025–26; the FY2025–26 FAE figure is 51.1%.
+
+| Measure | H1 FY2024–25 | H1 FY2025–26 | FY2025–26 FAE |
+| :--- | ---: | ---: | ---: |
+| Services share of nominal GDP (%) | 52.6 | 53.6 | 51.1 |
+
+Separately, the Survey's real-GVA growth table reports services growth of 7.0% in H1 FY2024–25 and 9.3% in H1 FY2025–26. A nominal GDP share is not a real growth rate and is not a GVA share. MoSPI's National Accounts Statistics 2026 uses base year 2022–23.
+
+**Employment context:** MoSPI's PLFS Annual Report 2025 reports agriculture accounted for 43.0% of workers in usual status in 2025, compared with 44.8% in 2024. This is an employment share, not a GDP/GVA share.
+
+**स्रोत-आधारित आँकड़े:** Economic Survey 2025–26 की Table I.2b के अनुसार **नाममात्र GDP** में सेवाओं की हिस्सेदारी H1 FY2024–25 में 52.6% और H1 FY2025–26 में 53.6% थी; FY2025–26 FAE का आँकड़ा 51.1% है।
+
+| माप | H1 FY2024–25 | H1 FY2025–26 | FY2025–26 FAE |
+| :--- | ---: | ---: | ---: |
+| नाममात्र GDP में सेवाओं की हिस्सेदारी (%) | 52.6 | 53.6 | 51.1 |
+
+अलग से, सर्वेक्षण की वास्तविक GVA वृद्धि तालिका में सेवा क्षेत्र की वृद्धि H1 FY2024–25 में 7.0% और H1 FY2025–26 में 9.3% बताई गई है। नाममात्र GDP की हिस्सेदारी, वास्तविक वृद्धि दर या GVA की हिस्सेदारी नहीं होती। MoSPI के National Accounts Statistics 2026 में आधार वर्ष 2022–23 है।
+
+**रोजगार का संदर्भ:** MoSPI की PLFS Annual Report 2025 के अनुसार कृषि 2025 में सामान्य स्थिति के कुल कामगारों का 43.0% थी, जबकि 2024 में यह 44.8% थी। यह रोजगार की हिस्सेदारी है, GDP/GVA की हिस्सेदारी नहीं।
+
+Source: Government of India, Economic Survey 2025–26, Tables I.1 and I.2b; MoSPI, National Accounts Statistics 2026; PLFS Annual Report 2025.
+"""
+            text, count = pattern.subn(replacement + "\n", text, count=1)
+            if count:
+                changes.append("Replaced the draft's Year 1/Year 10 hypothetical table with dated Economic Survey output/GVA data plus a separate PLFS employment measure.")
+        if "https://www.pib.gov.in/PressReleasePage.aspx?PRID=2246009" not in text:
+            text = text.rstrip() + """
+
+## Selected Official References / आधिकारिक संदर्भ
+- Government of India, *Economic Survey 2025–26*, Tables I.1 and I.2b: https://www.indiabudget.gov.in/economicsurvey/doc/echapter.pdf
+- MoSPI, *National Accounts Statistics — 2026*, base year 2022–23: https://www.pib.gov.in/PressReleasePage.aspx?PRID=2304948&lang=2&reg=48
+- MoSPI/PIB, *PLFS Annual Report 2025*, released 27 March 2026: https://www.pib.gov.in/PressReleasePage.aspx?PRID=2246009&lang=2&reg=48
+- Press Information Bureau, Make in India launch, 25 September 2014: https://www.pib.gov.in/newsite/PrintRelease.aspx?lang=2&reg=48&relid=110017
+"""
+            changes.append("Added the latest PLFS 2025 employment data and official references.")
+
+    # Remove the stale marker-restoration appendix only when every remaining
+    # verification marker was resolved by this topic's supplied source notes and edits.
+    if not VERIFY_MARKER_PATTERN.search(text):
+        text = re.sub(
+            r"(?ms)\n## Original Verification Markers Retained for Human Sign-off\s*\n.*\Z",
+            "",
+            text,
+        ).rstrip() + "\n"
+
     return text, changes
 
 
