@@ -664,6 +664,34 @@ Source: Government of India, Economic Survey 2025–26, Tables I.1 and I.2b; MoS
             text,
         ).rstrip() + "\n"
 
+    # Add references after marker cleanup so the cleanup cannot truncate them.
+    if "theory of consumer behaviour" in normalized and "MIT OpenCourseWare" not in text:
+        text = text.rstrip() + """
+
+## Selected References / सुझाए गए स्रोत
+- OpenStax, *Principles of Economics 2e*, Sections 6.2 and 16.1: https://openstax.org/books/principles-of-economics-2e/pages/6-2-how-changes-in-income-and-prices-affect-consumption-choices
+- MIT OpenCourseWare, *Principles of Microeconomics*, consumer choice and Giffen-good discussion: https://ocw.mit.edu/ans7870/14/14.01SC/MIT14_01SCF11_rttext.pdf
+- SATHEE (IIT Kanpur), *Theory of Consumer Behaviour*: https://sathee.iitk.ac.in/sathee-ssc/student-corner/ncert-books/class-12/economics/introductory-to-microeconomics/chapter-02-theory-of-consumer-behaviour/
+"""
+
+    if "market failure and remedial measures" in normalized and "10.2307/1879431" not in text:
+        text = text.rstrip() + """
+
+## Selected References / सुझाए गए स्रोत
+- OpenStax, *Principles of Economics 2e*, Sections 12.1, 13.3 and 16.1: https://openstax.org/books/principles-of-economics-2e/pages/13-3-public-goods
+- George A. Akerlof, “The Market for ‘Lemons’: Quality Uncertainty and the Market Mechanism,” *The Quarterly Journal of Economics*, 84(3), 1970, pp. 488–500: https://doi.org/10.2307/1879431
+"""
+
+    if "economic growth in india: pattern and structure" in normalized and "https://www.indiabudget.gov.in/economicsurvey/doc/echapter.pdf" not in text:
+        text = text.rstrip() + """
+
+## Selected Official References / आधिकारिक संदर्भ
+- Government of India, *Economic Survey 2025–26*, Tables I.1 and I.2b: https://www.indiabudget.gov.in/economicsurvey/doc/echapter.pdf
+- MoSPI, *National Accounts Statistics — 2026*, base year 2022–23: https://www.pib.gov.in/PressReleasePage.aspx?PRID=2304948&lang=2&reg=48
+- MoSPI/PIB, *PLFS Annual Report 2025*: https://www.pib.gov.in/PressReleasePage.aspx?PRID=2246009&lang=2&reg=48
+- Press Information Bureau, Make in India launch, 25 September 2014: https://www.pib.gov.in/newsite/PrintRelease.aspx?lang=2&reg=48&relid=110017
+"""
+
     return text, changes
 
 
