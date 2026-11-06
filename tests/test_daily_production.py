@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import patch
-from scripts.daily_production import build_manifest, process_units, validate_plan
+from scripts.daily_production import build_manifest, process_units, validate_plan, validate_provider_credentials
 
 
 class DailyProductionPlanTests(unittest.TestCase):
@@ -20,6 +20,22 @@ class DailyProductionPlanTests(unittest.TestCase):
                 for i in range(1, 11)
             ],
         }
+
+    def test_freellmapi_route_requires_its_unified_key_not_gemini_alias(self):
+        self.assertTrue(validate_provider_credentials({
+            "LLM_PROVIDER": "freellmapi",
+            "FREELLMAPI_API_KEY": "temporary-unified-key",
+        }))
+        with self.assertRaisesRegex(RuntimeError, "FREELLMAPI_API_KEY"):
+            validate_provider_credentials({"LLM_PROVIDER": "freellmapi"})
+
+    def test_direct_gemini_route_requires_gemini_api_key(self):
+        self.assertTrue(validate_provider_credentials({
+            "LLM_PROVIDER": "gemini",
+            "GEMINI_API_KEY": "temporary-google-key",
+        }))
+        with self.assertRaisesRegex(RuntimeError, "GEMINI_API_KEY"):
+            validate_provider_credentials({"LLM_PROVIDER": "gemini"})
 
     def test_requires_exactly_ten_consecutive_units(self):
         self.assertTrue(validate_plan(self.plan))
