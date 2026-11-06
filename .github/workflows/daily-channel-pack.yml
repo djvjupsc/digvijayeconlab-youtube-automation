@@ -307,6 +307,7 @@ jobs:
           name: digvijayeconlab-daily-production-${{ steps.prepare.outputs.publication_date }}
           path: |
             output/daily_manifest.json
+            config/source_notes/*.md
             output/scripts/*.md
             output/reviews/*.md
             output/corrected_scripts/*.md
