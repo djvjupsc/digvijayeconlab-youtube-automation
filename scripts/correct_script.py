@@ -779,6 +779,66 @@ D) Mining / खनन
             "In H1 FY2025–26, services accounted for 53.6% of nominal GDP; the Economic Survey separately reports 9.3% services GVA growth for that half-year. The measures and periods must remain distinct.",
         )
 
+    # Match the actual bilingual lesson wording found in the retained failed artifact.
+    if "theory of consumer behaviour" in normalized:
+        text = text.replace(
+            "The historical attribution of the Irish potato famine as empirical proof for Giffen goods is debated in literature; this text treats it as a theoretical construct. [VERIFY]",
+            "The familiar Irish potato famine illustration is debated as empirical evidence; it is discussed as a theoretical illustration, not as settled proof of a Giffen-good episode.",
+        )
+        text = text.replace(
+            "Explanation: When price falls, the good becomes relatively cheaper (Substitution) and real income rises (Income), both increasing demand.",
+            "Explanation: Nominal (money) income is held constant. When price falls, the good becomes relatively cheaper (substitution effect) and the consumer's real purchasing power rises (income effect); for a normal good, both effects increase quantity demanded.",
+        )
+        text = text.replace(
+            "(व्याख्या: जब कीमत गिरती है, तो वस्तु अपेक्षाकृत सस्ती हो जाती है (प्रतिस्थापन) और वास्तविक आय बढ़ जाती है (आय), जिससे मांग बढ़ती है।)",
+            "(व्याख्या: मौद्रिक/नाममात्र आय स्थिर रखी जाती है। कीमत घटने पर वस्तु अपेक्षाकृत सस्ती होती है (प्रतिस्थापन प्रभाव) और वास्तविक क्रय शक्ति बढ़ती है (आय प्रभाव); सामान्य वस्तु के लिए दोनों प्रभाव मांगी गई मात्रा बढ़ाते हैं।)",
+        )
+
+    if "international trade: basic concepts" in normalized:
+        # Replace the complete original worked-example bullets, not just their sentence fragments.
+        opportunity_cost_pattern = re.compile(
+            r"(?ms)^\\s*\\*\\s*Country A has an absolute advantage in both\\..*?^\\s*\\*\\s*Country B has a comparative advantage in Wine\\.\\s*$"
+        )
+        opportunity_cost_text = """*   **Opportunity-cost calculation (output per labour-hour):** This table reports productivity, not labour-hours required per unit. In one hour, Country A can produce 10 cloth or 5 wine. One wine therefore uses 1/5 hour, which could instead produce 2 cloth; A's opportunity cost of one wine is 2 cloth. In one hour, Country B can produce 2 cloth or 4 wine. One wine uses 1/4 hour, which could instead produce 0.5 cloth; B's opportunity cost of one wine is 0.5 cloth. B therefore has a comparative advantage in wine, while A has a comparative advantage in cloth."""
+        text, n = opportunity_cost_pattern.subn(opportunity_cost_text,text,count=1)
+        if n:
+            changes.append("Replaced the compressed trade calculation with a unit-consistent opportunity-cost derivation from output per labour-hour.")
+        text = text.replace(
+            "*   **विश्लेषण:** देश A को दोनों में निरपेक्ष लाभ है। हालाँकि, देश A के लिए 1 इकाई वाइन की अवसर लागत 2 इकाई कपड़ा है। देश B के लिए 1 इकाई वाइन की अवसर लागत 0.5 इकाई कपड़ा है। इसलिए, देश B को वाइन में तुलनात्मक लाभ है।",
+            "*   **अवसर लागत की गणना (प्रति श्रम-घंटे उत्पादन):** तालिका उत्पादकता बताती है, प्रति इकाई आवश्यक श्रम-घंटे नहीं। एक घंटे में देश A 10 कपड़ा या 5 वाइन बना सकता है। इसलिए 1 वाइन में 1/5 घंटा लगेगा; इसी समय में 2 कपड़ा बन सकता था। अतः A में 1 वाइन की अवसर लागत 2 कपड़ा है। देश B एक घंटे में 2 कपड़ा या 4 वाइन बना सकता है। 1 वाइन में 1/4 घंटा लगता है; इसी समय में 0.5 कपड़ा बन सकता था। अतः B में 1 वाइन की अवसर लागत 0.5 कपड़ा है। इसलिए B को वाइन में और A को कपड़े में तुलनात्मक लाभ है।",
+        )
+
+    if "market failure and remedial measures" in normalized:
+        # Resolve the original source-note verification sentence against the supplied notes.
+        text = text.replace(
+            "No real-world economic data or specific policy dates have been cited. [VERIFY] all definitions against standard textbooks like Musgrave or Stiglitz.",
+            "No real-world economic data or specific policy dates are cited. Core definitions are referenced to OpenStax, *Principles of Economics 2e*, Sections 12.1, 13.3 and 16.1, and Akerlof (1970).",
+        )
+        text = text.replace(
+            "No real-world economic data or specific policy dates have been cited. [VERIFY] all definitions against standard textbooks like Musgrave or Stiglitz.",
+            "No real-world economic data or specific policy dates are cited; core definitions are referenced to OpenStax Sections 12.1, 13.3 and 16.1 and Akerlof (1970).",
+        )
+        text = re.sub(
+            r"(?m)^\\s*\\*\\s*\\*\\*Data/Claims:\\*\\* All numerical examples are hypothetical\\. \\[VERIFY\\] all definitions against standard textbooks like Musgrave or Stiglitz\\.",
+            "*   **Data/Claims:** All numerical examples are hypothetical. Core definitions are referenced to OpenStax Sections 12.1, 13.3 and 16.1 and Akerlof (1970).",
+            text,
+        )
+        # Ensure the example's table is not confused with marginal-cost data.
+        if "| Quantity (Units) | Private Cost (₹) | External Cost (₹) | Social Cost (₹) |" in text:
+            text=text.replace(
+                "| Quantity (Units) | Private Cost (₹) | External Cost (₹) | Social Cost (₹) |",
+                "| Quantity (Units) | Total Private Cost (₹) | Total External Cost (₹) | Total Social Cost (₹) |",
+            )
+        if "**Explanation:** The market price only reflects Marginal Private Cost (MPC)." in text:
+            text=text.replace(
+                "**Explanation:** The market price only reflects Marginal Private Cost (MPC). To correct this, the government may impose a Pigouvian Tax equal to the External Cost to force the firm to internalize the cost, aligning MPC with Marginal Social Cost (MSC).",
+                "**Explanation:** The figures are illustrative cost amounts, not a complete marginal-cost schedule. In the standard model, a Pigouvian tax is set equal to marginal external damage at the socially efficient output; it is not automatically equal to total external cost at every quantity.",
+            )
+        text=text.replace(
+            "(बाजार मूल्य केवल सीमांत निजी लागत (MPC) को दर्शाता है। इसे ठीक करने के लिए, सरकार बाहरी लागत के बराबर 'पिगुवियन कर' लगा सकती है ताकि फर्म को लागत को आंतरिक बनाने के लिए मजबूर किया जा सके, जिससे MPC और सीमांत सामाजिक लागत (MSC) संरेखित हो सकें।)",
+            "(ये उदाहरणात्मक लागत राशियाँ हैं, पूर्ण सीमांत-लागत अनुसूची नहीं। मानक मॉडल में पिगुवियन कर सामाजिक रूप से कुशल उत्पादन स्तर पर सीमांत बाहरी क्षति के बराबर निर्धारित किया जाता है; यह हर मात्रा पर कुल बाहरी लागत के बराबर स्वतः नहीं होता।)",
+        )
+
     # Remove the stale marker-restoration appendix only when every remaining
     # verification marker was resolved by this topic's supplied source notes and edits.
     if not VERIFY_MARKER_PATTERN.search(text):
