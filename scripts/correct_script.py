@@ -314,7 +314,7 @@ def apply_topic_specific_repairs(text, topic):
         )
 
     if "components of money supply" in normalized:
-        if not re.search(r"(?im)^#{1,6}\\s+.*worked\\s+example", text):
+        if not re.search(r"(?im)^#{1,6}\s+.*worked\s+example", text):
             section = """
 
 ## Worked Example / Application — Traditional M1–M4 / कार्यगत उदाहरण — पारंपरिक M1–M4
@@ -356,7 +356,7 @@ These are invented teaching figures, not observed RBI data. M2, M3 and M4 are al
         new_hindi = "भारत के संरचनात्मक परिवर्तन का आकलन उत्पादन, मूल्य वर्धन और रोजगार के आधार पर अलग-अलग करना चाहिए। सेवाएँ उत्पादन और GVA वृद्धि का एक प्रमुख स्रोत बनी हैं, जबकि कृषि रोजगार के लिए महत्त्वपूर्ण है और उद्योग उत्पादक क्षमता के लिए केंद्रीय है। केवल 'कृषि से सीधे सेवाओं की ओर बदलाव' का एक कथन हर क्षेत्र, अवधि या संकेतक का पूरा चित्र प्रस्तुत नहीं करता।"
         replace(old_hindi, new_hindi, "Qualified the Hindi structural-transformation narrative and distinguished output, GVA and employment.")
         old_example = re.compile(
-            r"(?ms)^## Worked Example: Sectoral Shift / कार्य उदाहरण: क्षेत्रीय बदलाव\\s*.*?(?=^## |\\Z)"
+            r"(?ms)^## Worked Example: Sectoral Shift / कार्य उदाहरण: क्षेत्रीय बदलाव\s*.*?(?=^## |\Z)"
         )
         new_example = """## Worked Example: Reading a Dated Data Snapshot / दिनांकित आँकड़ों को समझना
 
