@@ -667,7 +667,7 @@ Source: Government of India, Economic Survey 2025–26, Tables I.1 and I.2b; MoS
             "गिफ्फेन वस्तुओं के संदर्भ में आयरिश आलू अकाल का प्रचलित उदाहरण अनुभवजन्य प्रमाण के रूप में विवादित है; इसे निर्णायक ऐतिहासिक प्रमाण नहीं, बल्कि सैद्धांतिक उदाहरण के रूप में समझना चाहिए।",
         )
         text = re.sub(
-            r"(Giffen goods violate the law of demand because the negative income effect outweighs the substitution effect; as price rises, quantity demanded rises\\.)\\s*\\[VERIFY\\]",
+            r"(Giffen goods violate the law of demand because the negative income effect outweighs the substitution effect; as price rises, quantity demanded rises\.)\s*\[VERIFY\]",
             r"\1",
             text,
         )
@@ -683,17 +683,17 @@ Source: Government of India, Economic Survey 2025–26, Tables I.1 and I.2b; MoS
     if "international trade: basic concepts" in normalized:
         # Make the no-transport-cost condition an explicit assumption of this simplified model.
         text = re.sub(
-            r"(?m)^\\s*[-*]\\s*No transport costs\\s*\\[VERIFY\\]\\.?",
+            r"(?m)^\s*[-*]\s*No transport costs\s*\[VERIFY\]\.?",
             "*   **Simplifying assumption:** This worked Ricardian model abstracts from transport costs; actual trade can involve positive freight, insurance and other trade costs. [VERIFY]",
             text,
         )
         text = re.sub(
-            r"(?m)^\\s*[-*]\\s*Standard Ricardian model assumption:\\s*No transport costs\\.?\\s*$",
+            r"(?m)^\s*[-*]\s*Standard Ricardian model assumption:\s*No transport costs\.?\s*$",
             "*   **Standard-model assumption:** The simplified Ricardian model abstracts from transport costs; actual trade can involve freight, insurance and other trade costs.",
             text,
         )
         text = re.sub(
-            r"(?m)^\\s*[-*]\\s*मानक रिकार्डियन मॉडल की मान्यता:\\s*परिवहन लागत का अभाव।?\\s*$",
+            r"(?m)^\s*[-*]\s*मानक रिकार्डियन मॉडल की मान्यता:\s*परिवहन लागत का अभाव।?\s*$",
             "*   **मानक मॉडल की मान्यता:** सरल रिकार्डियन मॉडल में परिवहन लागत को शून्य मानकर विश्लेषण किया जाता है; वास्तविक व्यापार में माल-भाड़ा, बीमा और अन्य व्यापार लागतें हो सकती हैं।",
             text,
         )
@@ -745,7 +745,7 @@ Source: Government of India, Economic Survey 2025–26, Tables I.1 and I.2b; MoS
 
     if "economic growth in india: pattern and structure" in normalized:
         # Rebuild the two data-sensitive MCQs so each question names its metric and period.
-        q1q2 = re.compile(r"(?ms)^\\*\\*Q1\\..*?(?=^\\*\\*Q3\\.)")
+        q1q2 = re.compile(r"(?ms)^\*\*Q1\..*?(?=^\*\*Q3\.)")
         revised_mcqs = """**Q1. According to the Economic Survey 2025–26, which sector had the largest share of nominal GDP in H1 FY2025–26?**
 **आर्थिक सर्वेक्षण 2025–26 के अनुसार H1 FY2025–26 में नाममात्र GDP में किस क्षेत्र की हिस्सेदारी सबसे अधिक थी?**
 A) Agriculture / कृषि
