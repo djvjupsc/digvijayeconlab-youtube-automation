@@ -52,7 +52,9 @@ def topic_specific_requirements(topic: str) -> str:
 - You may quote the Economic Survey 2025–26 figure 53.6% only as the services share of nominal GDP in H1 FY2025–26 (the H1 FY2024–25 comparator is 52.6%). The Survey's FY2025–26 FAE figure is 51.1%. Do not label 53.6% as an annual figure or a GVA share.
 - The Survey separately reports services GVA growth of 9.3% in H1 FY2025–26 versus 7.0% in H1 FY2024–25. Keep growth rate and share concepts separate.
 - Make in India was announced on 15 August 2014 and formally launched on 25 September 2014; do not repeat undated or retired manufacturing-share targets as current policy.
-- Qualify claims about 'service-led growth'; distinguish output/GVA shares from employment shares and avoid unsupported long-run sectoral percentages."""
+- Qualify claims about 'service-led growth'; distinguish output/GVA shares from employment shares and avoid unsupported long-run sectoral percentages.
+- MUST include a populated section immediately after the title headed exactly "## Learning Objectives / अधिगम उद्देश्य" (or "## Learning Objectives"). Include at least three bilingual, measurable objectives covering: real GDP vs nominal GDP/GVA; interpreting sectoral output shares separately from employment shares; and identifying the 2022–23 national-accounts base year and dated source vintages.
+- Do not omit or merge Learning Objectives into Core Concept. Keep the objectives heading visible so deterministic validation can detect it."""
     return ""
 
 
