@@ -10,7 +10,7 @@ The workflow is configured not to buy credits, enable paid billing, or silently 
 |---|---|---|
 | Google AI Studio / Gemini API | Free access is limited to eligible models and project-specific rate limits; exact RPM/TPM/RPD limits vary by model and project. | Primary FreeLLMAPI upstream may return 429/503. Direct Gemini fallback shares the same Google project quota. |
 | Cloudflare Workers AI | Workers Free currently includes 10,000 neurons per day. On the Free plan, requests beyond that free allocation fail; usage above the allocation on a Workers Paid plan is charged. | Optional independent fallback. Keep the account on the Free plan to make quota exhaustion fail closed. |
-| Hugging Face Inference Providers | Current docs list $0.10/month of credits for Free users, subject to change. Extra routed usage requires credit purchase. | Small emergency fallback, not a daily 10-unit capacity guarantee. Do not buy credits to continue. |
+| Hugging Face Inference Providers | Not used by this repository's strict zero-cost production route. | No routed Hugging Face inference is attempted; do not purchase credits for this workflow. |
 | GitHub Actions | Private-repository included minutes and artifact storage depend on the GitHub plan. GitHub Free currently includes 2,000 Actions minutes/month and 500 MB storage; extra usage may be billed unless blocked by a budget. | Keep runs manual until actual monthly runtime and storage are known. Set a zero/stop budget in GitHub billing settings if you need a hard no-charge ceiling. |
 | Chatterbox Multilingual V3 Space | Shared Hugging Face ZeroGPU Space; queue, quota and availability are not guaranteed. | Owner-voice synthesis can fail. eSpeak fallback is preview-only and is not upload-eligible in this repository. |
 | YouTube Data API | Default quota is 10,000 units/day for most methods, with separate buckets for search and video insertion. | API quota is finite; keep publishing disabled until owner approval and quota checks. |
@@ -27,14 +27,13 @@ Official references:
 ## Provider chain
 
 When `LLM_PROVIDER=freellmapi`, the adapter tries:
-1. FreeLLMAPI connected to the configured Google AI Studio model.
-2. Cloudflare Workers AI, if both optional Cloudflare secrets are configured.
-3. Hugging Face Inference Providers.
-4. Direct Gemini as a final endpoint fallback (same Google project quota as step 1).
+1. FreeLLMAPI connected to Gemini 3.1 Flash-Lite using the Google AI Studio key.
+2. Cloudflare Workers AI, if both required Cloudflare secrets are configured and the Free allocation is available.
+3. Direct Gemini 3.1 Flash-Lite as a final endpoint fallback (same Google project quota as step 1).
 
 The normal ten-unit workflow now defaults to `freellmapi`. Choosing `gemini` explicitly bypasses independent fallbacks and calls Gemini directly.
 
-Cloudflare credentials are optional GitHub repository secrets:
+Cloudflare credentials are required GitHub repository secrets for the default FreeLLMAPI production route (the direct Gemini route does not run this preflight):
 - `CLOUDFLARE_ACCOUNT_ID`
 - `CLOUDFLARE_API_TOKEN`
 
@@ -42,13 +41,9 @@ Create a narrowly scoped token using Cloudflare's **Workers AI - Read** and **Wo
 
 ### Configure the independent fallback credentials
 
-**Hugging Face (required unless Cloudflare is configured):**
-1. Open [Hugging Face Access Tokens](https://huggingface.co/settings/tokens).
-2. Create a **fine-grained** token.
-3. Enable the specific permission **Make calls to Inference Providers**.
-4. Replace the GitHub repository secret named `HF_TOKEN` with this new token under **Settings → Secrets and variables → Actions**. Do not paste the token into chat or a source file. The existing token used for dataset downloads may not include this permission; the live smoke run returned HTTP 403 until it is granted.
+Hugging Face routed inference is intentionally not configured in the strict zero-cost path. Keep `HF_TOKEN` only for Chatterbox/Space and other explicitly supported assets; do not add an inference token or purchase credits for this workflow.
 
-**Cloudflare Workers AI (recommended optional independent fallback):**
+**Cloudflare Workers AI (required independent fallback for the default FreeLLMAPI route):**
 1. In the Cloudflare dashboard, open **Workers & Pages → AI → Workers AI → Use REST API**.
 2. Create a Workers AI API token, or create a custom token with only **Workers AI - Read** and **Workers AI - Edit**.
 3. Copy the Account ID from that page.
@@ -57,7 +52,7 @@ Create a narrowly scoped token using Cloudflare's **Workers AI - Read** and **Wo
 
 The smoke test now checks the independent provider before installing the heavier video/voice test dependencies or building FreeLLMAPI. It makes one short request and fails early with a visible reason if credentials are not configured.
 
-The smoke workflow includes one deliberately short live fallback probe. It makes the local FreeLLMAPI endpoint unavailable for that single test call, then tests Cloudflare first (when configured) and Hugging Face next. It does not use Gemini as part of this probe.
+The smoke workflow includes one deliberately short live fallback probe. It makes the local FreeLLMAPI endpoint unavailable for that single test call and verifies Cloudflare Workers AI only. Hugging Face routed inference is not used; direct Gemini is not part of this independent-provider probe.
 
 ## Voice and video
 

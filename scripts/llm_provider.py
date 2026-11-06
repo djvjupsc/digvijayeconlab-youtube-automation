@@ -69,7 +69,7 @@ def _to_openai_payload(payload):
 
     generation = payload.get("generationConfig", {})
     request = {
-        "model": os.environ.get("FREELLMAPI_MODEL", "gemini-3.5-flash-lite"),
+        "model": os.environ.get("FREELLMAPI_MODEL", "gemini-3.1-flash-lite"),
         "messages": messages,
         "temperature": generation.get("temperature", 0.2),
         "max_tokens": generation.get("maxOutputTokens", 4096),
@@ -174,10 +174,10 @@ def _generate_huggingface(payload, label="LLM request", timeout=150):
 
 
 def generate_content(api_url, api_key, payload, label="LLM request", timeout=150):
-    """Use FreeLLMAPI first when selected; fall back to direct Gemini on adapter failure.
+    """Use FreeLLMAPI first; then Cloudflare, then same-quota direct Gemini.
 
-    Fallback order is explicitly configured: Cloudflare Workers AI, Hugging Face,
-    then direct Gemini. Gemini shares the Google AI Studio quota with FreeLLMAPI.
+    Hugging Face routed inference is intentionally skipped in strict zero-cost mode.
+    Direct Gemini shares the Google AI Studio quota with FreeLLMAPI.
     """
     provider = os.environ.get("LLM_PROVIDER", "gemini").strip().lower()
     try:
@@ -248,7 +248,7 @@ def generate_content(api_url, api_key, payload, label="LLM request", timeout=150
                     )
                     continue
                 if fallback == "gemini":
-                    fallback_key = os.environ.get("GEMINI_API_KEY")
+                    fallback_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_AI_STUDIO_API_KEY")
                     if not fallback_key:
                         continue
                     print(f"{label}: trying direct Gemini fallback (shares Google AI Studio quota).")

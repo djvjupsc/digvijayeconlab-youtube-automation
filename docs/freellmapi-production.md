@@ -19,7 +19,9 @@ When FreeLLMAPI is selected, the runner:
 - runs lesson generation, first review, correction, second review, Shorts/Community/SEO asset generation through the shared provider adapter;
 - stops the local process and removes the temporary SQLite database after generation.
 
-The FreeLLMAPI source is pinned to upstream commit `fb07845faf7cf986ea9f3692e055076035dd8739`, which was the tested source revision.
+The FreeLLMAPI source is pinned to upstream commit `fb07845faf7cf986ea9f3692e055076035dd8739`, which was the tested source revision. The workflow fetches that exact commit SHA directly; it does not clone moving `main` and compare the checkout afterward. The server-only production build installs dev dependencies explicitly, verifies `server/dist/index.js`, and checks the localhost auth-status endpoint before the daily production claim is created.
+
+The selected Google model is `gemini-3.1-flash-lite`, matching the configured free-tier model choice. The workflow uses the same model for FreeLLMAPI and direct Gemini fallback.
 
 ## Fallback behavior
 

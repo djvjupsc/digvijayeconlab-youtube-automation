@@ -37,7 +37,7 @@ class FreeLLMAPIAdapterTests(unittest.TestCase):
 
     @patch.dict(os.environ, {"LLM_PROVIDER": "freellmapi", "FREELLMAPI_API_KEY": "temporary-test-key",
                              "FREELLMAPI_BASE_URL": "http://127.0.0.1:3001/v1",
-                             "FREELLMAPI_MODEL": "gemini-3.5-flash-lite"})
+                             "FREELLMAPI_MODEL": "gemini-3.1-flash-lite"})
     @patch("scripts.llm_provider.urllib.request.urlopen")
     def test_posts_openai_request_with_bearer_key(self, urlopen):
         body = json.dumps({"choices": [{"message": {"content": "Opportunity cost is the next best alternative forgone."},
@@ -117,6 +117,28 @@ class FreeLLMAPIAdapterTests(unittest.TestCase):
         self.assertEqual(urlopen.call_count, llm_provider.MAX_ATTEMPTS)
         gemini.assert_called_once()
         self.assertEqual(gemini.call_args.args[1], "temporary-google-key")
+
+
+    @patch.dict(os.environ, {
+        "LLM_PROVIDER": "freellmapi",
+        "LLM_FALLBACK_PROVIDER": "gemini",
+        "FREELLMAPI_API_KEY": "temporary-unified-key",
+        "FREELLMAPI_BASE_URL": "http://127.0.0.1:3001/v1",
+        "GOOGLE_AI_STUDIO_API_KEY": "temporary-google-studio-key",
+    }, clear=True)
+    @patch("scripts.gemini_client.generate_content", return_value={"candidates": [{"content": {"parts": [{"text": "Google AI Studio fallback answer."}]}}]})
+    @patch("scripts.llm_provider.time.sleep")
+    @patch("scripts.llm_provider.urllib.request.urlopen")
+    def test_uses_google_ai_studio_secret_for_direct_gemini_fallback(self, urlopen, _sleep, gemini):
+        urlopen.side_effect = llm_provider.urllib.error.URLError("FreeLLMAPI unavailable")
+        payload = {
+            "contents": [{"role": "user", "parts": [{"text": "Define opportunity cost."}]}],
+            "generationConfig": {"temperature": 0.1, "maxOutputTokens": 80},
+        }
+        result = llm_provider.generate_content("https://gemini.invalid", None, payload, label="Google fallback test")
+        self.assertIn("Google AI Studio fallback answer", result["candidates"][0]["content"]["parts"][0]["text"])
+        gemini.assert_called_once()
+        self.assertEqual(gemini.call_args.args[1], "temporary-google-studio-key")
 
 
     @patch.dict(os.environ, {

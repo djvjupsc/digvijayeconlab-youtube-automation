@@ -40,7 +40,7 @@ jobs:
           LLM_PROVIDER: freellmapi
           FREELLMAPI_API_KEY: preflight-placeholder-key
           FREELLMAPI_BASE_URL: http://127.0.0.1:3999/v1
-          FREELLMAPI_MODEL: gemini-3.5-flash-lite
+          FREELLMAPI_MODEL: gemini-3.1-flash-lite
           HF_FALLBACK_MODEL: Qwen/Qwen3-4B-Instruct-2507:cheapest
           CLOUDFLARE_FALLBACK_MODEL: "@cf/meta/llama-3.2-3b-instruct"
         run: python scripts/provider_preflight.py
@@ -52,18 +52,31 @@ jobs:
 
       - name: Download and build FreeLLMAPI
         run: |
-          git clone --depth 1 https://github.com/tashfeenahmed/freellmapi.git freellmapi
+          FREELLMAPI_COMMIT="fb07845faf7cf986ea9f3692e055076035dd8739"
+          mkdir -p freellmapi
+          git -C freellmapi init
+          git -C freellmapi remote add origin https://github.com/tashfeenahmed/freellmapi.git
+          git -C freellmapi fetch --depth 1 origin "$FREELLMAPI_COMMIT"
+          git -C freellmapi checkout --detach FETCH_HEAD
+          ACTUAL_COMMIT="$(git -C freellmapi rev-parse HEAD)"
+          test "$ACTUAL_COMMIT" = "$FREELLMAPI_COMMIT" || {
+            echo "FreeLLMAPI source mismatch: expected $FREELLMAPI_COMMIT, got $ACTUAL_COMMIT."
+            exit 1
+          }
           cd freellmapi
-          test "$(git rev-parse HEAD)" = "fb07845faf7cf986ea9f3692e055076035dd8739" || { echo "Unexpected FreeLLMAPI source revision."; exit 1; }
-          npm ci
-          npm run build
+          npm ci --include=dev
+          npm run build:server
+          test -f server/dist/index.js || { echo "FreeLLMAPI server build did not produce server/dist/index.js."; exit 1; }
 
       - name: Start temporary localhost-only FreeLLMAPI server
         env:
           GOOGLE_AI_STUDIO_API_KEY: ${{ secrets.GOOGLE_AI_STUDIO_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           set -euo pipefail
-          test -n "$GOOGLE_AI_STUDIO_API_KEY" || { echo "Missing GOOGLE_AI_STUDIO_API_KEY repository secret."; exit 1; }
+          PROVIDER_KEY="${GOOGLE_AI_STUDIO_API_KEY:-$GEMINI_API_KEY}"
+          test -n "$PROVIDER_KEY" || { echo "Missing GOOGLE_AI_STUDIO_API_KEY or GEMINI_API_KEY repository secret."; exit 1; }
+          echo "::add-mask::$PROVIDER_KEY"
           export HOST=127.0.0.1
           export PORT=3001
           export NODE_ENV=production
@@ -72,11 +85,11 @@ jobs:
           export CI_ADMIN_PASSWORD="$(node -e 'console.log(require("crypto").randomBytes(24).toString("base64url"))')"
           echo "::add-mask::$CI_ADMIN_PASSWORD"
           echo "CI_ADMIN_PASSWORD=$CI_ADMIN_PASSWORD" >> "$GITHUB_ENV"
-          export FREEAPI_CONFIG_JSON="$(node -e '
+          export FREEAPI_CONFIG_JSON="$(PROVIDER_KEY="$PROVIDER_KEY" node -e '
             const config = {
               admin: { email: "ci-admin@example.com", password: process.env.CI_ADMIN_PASSWORD },
-              keys: [{ platform: "google", key: process.env.GOOGLE_AI_STUDIO_API_KEY, label: "GitHub Actions smoke test", enabled: true }],
-              models: [{ platform: "google", modelId: "gemini-3.5-flash-lite", displayName: "Gemini Flash Lite", fallbackEnabled: true }],
+              keys: [{ platform: "google", key: process.env.PROVIDER_KEY, label: "GitHub Actions smoke test", enabled: true }],
+              models: [{ platform: "google", modelId: "gemini-3.1-flash-lite", displayName: "Gemini 3.1 Flash Lite", fallbackEnabled: true }],
               routing: { strategy: "balanced" }
             };
             process.stdout.write(JSON.stringify(config));
@@ -96,6 +109,9 @@ jobs:
           exit 1
 
       - name: Authenticate and retrieve the temporary unified API key
+        env:
+          GOOGLE_AI_STUDIO_API_KEY: ${{ secrets.GOOGLE_AI_STUDIO_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           set -euo pipefail
           LOGIN="$(curl --silent --show-error --fail \
@@ -111,6 +127,11 @@ jobs:
           test -n "$UNIFIED_KEY"
           echo "::add-mask::$UNIFIED_KEY"
           echo "FREELLMAPI_API_KEY=$UNIFIED_KEY" >> "$GITHUB_ENV"
+          PROVIDER_KEY="${GOOGLE_AI_STUDIO_API_KEY:-$GEMINI_API_KEY}"
+          test -n "$PROVIDER_KEY"
+          echo "::add-mask::$PROVIDER_KEY"
+          echo "GOOGLE_AI_STUDIO_API_KEY=$PROVIDER_KEY" >> "$GITHUB_ENV"
+          echo "GEMINI_API_KEY=$PROVIDER_KEY" >> "$GITHUB_ENV"
           echo "LLM_FALLBACK_PROVIDER=${{ steps.provider_preflight.outputs.fallback_chain }},gemini" >> "$GITHUB_ENV"
           echo "Temporary unified key retrieved and masked; it will not be printed."
 
@@ -135,7 +156,7 @@ jobs:
         env:
           LLM_PROVIDER: freellmapi
           FREELLMAPI_BASE_URL: http://127.0.0.1:3001/v1
-          FREELLMAPI_MODEL: gemini-3.5-flash-lite
+          FREELLMAPI_MODEL: gemini-3.1-flash-lite
           LLM_FALLBACK_PROVIDER: ${{ steps.provider_preflight.outputs.fallback_chain }},gemini
           SCRIPT_UNIT: FreeLLMAPI integration validation
           SCRIPT_LANGUAGE: Bilingual
@@ -148,7 +169,7 @@ jobs:
         env:
           LLM_PROVIDER: freellmapi
           FREELLMAPI_BASE_URL: http://127.0.0.1:3001/v1
-          FREELLMAPI_MODEL: gemini-3.5-flash-lite
+          FREELLMAPI_MODEL: gemini-3.1-flash-lite
           SCRIPT_UNIT: FreeLLMAPI integration validation
           SCRIPT_LANGUAGE: Bilingual
           SCRIPT_FORMAT: MCQ Set
@@ -160,7 +181,7 @@ jobs:
         env:
           LLM_PROVIDER: freellmapi
           FREELLMAPI_BASE_URL: http://127.0.0.1:3001/v1
-          FREELLMAPI_MODEL: gemini-3.5-flash-lite
+          FREELLMAPI_MODEL: gemini-3.1-flash-lite
         run: |
           python scripts/correct_script.py \
             output/scripts/opportunity-cost.md \
@@ -173,7 +194,7 @@ jobs:
         env:
           LLM_PROVIDER: freellmapi
           FREELLMAPI_BASE_URL: http://127.0.0.1:3001/v1
-          FREELLMAPI_MODEL: gemini-3.5-flash-lite
+          FREELLMAPI_MODEL: gemini-3.1-flash-lite
           SCRIPT_UNIT: FreeLLMAPI integration validation
           SCRIPT_LANGUAGE: Bilingual
           SCRIPT_FORMAT: MCQ Set

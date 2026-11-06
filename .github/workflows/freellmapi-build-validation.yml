@@ -1,0 +1,54 @@
+name: FreeLLMAPI pinned production build validation
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/daily-channel-pack.yml"
+      - ".github/workflows/freellmapi-smoke-test.yml"
+      - ".github/workflows/freellmapi-build-validation.yml"
+      - "scripts/llm_provider.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: freellmapi-pinned-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-pinned-server:
+    name: Build the exact FreeLLMAPI production server revision
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Fetch the exact approved FreeLLMAPI commit
+        run: |
+          set -euo pipefail
+          FREELLMAPI_COMMIT="fb07845faf7cf986ea9f3692e055076035dd8739"
+          mkdir -p freellmapi
+          git -C freellmapi init
+          git -C freellmapi remote add origin https://github.com/tashfeenahmed/freellmapi.git
+          git -C freellmapi fetch --depth 1 origin "$FREELLMAPI_COMMIT"
+          git -C freellmapi checkout --detach FETCH_HEAD
+          ACTUAL_COMMIT="$(git -C freellmapi rev-parse HEAD)"
+          test "$ACTUAL_COMMIT" = "$FREELLMAPI_COMMIT" || {
+            echo "FreeLLMAPI source mismatch: expected $FREELLMAPI_COMMIT, got $ACTUAL_COMMIT."
+            exit 1
+          }
+
+      - name: Install build dependencies and compile server
+        working-directory: freellmapi
+        env:
+          NODE_ENV: production
+        run: |
+          set -euo pipefail
+          npm ci --include=dev
+          npm run build:server
+          test -s server/dist/index.js
+          echo "PINNED_FREELLMAPI_SERVER_BUILD_PASS"
