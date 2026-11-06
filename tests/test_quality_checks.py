@@ -270,12 +270,12 @@ An illustrative example.
 """
         for number in range(1, 6):
             source += (
-                f"{number}. **Question {number}?**\\n"
-                "A) Option A\\nB) Option B\\nC) Option C\\nD) Option D\\n"
-                "**Correct Answer: B**\\n"
-                "*Explanation: This is the rationale.*\\n\\n"
+                f"{number}. **Question {number}?**\n"
+                "A) Option A\nB) Option B\nC) Option C\nD) Option D\n"
+                "**Correct Answer: B**\n"
+                "*Explanation: This is the rationale.*\n\n"
             )
-        source += "## Source and Verification Notes\\nSources listed here.\\n"
+        source += "## Source and Verification Notes\nSources listed here.\n"
         self.assertEqual(count_mcq_sections(source), (5, 5, 5))
         findings = analyze_script(source, "MCQ Set", "English")
         self.assertNotIn("MCQ_COUNT_BELOW_MINIMUM", {item["code"] for item in findings})
