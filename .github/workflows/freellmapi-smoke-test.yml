@@ -106,6 +106,8 @@ jobs:
           exit 1
 
       - name: Authenticate and retrieve the temporary unified API key
+        env:
+          GOOGLE_AI_STUDIO_API_KEY: ${{ secrets.GOOGLE_AI_STUDIO_API_KEY }}
         run: |
           set -euo pipefail
           LOGIN="$(curl --silent --show-error --fail \
@@ -121,6 +123,8 @@ jobs:
           test -n "$UNIFIED_KEY"
           echo "::add-mask::$UNIFIED_KEY"
           echo "FREELLMAPI_API_KEY=$UNIFIED_KEY" >> "$GITHUB_ENV"
+          echo "::add-mask::$GOOGLE_AI_STUDIO_API_KEY"
+          echo "GOOGLE_AI_STUDIO_API_KEY=$GOOGLE_AI_STUDIO_API_KEY" >> "$GITHUB_ENV"
           echo "LLM_FALLBACK_PROVIDER=${{ steps.provider_preflight.outputs.fallback_chain }},gemini" >> "$GITHUB_ENV"
           echo "Temporary unified key retrieved and masked; it will not be printed."
 
